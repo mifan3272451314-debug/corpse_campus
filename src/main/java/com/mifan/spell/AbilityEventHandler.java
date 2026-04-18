@@ -20,9 +20,11 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.event.entity.player.AttackEntityEvent;
 import net.minecraftforge.event.entity.living.LivingAttackEvent;
 import net.minecraftforge.event.entity.living.LivingEvent;
 import net.minecraftforge.event.entity.living.LivingHurtEvent;
@@ -47,6 +49,7 @@ public final class AbilityEventHandler {
 
         tickSonicSense(player, gameTime);
         tickDangerSense(player, data, gameTime);
+        AbilityRuntime.tickDominance(player);
         tickMagneticCling(player, data, gameTime);
         tickMania(player, data, gameTime);
         clearExpiredInstinct(player, data, gameTime);
@@ -158,6 +161,17 @@ public final class AbilityEventHandler {
         if (hurt) {
             spawnManiaCrit(livingAttacker, target);
         }
+    }
+
+    @SubscribeEvent
+    public static void onPlayerAttackEntity(AttackEntityEvent event) {
+        Player player = event.getEntity();
+        if (player.level().isClientSide || !(event.getTarget() instanceof LivingEntity livingTarget) || livingTarget == player) {
+            return;
+        }
+
+        AbilityRuntime.retargetDominatedMobs(player, livingTarget);
+        player.getPersistentData().remove(AbilityRuntime.TAG_DOMINANCE_TARGET_PLAYER);
     }
 
     private static void tickSonicSense(Player player, long gameTime) {
@@ -406,12 +420,15 @@ public final class AbilityEventHandler {
         int spellLevel = AbilityRuntime.getEffectLevel(effectInstance);
         boolean onGround = player.onGround();
         boolean lastGround = data.getBoolean(AbilityRuntime.TAG_MAGNETIC_LAST_GROUND);
+        boolean clingActive = data.getBoolean(AbilityRuntime.TAG_MAGNETIC_CLINGING);
+        boolean pressingForward = player.zza > 0.0F;
+        boolean touchingClimbableWall = isTouchingClimbableWall(player);
 
         if (!onGround && player.fallDistance >= 4.0F) {
             data.putBoolean(AbilityRuntime.TAG_MAGNETIC_SHOCK_READY, true);
         }
 
-        if (player.horizontalCollision && !onGround && !data.getBoolean(AbilityRuntime.TAG_MAGNETIC_CLINGING)) {
+        if (!clingActive && !onGround && touchingClimbableWall && pressingForward) {
             data.putBoolean(AbilityRuntime.TAG_MAGNETIC_CLINGING, true);
             data.putLong(AbilityRuntime.TAG_MAGNETIC_CLING_END, gameTime + 40L);
             player.setNoGravity(true);
@@ -437,15 +454,21 @@ public final class AbilityEventHandler {
                         0.16D,
                         0.0D);
             }
+            clingActive = true;
         }
 
-        if (data.getBoolean(AbilityRuntime.TAG_MAGNETIC_CLINGING)) {
+        if (clingActive) {
             player.setNoGravity(true);
             BlockPos headPos = BlockPos.containing(player.getX(), player.getBoundingBox().maxY + 0.05D, player.getZ());
             boolean blockedAbove = !player.level().getBlockState(headPos).isAir();
             double climbSpeed = blockedAbove ? 0.0D : (0.12D + spellLevel * 0.02D);
+            Vec3 motion = player.getDeltaMovement();
+            double horizontalDamping = pressingForward ? 0.08D : 0.0D;
 
-            player.setDeltaMovement(0.0D, climbSpeed, 0.0D);
+            player.setDeltaMovement(
+                    motion.x * horizontalDamping,
+                    pressingForward ? climbSpeed : Math.max(-0.02D, motion.y),
+                    motion.z * horizontalDamping);
             player.fallDistance = 0.0F;
 
             if (player.level() instanceof ServerLevel serverLevel && gameTime % 4L == 0L) {
@@ -469,7 +492,7 @@ public final class AbilityEventHandler {
                         0.0D);
             }
 
-            if (onGround || !player.horizontalCollision) {
+            if (onGround || !touchingClimbableWall || !pressingForward) {
                 stopMagneticCling(player, data);
                 if (data.getBoolean(AbilityRuntime.TAG_MAGNETIC_SHOCK_READY)) {
                     emitShockwave(player, spellLevel);
@@ -488,6 +511,40 @@ public final class AbilityEventHandler {
         player.setNoGravity(false);
         data.remove(AbilityRuntime.TAG_MAGNETIC_CLING_END);
         data.putBoolean(AbilityRuntime.TAG_MAGNETIC_CLINGING, false);
+    }
+
+    private static boolean isTouchingClimbableWall(Player player) {
+        AABB box = player.getBoundingBox();
+        double sampleInset = 0.05D;
+        double minY = box.minY + 0.1D;
+        double maxY = box.maxY - 0.1D;
+
+        return hasSolidWallAt(player, box.maxX + sampleInset, minY, maxY, box.minZ + 0.1D, box.maxZ - 0.1D)
+                || hasSolidWallAt(player, box.minX - sampleInset, minY, maxY, box.minZ + 0.1D, box.maxZ - 0.1D)
+                || hasSolidWallAlongZ(player, box.maxZ + sampleInset, minY, maxY, box.minX + 0.1D, box.maxX - 0.1D)
+                || hasSolidWallAlongZ(player, box.minZ - sampleInset, minY, maxY, box.minX + 0.1D, box.maxX - 0.1D);
+    }
+
+    private static boolean hasSolidWallAt(Player player, double sampleX, double minY, double maxY, double minZ,
+            double maxZ) {
+        return isSolidWallBlock(player, sampleX, minY, minZ)
+                || isSolidWallBlock(player, sampleX, minY, maxZ)
+                || isSolidWallBlock(player, sampleX, maxY, minZ)
+                || isSolidWallBlock(player, sampleX, maxY, maxZ);
+    }
+
+    private static boolean hasSolidWallAlongZ(Player player, double sampleZ, double minY, double maxY, double minX,
+            double maxX) {
+        return isSolidWallBlock(player, minX, minY, sampleZ)
+                || isSolidWallBlock(player, maxX, minY, sampleZ)
+                || isSolidWallBlock(player, minX, maxY, sampleZ)
+                || isSolidWallBlock(player, maxX, maxY, sampleZ);
+    }
+
+    private static boolean isSolidWallBlock(Player player, double x, double y, double z) {
+        BlockPos pos = BlockPos.containing(x, y, z);
+        BlockState state = player.level().getBlockState(pos);
+        return !state.isAir() && state.isCollisionShapeFullBlock(player.level(), pos);
     }
 
     private static void emitShockwave(Player player, int spellLevel) {

@@ -1,7 +1,11 @@
 package com.mifan.spell;
 
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.StringTag;
+import net.minecraft.nbt.Tag;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
@@ -9,6 +13,7 @@ import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.SwordItem;
@@ -23,6 +28,7 @@ import net.minecraft.core.particles.ParticleTypes;
 import org.joml.Vector3f;
 
 import java.util.Comparator;
+import java.util.UUID;
 
 public final class AbilityRuntime {
     public static final int TOGGLE_DURATION_TICKS = 20 * 60 * 60 * 4;
@@ -50,6 +56,10 @@ public final class AbilityRuntime {
     public static final String TAG_MANIA_LAST_SWING = "corpse_campus_mania_last_swing";
 
     public static final String TAG_EXECUTIONER_LAST_TICK = "corpse_campus_executioner_last_tick";
+
+    public static final String TAG_DOMINANCE_MOBS = "corpse_campus_dominance_mobs";
+    public static final String TAG_DOMINANCE_TARGET_PLAYER = "corpse_campus_dominance_target_player";
+    public static final String TAG_DOMINANCE_LINK_ACTIVE = "corpse_campus_dominance_link_active";
 
     public static final int EXECUTIONER_DURABILITY_COST = 5;
     private static final float EXECUTIONER_DAMAGE_RATIO = 0.25F;
@@ -173,6 +183,124 @@ public final class AbilityRuntime {
 
     public static boolean isExecutionerWeapon(ItemStack stack) {
         return !stack.isEmpty() && stack.getItem() instanceof SwordItem;
+    }
+
+    public static Mob findDominanceMobTarget(LivingEntity caster, double range, double minDot) {
+        LivingEntity target = findTargetInSight(caster, range, minDot);
+        return target instanceof Mob mob && !(mob instanceof Player) ? mob : null;
+    }
+
+    public static boolean addDominatedMob(LivingEntity caster, Mob mob, int spellLevel, int maxControlled) {
+        CompoundTag data = caster.getPersistentData();
+        ListTag list = getDominatedMobList(data);
+        String uuid = mob.getUUID().toString();
+        for (int i = 0; i < list.size(); i++) {
+            if (uuid.equals(list.getString(i))) {
+                data.putBoolean(TAG_DOMINANCE_LINK_ACTIVE, true);
+                tagDominatedMob(mob, caster.getUUID(), spellLevel);
+                return true;
+            }
+        }
+
+        if (list.size() >= maxControlled) {
+            return false;
+        }
+
+        list.add(StringTag.valueOf(uuid));
+        data.put(TAG_DOMINANCE_MOBS, list);
+        data.putBoolean(TAG_DOMINANCE_LINK_ACTIVE, true);
+        tagDominatedMob(mob, caster.getUUID(), spellLevel);
+        return true;
+    }
+
+    public static void setDominanceTargetPlayer(ServerPlayer caster, UUID targetPlayerId) {
+        if (targetPlayerId.equals(caster.getUUID())) {
+            return;
+        }
+
+        Player target = caster.serverLevel().getPlayerByUUID(targetPlayerId);
+        if (target == null) {
+            return;
+        }
+
+        caster.getPersistentData().putUUID(TAG_DOMINANCE_TARGET_PLAYER, targetPlayerId);
+        retargetDominatedMobs(caster, target);
+        caster.displayClientMessage(net.minecraft.network.chat.Component.translatable(
+                "message.corpse_campus.dominance_target_set", target.getDisplayName()), true);
+    }
+
+    public static void tickDominance(Player player) {
+        CompoundTag data = player.getPersistentData();
+        List<Mob> dominatedMobs = getDominatedMobs(player);
+
+        if (dominatedMobs.isEmpty()) {
+            clear(data, TAG_DOMINANCE_MOBS, TAG_DOMINANCE_TARGET_PLAYER);
+            if (data.getBoolean(TAG_DOMINANCE_LINK_ACTIVE) && player.isAlive()) {
+                data.remove(TAG_DOMINANCE_LINK_ACTIVE);
+                player.hurt(player.damageSources().magic(), Float.MAX_VALUE);
+            }
+            return;
+        }
+
+        data.putBoolean(TAG_DOMINANCE_LINK_ACTIVE, true);
+        LivingEntity forcedTarget = null;
+        if (data.hasUUID(TAG_DOMINANCE_TARGET_PLAYER) && player.level() instanceof ServerLevel serverLevel) {
+            forcedTarget = serverLevel.getPlayerByUUID(data.getUUID(TAG_DOMINANCE_TARGET_PLAYER));
+            if (forcedTarget == null || !forcedTarget.isAlive()) {
+                data.remove(TAG_DOMINANCE_TARGET_PLAYER);
+            }
+        }
+
+        for (Mob mob : dominatedMobs) {
+            tagDominatedMob(mob, player.getUUID(), 1);
+            if (forcedTarget != null && mob.getTarget() != forcedTarget) {
+                mob.setTarget(forcedTarget);
+            }
+        }
+    }
+
+    public static void retargetDominatedMobs(Player player, LivingEntity target) {
+        for (Mob mob : getDominatedMobs(player)) {
+            mob.setTarget(target);
+        }
+    }
+
+    public static List<Mob> getDominatedMobs(Player player) {
+        CompoundTag data = player.getPersistentData();
+        ListTag list = getDominatedMobList(data);
+        ListTag cleaned = new ListTag();
+        java.util.List<Mob> mobs = new java.util.ArrayList<>();
+
+        if (!(player.level() instanceof ServerLevel serverLevel)) {
+            return java.util.List.of();
+        }
+
+        for (int i = 0; i < list.size(); i++) {
+            String uuidString = list.getString(i);
+            try {
+                Entity entity = serverLevel.getEntity(UUID.fromString(uuidString));
+                if (entity instanceof Mob mob && mob.isAlive()) {
+                    mobs.add(mob);
+                    cleaned.add(StringTag.valueOf(uuidString));
+                }
+            } catch (IllegalArgumentException ignored) {
+            }
+        }
+
+        data.put(TAG_DOMINANCE_MOBS, cleaned);
+        return mobs;
+    }
+
+    private static ListTag getDominatedMobList(CompoundTag data) {
+        return data.contains(TAG_DOMINANCE_MOBS, Tag.TAG_LIST)
+                ? data.getList(TAG_DOMINANCE_MOBS, Tag.TAG_STRING)
+                : new ListTag();
+    }
+
+    private static void tagDominatedMob(Mob mob, UUID casterId, int spellLevel) {
+        CompoundTag tag = mob.getPersistentData();
+        tag.putUUID("corpse_campus_dominance_owner", casterId);
+        tag.putInt("corpse_campus_dominance_level", spellLevel);
     }
 
     public static boolean canExecutionerUse(ItemStack stack) {

@@ -3,6 +3,7 @@ package com.mifan.network;
 import com.mifan.corpsecampus;
 import com.mifan.network.clientbound.DangerSensePingPacket;
 import com.mifan.network.clientbound.InstinctProcPacket;
+import com.mifan.network.serverbound.SetDominanceTargetPacket;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkDirection;
@@ -41,6 +42,12 @@ public final class ModNetwork {
                 .encoder(InstinctProcPacket::encode)
                 .decoder(InstinctProcPacket::decode)
                 .consumerMainThread(InstinctProcPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(SetDominanceTargetPacket.class, packetId++, NetworkDirection.PLAY_TO_SERVER)
+                .encoder(SetDominanceTargetPacket::encode)
+                .decoder(SetDominanceTargetPacket::decode)
+                .consumerMainThread(SetDominanceTargetPacket::handle)
                 .add();
     }
 

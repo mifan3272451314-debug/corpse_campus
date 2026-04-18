@@ -6,6 +6,7 @@ import com.mifan.spell.dongyue.InstinctSpell;
 import com.mifan.spell.dongyue.ManiaSpell;
 import com.mifan.spell.xujing.DangerSenseSpell;
 import com.mifan.spell.xujing.SonicSenseSpell;
+import com.mifan.spell.yuzhe.DominanceSpell;
 import com.mifan.spell.yuzhe.MagneticClingSpell;
 import com.mifan.spell.yuzhe.TelekinesisSpell;
 import io.redspace.ironsspellbooks.api.spells.AbstractSpell;
@@ -25,6 +26,7 @@ public final class ModSpells {
             DangerSenseSpell::new);
     public static final RegistryObject<AbstractSpell> TELEKINESIS = SPELLS.register("telekinesis",
             TelekinesisSpell::new);
+    public static final RegistryObject<AbstractSpell> DOMINANCE = SPELLS.register("dominance", DominanceSpell::new);
     public static final RegistryObject<AbstractSpell> MAGNETIC_CLING = SPELLS.register("magnetic_cling",
             MagneticClingSpell::new);
     public static final RegistryObject<AbstractSpell> INSTINCT = SPELLS.register("instinct", InstinctSpell::new);

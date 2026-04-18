@@ -1,6 +1,7 @@
 package com.mifan.spell;
 
 import com.mifan.corpsecampus;
+import com.mifan.client.screen.DominanceTargetScreen;
 import com.mifan.network.clientbound.DangerSensePingPacket;
 import com.mifan.network.clientbound.InstinctProcPacket;
 import com.mifan.registry.ModMobEffects;
@@ -44,6 +45,14 @@ public final class AbilityClientHandler {
     private static boolean instinctLastStand;
 
     private AbilityClientHandler() {
+    }
+
+    public static void openDominanceTargetScreen() {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.player == null || minecraft.level == null) {
+            return;
+        }
+        minecraft.setScreen(new DominanceTargetScreen());
     }
 
     public static void handleDangerPing(DangerSensePingPacket packet) {
