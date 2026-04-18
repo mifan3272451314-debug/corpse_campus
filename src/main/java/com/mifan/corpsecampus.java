@@ -1,6 +1,7 @@
 package com.mifan;
 
 import com.mifan.registry.ModSchools;
+import com.mifan.registry.ModSpells;
 import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.registries.Registries;
@@ -89,6 +90,8 @@ public class corpsecampus {
         CREATIVE_MODE_TABS.register(modEventBus);
         // Register custom spell schools for Iron's Spells 'n Spellbooks
         ModSchools.register(modEventBus);
+        // Register custom spells for Iron's Spells 'n Spellbooks
+        ModSpells.register(modEventBus);
 
         // Register ourselves for server and other game events we are interested in
         MinecraftForge.EVENT_BUS.register(this);

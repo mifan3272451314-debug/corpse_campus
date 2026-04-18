@@ -3,5 +3,17 @@
   "school.corpse_campus.rizhao": "日兆",
   "school.corpse_campus.dongyue": "东岳",
   "school.corpse_campus.yuzhe": "愚者",
-  "school.corpse_campus.shengqi": "圣祈"
+  "school.corpse_campus.shengqi": "圣祈",
+  "spell.corpse_campus.sonic_sense": "音波",
+  "spell.corpse_campus.danger_sense": "危机",
+  "spell.corpse_campus.telekinesis": "念力",
+  "spell.corpse_campus.magnetic_cling": "磁吸",
+  "spell.corpse_campus.instinct": "本能",
+  "tooltip.corpse_campus.range_blocks": "范围：%s 格",
+  "tooltip.corpse_campus.duration_seconds": "持续：%s 秒",
+  "tooltip.corpse_campus.suspend_seconds": "悬空：%s 秒",
+  "tooltip.corpse_campus.wall_cling_seconds": "贴墙：%s 秒",
+  "tooltip.corpse_campus.shockwave_radius": "冲击波半径：%s 格",
+  "tooltip.corpse_campus.dodge_chance": "致命近战闪避：%s%%",
+  "tooltip.corpse_campus.last_stand": "濒死保命：保留 1 点生命并获得 %s 秒免伤"
 }

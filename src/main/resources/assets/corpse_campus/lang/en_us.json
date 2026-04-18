@@ -3,5 +3,17 @@
   "school.corpse_campus.rizhao": "Rizhao",
   "school.corpse_campus.dongyue": "Dongyue",
   "school.corpse_campus.yuzhe": "Yuzhe",
-  "school.corpse_campus.shengqi": "Shengqi"
+  "school.corpse_campus.shengqi": "Shengqi",
+  "spell.corpse_campus.sonic_sense": "Sonic Sense",
+  "spell.corpse_campus.danger_sense": "Crisis",
+  "spell.corpse_campus.telekinesis": "Telekinesis",
+  "spell.corpse_campus.magnetic_cling": "Magnetic Cling",
+  "spell.corpse_campus.instinct": "Instinct",
+  "tooltip.corpse_campus.range_blocks": "Range: %s blocks",
+  "tooltip.corpse_campus.duration_seconds": "Duration: %s s",
+  "tooltip.corpse_campus.suspend_seconds": "Suspension: %s s",
+  "tooltip.corpse_campus.wall_cling_seconds": "Wall cling: %s s",
+  "tooltip.corpse_campus.shockwave_radius": "Shockwave radius: %s blocks",
+  "tooltip.corpse_campus.dodge_chance": "Lethal melee dodge: %s%%",
+  "tooltip.corpse_campus.last_stand": "Last stand: stay at 1 HP and gain %s s immunity"
 }
