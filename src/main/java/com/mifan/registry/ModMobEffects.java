@@ -24,6 +24,9 @@ public final class ModMobEffects {
     public static final RegistryObject<MobEffect> INSTINCT = MOB_EFFECTS.register("instinct",
             () -> new AbilityMarkerEffect(0x7CA76E));
 
+    public static final RegistryObject<MobEffect> MANIA = MOB_EFFECTS.register("mania",
+            () -> new AbilityMarkerEffect(0xB13B3B));
+
     private ModMobEffects() {
     }
 

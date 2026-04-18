@@ -2,6 +2,7 @@ package com.mifan.registry;
 
 import com.mifan.corpsecampus;
 import com.mifan.spell.dongyue.InstinctSpell;
+import com.mifan.spell.dongyue.ManiaSpell;
 import com.mifan.spell.xujing.DangerSenseSpell;
 import com.mifan.spell.xujing.SonicSenseSpell;
 import com.mifan.spell.yuzhe.MagneticClingSpell;
@@ -26,6 +27,7 @@ public final class ModSpells {
     public static final RegistryObject<AbstractSpell> MAGNETIC_CLING = SPELLS.register("magnetic_cling",
             MagneticClingSpell::new);
     public static final RegistryObject<AbstractSpell> INSTINCT = SPELLS.register("instinct", InstinctSpell::new);
+    public static final RegistryObject<AbstractSpell> MANIA = SPELLS.register("mania", ManiaSpell::new);
 
     private ModSpells() {
     }

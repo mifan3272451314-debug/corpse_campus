@@ -20,6 +20,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.living.LivingAttackEvent;
@@ -47,6 +48,7 @@ public final class AbilityEventHandler {
         tickSonicSense(player, gameTime);
         tickDangerSense(player, data, gameTime);
         tickMagneticCling(player, data, gameTime);
+        tickMania(player, data, gameTime);
         clearExpiredInstinct(player, data, gameTime);
     }
 
@@ -121,6 +123,43 @@ public final class AbilityEventHandler {
         }
     }
 
+    @SubscribeEvent
+    public static void onLivingAttackDealt(LivingAttackEvent event) {
+        DamageSource source = event.getSource();
+        Entity attacker = source.getEntity();
+        if (!(attacker instanceof LivingEntity livingAttacker) || attacker.level().isClientSide) {
+            return;
+        }
+
+        MobEffectInstance maniaEffect = livingAttacker.getEffect(ModMobEffects.MANIA.get());
+        if (maniaEffect == null) {
+            return;
+        }
+
+        Entity directEntity = source.getDirectEntity();
+        LivingEntity target = event.getEntity();
+        if (directEntity != attacker) {
+            return;
+        }
+
+        CompoundTag data = livingAttacker.getPersistentData();
+        long gameTime = livingAttacker.level().getGameTime();
+        long lastProc = data.getLong(AbilityRuntime.TAG_MANIA_LAST_PROC);
+        if (lastProc == gameTime) {
+            return;
+        }
+
+        data.putLong(AbilityRuntime.TAG_MANIA_LAST_PROC, gameTime);
+        event.setCanceled(true);
+
+        float amount = event.getAmount() * 1.5F;
+        target.invulnerableTime = 0;
+        boolean hurt = target.hurt(source, amount);
+        if (hurt) {
+            spawnManiaCrit(livingAttacker, target);
+        }
+    }
+
     private static void tickSonicSense(Player player, long gameTime) {
         MobEffectInstance effectInstance = player.getEffect(ModMobEffects.SONIC_ATTUNEMENT.get());
         if (effectInstance == null) {
@@ -183,6 +222,47 @@ public final class AbilityEventHandler {
         if (foundThreat) {
             data.putLong(AbilityRuntime.TAG_DANGER_LAST_ALERT, gameTime);
         }
+    }
+
+    private static void tickMania(Player player, CompoundTag data, long gameTime) {
+        MobEffectInstance effectInstance = player.getEffect(ModMobEffects.MANIA.get());
+        if (effectInstance == null) {
+            AbilityRuntime.clear(data, AbilityRuntime.TAG_MANIA_LAST_PROC, AbilityRuntime.TAG_MANIA_LAST_SWING);
+            return;
+        }
+
+        int spellLevel = AbilityRuntime.getEffectLevel(effectInstance);
+        if (gameTime % 10L == 0L) {
+            player.addEffect(new MobEffectInstance(MobEffects.DIG_SLOWDOWN, 20, 0, false, false, false));
+        }
+
+        long lastSwing = data.getLong(AbilityRuntime.TAG_MANIA_LAST_SWING);
+        if (gameTime - lastSwing < Math.max(4L, 12L - spellLevel)) {
+            return;
+        }
+
+        double range = 3.25D + Math.max(0, spellLevel - 1) * 0.35D;
+        LivingEntity target = AbilityRuntime.findNearestFrontTarget(player, range, 0.72D);
+        if (target == null) {
+            return;
+        }
+
+        double meleeRange = getAttackReach(player) + target.getBbWidth() * 0.5D;
+        if (player.distanceTo(target) > meleeRange) {
+            Vec3 toward = target.position().subtract(player.position());
+            Vec3 horizontal = new Vec3(toward.x, 0.0D, toward.z);
+            if (horizontal.lengthSqr() > 1.0E-4D) {
+                Vec3 push = horizontal.normalize().scale(Math.min(0.55D, horizontal.length() * 0.22D + 0.14D));
+                player.push(push.x, player.onGround() ? 0.12D : 0.02D, push.z);
+                player.hurtMarked = true;
+            }
+            return;
+        }
+
+        data.putLong(AbilityRuntime.TAG_MANIA_LAST_SWING, gameTime);
+        player.swing(player.getUsedItemHand(), true);
+        player.resetAttackStrengthTicker();
+        player.attack(target);
     }
 
     private static void tickTelekinesisCaster(LivingEntity caster, CompoundTag data, long gameTime) {
@@ -451,6 +531,27 @@ public final class AbilityEventHandler {
                 AbilityRuntime.TAG_INSTINCT_LEVEL,
                 AbilityRuntime.TAG_INSTINCT_USED,
                 AbilityRuntime.TAG_INSTINCT_INVULNERABLE_UNTIL);
+    }
+
+    private static double getAttackReach(Player player) {
+        return 3.0D;
+    }
+
+    private static void spawnManiaCrit(LivingEntity attacker, LivingEntity target) {
+        attacker.level().playSound(null, target.blockPosition(), SoundEvents.PLAYER_ATTACK_CRIT, SoundSource.PLAYERS,
+                0.22F, 0.9F);
+        if (attacker.level() instanceof ServerLevel serverLevel) {
+            AABB box = target.getBoundingBox();
+            serverLevel.sendParticles(ParticleTypes.CRIT,
+                    target.getX(),
+                    target.getY() + target.getBbHeight() * 0.55D,
+                    target.getZ(),
+                    14,
+                    box.getXsize() * 0.25D,
+                    box.getYsize() * 0.2D,
+                    box.getZsize() * 0.25D,
+                    0.15D);
+        }
     }
 
     private static boolean isLethalMeleeAttack(LivingEntity entity, DamageSource source, float amount) {

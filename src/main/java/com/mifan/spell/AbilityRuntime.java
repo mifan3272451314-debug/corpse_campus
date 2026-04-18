@@ -32,6 +32,9 @@ public final class AbilityRuntime {
     public static final String TAG_INSTINCT_USED = "corpse_campus_instinct_used";
     public static final String TAG_INSTINCT_INVULNERABLE_UNTIL = "corpse_campus_instinct_invulnerable_until";
 
+    public static final String TAG_MANIA_LAST_PROC = "corpse_campus_mania_last_proc";
+    public static final String TAG_MANIA_LAST_SWING = "corpse_campus_mania_last_swing";
+
     private AbilityRuntime() {
     }
 
@@ -123,5 +126,25 @@ public final class AbilityRuntime {
                     horizontalDelta.z / horizontalLength * horizontalStrength * falloff);
             target.hurtMarked = true;
         }
+    }
+
+    public static LivingEntity findNearestFrontTarget(LivingEntity caster, double range, double minDot) {
+        Vec3 eyePosition = caster.getEyePosition();
+        Vec3 look = caster.getLookAngle().normalize();
+        AABB searchBox = caster.getBoundingBox().inflate(range);
+
+        return caster.level().getEntitiesOfClass(LivingEntity.class, searchBox, target -> target != caster
+                && target.isAlive())
+                .stream()
+                .filter(target -> eyePosition.distanceToSqr(target.getEyePosition()) <= range * range)
+                .filter(target -> {
+                    Vec3 delta = target.getEyePosition().subtract(eyePosition);
+                    if (delta.lengthSqr() < 1.0E-4D) {
+                        return false;
+                    }
+                    return delta.normalize().dot(look) >= minDot;
+                })
+                .min(Comparator.comparingDouble(target -> eyePosition.distanceToSqr(target.getEyePosition())))
+                .orElse(null);
     }
 }
