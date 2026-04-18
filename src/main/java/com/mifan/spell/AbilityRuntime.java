@@ -15,7 +15,9 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.AxeItem;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.ShieldItem;
 import net.minecraft.world.item.SwordItem;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.BlockHitResult;
@@ -57,6 +59,8 @@ public final class AbilityRuntime {
     public static final String TAG_MANIA_LAST_SWING = "corpse_campus_mania_last_swing";
 
     public static final String TAG_EXECUTIONER_LAST_TICK = "corpse_campus_executioner_last_tick";
+    public static final String TAG_EXECUTIONER_BLOCK_HITS = "corpse_campus_executioner_block_hits";
+    public static final String TAG_EXECUTIONER_BLOCK_LAST_TICK = "corpse_campus_executioner_block_last_tick";
 
     public static final String TAG_DOMINANCE_MOBS = "corpse_campus_dominance_mobs";
     public static final String TAG_DOMINANCE_TARGET_PLAYER = "corpse_campus_dominance_target_player";
@@ -64,8 +68,12 @@ public final class AbilityRuntime {
     public static final String TAG_DOMINANCE_OWNER = "corpse_campus_dominance_owner";
     public static final String TAG_DOMINANCE_LEVEL = "corpse_campus_dominance_level";
 
-    public static final int EXECUTIONER_DURABILITY_COST = 5;
+    public static final String TAG_DANGER_RECENT_ATTACKERS = "corpse_campus_danger_recent_attackers";
+
+    public static final int EXECUTIONER_DURABILITY_COST = 15;
     private static final float EXECUTIONER_DAMAGE_RATIO = 0.25F;
+    private static final float DOMINANCE_MIN_SURVIVAL_HEALTH = 1.0F;
+    private static final float DOMINANCE_MAX_HEALTH_LIMIT = 35.0F;
 
     private AbilityRuntime() {
     }
@@ -194,6 +202,10 @@ public final class AbilityRuntime {
     }
 
     public static boolean addDominatedMob(LivingEntity caster, Mob mob, int spellLevel, int maxControlled) {
+        if (mob.getMaxHealth() > DOMINANCE_MAX_HEALTH_LIMIT) {
+            return false;
+        }
+
         CompoundTag data = caster.getPersistentData();
         ListTag list = getDominatedMobList(data);
         String uuid = mob.getUUID().toString();
@@ -240,7 +252,10 @@ public final class AbilityRuntime {
             clear(data, TAG_DOMINANCE_MOBS, TAG_DOMINANCE_TARGET_PLAYER);
             if (data.getBoolean(TAG_DOMINANCE_LINK_ACTIVE) && player.isAlive()) {
                 data.remove(TAG_DOMINANCE_LINK_ACTIVE);
-                player.hurt(player.damageSources().magic(), Float.MAX_VALUE);
+                float damage = Math.max(0.0F, player.getHealth() - DOMINANCE_MIN_SURVIVAL_HEALTH);
+                if (damage > 0.0F) {
+                    player.hurt(player.damageSources().magic(), damage);
+                }
             }
             return;
         }
@@ -321,6 +336,58 @@ public final class AbilityRuntime {
                 || stack.getDamageValue() + EXECUTIONER_DURABILITY_COST < stack.getMaxDamage());
     }
 
+    public static boolean isDangerSenseWeapon(ItemStack stack) {
+        if (stack.isEmpty()) {
+            return false;
+        }
+
+        return stack.getItem() instanceof SwordItem || stack.getItem() instanceof AxeItem;
+    }
+
+    public static double getDangerSenseWeaponDamage(ItemStack stack) {
+        if (stack.isEmpty()) {
+            return 0.0D;
+        }
+
+        return stack.getAttributeModifiers(net.minecraft.world.entity.EquipmentSlot.MAINHAND)
+                .get(net.minecraft.world.entity.ai.attributes.Attributes.ATTACK_DAMAGE)
+                .stream()
+                .mapToDouble(modifier -> modifier.getAmount())
+                .sum();
+    }
+
+    public static void incrementExecutionerShieldPressure(LivingEntity target) {
+        if (!(target instanceof Player player) || !player.isUsingItem()) {
+            resetExecutionerShieldPressure(target);
+            return;
+        }
+
+        ItemStack usingItem = player.getUseItem();
+        if (!(usingItem.getItem() instanceof ShieldItem)) {
+            resetExecutionerShieldPressure(target);
+            return;
+        }
+
+        CompoundTag data = target.getPersistentData();
+        long gameTime = target.level().getGameTime();
+        long lastTick = data.getLong(TAG_EXECUTIONER_BLOCK_LAST_TICK);
+        int hits = gameTime - lastTick <= 100L ? data.getInt(TAG_EXECUTIONER_BLOCK_HITS) + 1 : 1;
+        data.putLong(TAG_EXECUTIONER_BLOCK_LAST_TICK, gameTime);
+        data.putInt(TAG_EXECUTIONER_BLOCK_HITS, hits);
+
+        if (hits >= 15) {
+            player.stopUsingItem();
+            player.getCooldowns().addCooldown(usingItem.getItem(), 100);
+            resetExecutionerShieldPressure(target);
+        }
+    }
+
+    public static void resetExecutionerShieldPressure(LivingEntity target) {
+        CompoundTag data = target.getPersistentData();
+        data.remove(TAG_EXECUTIONER_BLOCK_HITS);
+        data.remove(TAG_EXECUTIONER_BLOCK_LAST_TICK);
+    }
+
     public static void tickExecutionerCast(Level level, LivingEntity caster, int spellLevel) {
         CompoundTag data = caster.getPersistentData();
         long gameTime = level.getGameTime();
@@ -399,6 +466,7 @@ public final class AbilityRuntime {
                 target -> target != caster && target.isAlive())) {
             target.invulnerableTime = 0;
             target.hurt(level.damageSources().mobAttack(caster), damage);
+            incrementExecutionerShieldPressure(target);
         }
 
         spawnExecutionerBurst(level, center, radius);
@@ -420,9 +488,10 @@ public final class AbilityRuntime {
             if (dot < minDot) {
                 continue;
             }
-
+            
             target.invulnerableTime = 0;
             target.hurt(level.damageSources().mobAttack(caster), damage);
+            incrementExecutionerShieldPressure(target);
         }
     }
 

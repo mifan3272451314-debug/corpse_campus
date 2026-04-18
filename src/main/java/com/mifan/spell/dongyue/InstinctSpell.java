@@ -46,8 +46,8 @@ public class InstinctSpell extends AbstractSpell {
     @Override
     public List<MutableComponent> getUniqueInfo(int spellLevel, LivingEntity caster) {
         return List.of(
-                Component.translatable("tooltip.corpse_campus.dodge_chance",
-                        Math.round(getDodgeChance(spellLevel) * 100.0F)),
+                Component.translatable("tooltip.corpse_campus.damage_immunity_chance",
+                        Math.round(getImmunityChance() * 100.0F)),
                 Component.translatable("tooltip.corpse_campus.last_stand", 3),
                 Component.translatable("tooltip.corpse_campus.toggle_cast"));
     }
@@ -113,7 +113,7 @@ public class InstinctSpell extends AbstractSpell {
         return ModSchools.DONGYUE.get();
     }
 
-    private float getDodgeChance(int spellLevel) {
-        return 0.10F + 0.02F * (spellLevel - 1);
+    private float getImmunityChance() {
+        return 0.15F;
     }
 }

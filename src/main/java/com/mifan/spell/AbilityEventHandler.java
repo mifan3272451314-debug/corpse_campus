@@ -20,6 +20,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -72,6 +73,8 @@ public final class AbilityEventHandler {
             return;
         }
 
+        trackDangerSenseAttacker(event);
+
         Entity directEntity = event.getSource().getDirectEntity();
         if (entity instanceof Player player && directEntity instanceof Mob mob
                 && AbilityRuntime.isDominatedBy(mob, player)) {
@@ -97,6 +100,12 @@ public final class AbilityEventHandler {
             return;
         }
 
+        if (entity instanceof Player magneticPlayer
+                && magneticPlayer.hasEffect(ModMobEffects.MAGNETIC_CLING.get())
+                && event.getSource().is(net.minecraft.tags.DamageTypeTags.IS_FALL)) {
+            event.setAmount(Math.min(event.getAmount(), Math.max(0.0F, magneticPlayer.getHealth() - 1.0F)));
+        }
+
         CompoundTag data = entity.getPersistentData();
         long gameTime = entity.level().getGameTime();
         MobEffectInstance instinctEffect = entity.getEffect(ModMobEffects.INSTINCT.get());
@@ -110,18 +119,17 @@ public final class AbilityEventHandler {
             return;
         }
 
-        if (!isLethalMeleeAttack(entity, event.getSource(), event.getAmount())) {
-            return;
-        }
-
         int spellLevel = AbilityRuntime.getEffectLevel(instinctEffect);
-        float dodgeChance = 0.10F + 0.02F * (spellLevel - 1);
-        if (entity.getRandom().nextFloat() < dodgeChance) {
+        if (entity.getRandom().nextFloat() < 0.15F) {
             data.putLong(AbilityRuntime.TAG_INSTINCT_INVULNERABLE_UNTIL, gameTime + 20L);
             event.setAmount(0.0F);
             if (entity instanceof ServerPlayer serverPlayer) {
                 ModNetwork.sendToPlayer(new InstinctProcPacket(false), serverPlayer);
             }
+            return;
+        }
+
+        if (event.getAmount() < entity.getHealth()) {
             return;
         }
 
@@ -215,6 +223,7 @@ public final class AbilityEventHandler {
         MobEffectInstance effectInstance = player.getEffect(ModMobEffects.DANGER_SENSE.get());
         if (effectInstance == null) {
             data.remove(AbilityRuntime.TAG_DANGER_LAST_ALERT);
+            data.remove(AbilityRuntime.TAG_DANGER_RECENT_ATTACKERS);
             return;
         }
 
@@ -235,6 +244,18 @@ public final class AbilityEventHandler {
 
             if (player instanceof ServerPlayer serverPlayer) {
                 ModNetwork.sendToPlayer(new DangerSensePingPacket(mob.getId(), 16, playAlert), serverPlayer);
+                playAlert = false;
+            }
+        }
+
+        for (Player otherPlayer : player.level().getEntitiesOfClass(
+                Player.class,
+                player.getBoundingBox().inflate(radius),
+                other -> other != player && other.isAlive() && isDangerSenseThreat(player, other, data, gameTime))) {
+            foundThreat = true;
+
+            if (player instanceof ServerPlayer serverPlayer) {
+                ModNetwork.sendToPlayer(new DangerSensePingPacket(otherPlayer.getId(), 16, playAlert), serverPlayer);
                 playAlert = false;
             }
         }
@@ -505,12 +526,12 @@ public final class AbilityEventHandler {
             if (onGround || !touchingClimbableWall) {
                 stopMagneticCling(player, data);
                 if (data.getBoolean(AbilityRuntime.TAG_MAGNETIC_SHOCK_READY)) {
-                    emitShockwave(player, spellLevel);
+                    emitShockwave(player, spellLevel, player.fallDistance);
                     data.remove(AbilityRuntime.TAG_MAGNETIC_SHOCK_READY);
                 }
             }
         } else if (onGround && !lastGround && data.getBoolean(AbilityRuntime.TAG_MAGNETIC_SHOCK_READY)) {
-            emitShockwave(player, spellLevel);
+            emitShockwave(player, spellLevel, player.fallDistance);
             data.remove(AbilityRuntime.TAG_MAGNETIC_SHOCK_READY);
         }
 
@@ -557,10 +578,11 @@ public final class AbilityEventHandler {
         return !state.isAir() && state.isCollisionShapeFullBlock(player.level(), pos);
     }
 
-    private static void emitShockwave(Player player, int spellLevel) {
-        double radius = 3.0D + spellLevel * 0.75D;
-        double horizontalStrength = 1.1D + spellLevel * 0.15D;
-        double verticalStrength = 0.35D + spellLevel * 0.05D;
+    private static void emitShockwave(Player player, int spellLevel, float fallDistance) {
+        double fallScale = Math.max(0.0D, fallDistance - 4.0F) * 0.18D;
+        double radius = 3.0D + spellLevel * 0.75D + fallScale;
+        double horizontalStrength = 1.1D + spellLevel * 0.15D + fallScale * 0.22D;
+        double verticalStrength = 0.35D + spellLevel * 0.05D + fallScale * 0.08D;
 
         AbilityRuntime.pushNearbyEntities(player, radius, horizontalStrength, verticalStrength);
         player.level().playSound(null, player.blockPosition(), SoundEvents.PLAYER_ATTACK_SWEEP, SoundSource.PLAYERS,
@@ -621,11 +643,36 @@ public final class AbilityEventHandler {
         }
     }
 
-    private static boolean isLethalMeleeAttack(LivingEntity entity, DamageSource source, float amount) {
-        Entity directEntity = source.getDirectEntity();
-        Entity sourceEntity = source.getEntity();
-        return amount >= entity.getHealth()
-                && directEntity instanceof LivingEntity
-                && directEntity == sourceEntity;
+    private static void trackDangerSenseAttacker(LivingAttackEvent event) {
+        if (!(event.getEntity() instanceof Player player)) {
+            return;
+        }
+
+        Entity attacker = event.getSource().getEntity();
+        if (!(attacker instanceof Player attackingPlayer) || attackingPlayer == player) {
+            return;
+        }
+
+        CompoundTag attackers = player.getPersistentData().getCompound(AbilityRuntime.TAG_DANGER_RECENT_ATTACKERS);
+        attackers.putLong(attackingPlayer.getStringUUID(), player.level().getGameTime() + 400L);
+        player.getPersistentData().put(AbilityRuntime.TAG_DANGER_RECENT_ATTACKERS, attackers);
+    }
+
+    private static boolean isDangerSenseThreat(Player player, Player otherPlayer, CompoundTag data, long gameTime) {
+        ItemStack mainHand = otherPlayer.getMainHandItem();
+        boolean dangerousWeapon = AbilityRuntime.isDangerSenseWeapon(mainHand)
+                && AbilityRuntime.getDangerSenseWeaponDamage(mainHand) > 5.0D;
+
+        CompoundTag attackers = data.getCompound(AbilityRuntime.TAG_DANGER_RECENT_ATTACKERS);
+        if (attackers.contains(otherPlayer.getStringUUID())) {
+            long expireAt = attackers.getLong(otherPlayer.getStringUUID());
+            if (expireAt > gameTime) {
+                return true;
+            }
+            attackers.remove(otherPlayer.getStringUUID());
+            data.put(AbilityRuntime.TAG_DANGER_RECENT_ATTACKERS, attackers);
+        }
+
+        return dangerousWeapon;
     }
 }

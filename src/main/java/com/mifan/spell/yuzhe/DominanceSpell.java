@@ -50,6 +50,7 @@ public class DominanceSpell extends AbstractSpell {
     public List<MutableComponent> getUniqueInfo(int spellLevel, LivingEntity caster) {
         return List.of(
                 Component.translatable("tooltip.corpse_campus.dominance_limit", MAX_CONTROLLED),
+                Component.translatable("tooltip.corpse_campus.dominance_health_limit", 35),
                 Component.translatable("tooltip.corpse_campus.dominance_crouch_capture"),
                 Component.translatable("tooltip.corpse_campus.dominance_open_list"),
                 Component.translatable("tooltip.corpse_campus.dominance_death_link"));
@@ -100,7 +101,11 @@ public class DominanceSpell extends AbstractSpell {
                             added ? 1.18F : 0.75F);
                     if (entity instanceof Player player) {
                         player.displayClientMessage(Component.translatable(
-                                added ? "message.corpse_campus.dominance_bound" : "message.corpse_campus.dominance_full"), true);
+                                added
+                                        ? "message.corpse_campus.dominance_bound"
+                                        : target.getMaxHealth() > 35.0F
+                                                ? "message.corpse_campus.dominance_too_healthy"
+                                                : "message.corpse_campus.dominance_full"), true);
                     }
                 }
             }

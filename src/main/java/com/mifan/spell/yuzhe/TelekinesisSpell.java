@@ -29,7 +29,7 @@ public class TelekinesisSpell extends AbstractSpell {
             .setMinRarity(SpellRarity.COMMON)
             .setSchoolResource(ModSchools.YUZHE_RESOURCE)
             .setMaxLevel(5)
-            .setCooldownSeconds(0)
+            .setCooldownSeconds(45)
             .build();
 
     public TelekinesisSpell() {
