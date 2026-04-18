@@ -72,6 +72,16 @@ public final class AbilityEventHandler {
             return;
         }
 
+        Entity directEntity = event.getSource().getDirectEntity();
+        if (entity instanceof Player player && directEntity instanceof Mob mob
+                && AbilityRuntime.isDominatedBy(mob, player)) {
+            event.setCanceled(true);
+            if (mob.getTarget() == player) {
+                mob.setTarget(null);
+            }
+            return;
+        }
+
         CompoundTag data = entity.getPersistentData();
         long gameTime = entity.level().getGameTime();
         if (data.contains(AbilityRuntime.TAG_INSTINCT_INVULNERABLE_UNTIL)
@@ -421,14 +431,13 @@ public final class AbilityEventHandler {
         boolean onGround = player.onGround();
         boolean lastGround = data.getBoolean(AbilityRuntime.TAG_MAGNETIC_LAST_GROUND);
         boolean clingActive = data.getBoolean(AbilityRuntime.TAG_MAGNETIC_CLINGING);
-        boolean pressingForward = player.zza > 0.0F;
-        boolean touchingClimbableWall = isTouchingClimbableWall(player);
+        boolean touchingClimbableWall = player.horizontalCollision || isTouchingClimbableWall(player);
 
         if (!onGround && player.fallDistance >= 4.0F) {
             data.putBoolean(AbilityRuntime.TAG_MAGNETIC_SHOCK_READY, true);
         }
 
-        if (!clingActive && !onGround && touchingClimbableWall && pressingForward) {
+        if (!clingActive && !onGround && touchingClimbableWall) {
             data.putBoolean(AbilityRuntime.TAG_MAGNETIC_CLINGING, true);
             data.putLong(AbilityRuntime.TAG_MAGNETIC_CLING_END, gameTime + 40L);
             player.setNoGravity(true);
@@ -463,13 +472,14 @@ public final class AbilityEventHandler {
             boolean blockedAbove = !player.level().getBlockState(headPos).isAir();
             double climbSpeed = blockedAbove ? 0.0D : (0.12D + spellLevel * 0.02D);
             Vec3 motion = player.getDeltaMovement();
-            double horizontalDamping = pressingForward ? 0.08D : 0.0D;
+            double horizontalDamping = 0.08D;
 
             player.setDeltaMovement(
                     motion.x * horizontalDamping,
-                    pressingForward ? climbSpeed : Math.max(-0.02D, motion.y),
+                    climbSpeed,
                     motion.z * horizontalDamping);
             player.fallDistance = 0.0F;
+            player.hurtMarked = true;
 
             if (player.level() instanceof ServerLevel serverLevel && gameTime % 4L == 0L) {
                 serverLevel.sendParticles(ParticleTypes.ELECTRIC_SPARK,
@@ -492,7 +502,7 @@ public final class AbilityEventHandler {
                         0.0D);
             }
 
-            if (onGround || !touchingClimbableWall || !pressingForward) {
+            if (onGround || !touchingClimbableWall) {
                 stopMagneticCling(player, data);
                 if (data.getBoolean(AbilityRuntime.TAG_MAGNETIC_SHOCK_READY)) {
                     emitShockwave(player, spellLevel);

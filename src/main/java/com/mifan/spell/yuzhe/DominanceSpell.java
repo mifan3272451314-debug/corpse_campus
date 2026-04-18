@@ -1,7 +1,8 @@
 package com.mifan.spell.yuzhe;
 
+import com.mifan.network.ModNetwork;
+import com.mifan.network.clientbound.OpenDominanceScreenPacket;
 import com.mifan.registry.ModSchools;
-import com.mifan.spell.AbilityClientHandler;
 import com.mifan.spell.AbilityRuntime;
 import io.redspace.ironsspellbooks.api.config.DefaultConfig;
 import io.redspace.ironsspellbooks.api.magic.MagicData;
@@ -103,8 +104,8 @@ public class DominanceSpell extends AbstractSpell {
                     }
                 }
             }
-        } else if (level.isClientSide) {
-            AbilityClientHandler.openDominanceTargetScreen();
+        } else if (!level.isClientSide && entity instanceof net.minecraft.server.level.ServerPlayer serverPlayer) {
+            ModNetwork.sendToPlayer(new OpenDominanceScreenPacket(), serverPlayer);
         }
 
         super.onCast(level, spellLevel, entity, castSource, playerMagicData);

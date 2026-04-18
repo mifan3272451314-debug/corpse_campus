@@ -2,14 +2,18 @@ package com.mifan.spell;
 
 import com.mifan.corpsecampus;
 import com.mifan.client.screen.DominanceTargetScreen;
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.PoseStack;
 import com.mifan.network.clientbound.DangerSensePingPacket;
 import com.mifan.network.clientbound.InstinctProcPacket;
 import com.mifan.registry.ModMobEffects;
+import net.minecraft.client.Camera;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.Entity;
@@ -25,22 +29,31 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvents;
+import org.joml.Matrix4f;
+import org.joml.Quaternionf;
 import org.joml.Vector3f;
+import org.joml.Vector4f;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 @Mod.EventBusSubscriber(modid = corpsecampus.MODID, value = Dist.CLIENT)
 public final class AbilityClientHandler {
-    private static final Map<Integer, Long> SONIC_ENTITY_MARKS = new HashMap<>();
+    private static final ResourceLocation SONIC_ECHO_TEXTURE = ResourceLocation.fromNamespaceAndPath(corpsecampus.MODID,
+            "textures/gui/sound_gui.png");
+    private static final int SONIC_ECHO_FRAME_WIDTH = 32;
+    private static final int SONIC_ECHO_FRAME_HEIGHT = 32;
+    private static final int SONIC_ECHO_FRAME_COUNT = 5;
+    private static final int SONIC_ECHO_FRAME_DURATION = 10;
     private static final Map<Integer, Long> DANGER_ENTITY_MARKS = new HashMap<>();
     private static final List<SoundPing> SONIC_SOUND_PINGS = new ArrayList<>();
-    private static final Set<Integer> LOCAL_GLOW_ENTITIES = new HashSet<>();
+    private static boolean sonicListening;
+    private static boolean sonicListeningActive;
+    private static long sonicListenStartTime;
+    private static int sonicHudTick;
     private static long instinctOverlayUntil;
     private static boolean instinctLastStand;
 
@@ -128,15 +141,15 @@ public final class AbilityClientHandler {
         }
 
         long gameTime = level.getGameTime();
+        updateSonicListeningState(player, gameTime);
         cleanupExpired(gameTime);
-        updateLocalGlowing(level, gameTime);
-        spawnClientParticles(level, player, gameTime);
+        sonicHudTick++;
     }
 
     @SubscribeEvent
     public static void onSoundAtEntity(PlayLevelSoundEvent.AtEntity event) {
         Player player = localPlayer();
-        if (player == null || !hasSonicSense(player)) {
+        if (player == null || !canProcessSonicSound(player)) {
             return;
         }
 
@@ -152,17 +165,17 @@ public final class AbilityClientHandler {
         }
 
         event.setNewVolume(Math.min(event.getNewVolume(), event.getOriginalVolume() * 0.33F));
-        if (soundEntity instanceof LivingEntity livingEntity) {
-            markSonicEntity(livingEntity.getId(), 56 + spellLevel * 10);
-        }
-        SONIC_SOUND_PINGS.add(new SoundPing(soundEntity.position().add(0.0D, soundEntity.getBbHeight() * 0.6D, 0.0D),
-                player.level().getGameTime() + 18 + spellLevel * 5));
+        int durationTicks = 18 + spellLevel * 5;
+        SONIC_SOUND_PINGS.add(new SoundPing(
+                soundEntity.position().add(0.0D, soundEntity.getBbHeight() * 0.6D, 0.0D),
+                player.level().getGameTime() + durationTicks,
+                durationTicks));
     }
 
     @SubscribeEvent
     public static void onSoundAtPosition(PlayLevelSoundEvent.AtPosition event) {
         Player player = localPlayer();
-        if (player == null || !hasSonicSense(player)) {
+        if (player == null || !canProcessSonicSound(player)) {
             return;
         }
 
@@ -173,7 +186,11 @@ public final class AbilityClientHandler {
         }
 
         event.setNewVolume(Math.min(event.getNewVolume(), event.getOriginalVolume() * 0.33F));
-        SONIC_SOUND_PINGS.add(new SoundPing(event.getPosition(), player.level().getGameTime() + 16 + spellLevel * 5));
+        int durationTicks = 16 + spellLevel * 5;
+        SONIC_SOUND_PINGS.add(new SoundPing(
+                event.getPosition(),
+                player.level().getGameTime() + durationTicks,
+                durationTicks));
     }
 
     @SubscribeEvent
@@ -183,9 +200,9 @@ public final class AbilityClientHandler {
             return;
         }
 
-        event.setRed(event.getRed() * 0.72F);
-        event.setGreen(event.getGreen() * 0.72F);
-        event.setBlue(event.getBlue() * 0.74F);
+        event.setRed(event.getRed() * 0.18F);
+        event.setGreen(event.getGreen() * 0.18F);
+        event.setBlue(event.getBlue() * 0.2F);
     }
 
     @SubscribeEvent
@@ -211,7 +228,8 @@ public final class AbilityClientHandler {
         long gameTime = player.level().getGameTime();
 
         if (hasSonicSense(player)) {
-            drawSoftSonicOverlay(event.getGuiGraphics(), width, height, gameTime);
+            drawDarkSonicOverlay(event.getGuiGraphics(), width, height, gameTime);
+            drawSonicPingHud(event.getGuiGraphics(), player, gameTime);
         }
 
         if (instinctOverlayUntil > gameTime) {
@@ -236,23 +254,70 @@ public final class AbilityClientHandler {
         guiGraphics.fill(centerX - 1, centerY - 26, centerX + 1, centerY + 26, (pulseAlpha << 24) | color);
     }
 
-    private static void drawSoftSonicOverlay(GuiGraphics guiGraphics, int width, int height, long gameTime) {
-        int veilAlpha = 12 + (int) (Math.sin(gameTime * 0.05D) * 2.0D + 2.0D);
-        guiGraphics.fill(0, 0, width, height, (veilAlpha << 24) | 0x747474);
+    private static void drawDarkSonicOverlay(GuiGraphics guiGraphics, int width, int height, long gameTime) {
+        int veilAlpha = 148 + (int) (Math.sin(gameTime * 0.05D) * 8.0D + 8.0D);
+        guiGraphics.fill(0, 0, width, height, (veilAlpha << 24) | 0x050608);
 
-        int edgeAlpha = 7 + (int) (Math.sin(gameTime * 0.08D) * 1.0D + 1.0D);
-        guiGraphics.fill(0, 0, width, 14, (edgeAlpha << 24) | 0x808080);
-        guiGraphics.fill(0, height - 14, width, height, (edgeAlpha << 24) | 0x808080);
-        guiGraphics.fill(0, 0, 10, height, ((edgeAlpha - 2) << 24) | 0x6E6E6E);
-        guiGraphics.fill(width - 10, 0, width, height, ((edgeAlpha - 2) << 24) | 0x6E6E6E);
+        int vignetteAlpha = 58 + (int) (Math.sin(gameTime * 0.08D) * 6.0D + 6.0D);
+        guiGraphics.fill(0, 0, width, 20, (vignetteAlpha << 24) | 0x0D1318);
+        guiGraphics.fill(0, height - 20, width, height, (vignetteAlpha << 24) | 0x0D1318);
+        guiGraphics.fill(0, 0, 14, height, (vignetteAlpha << 24) | 0x0D1318);
+        guiGraphics.fill(width - 14, 0, width, height, (vignetteAlpha << 24) | 0x0D1318);
+    }
 
-        int centerX = width / 2;
-        int centerY = height / 2;
-        int crossAlpha = 9 + (int) (Math.sin(gameTime * 0.12D) * 2.0D + 2.0D);
-        guiGraphics.fill(centerX - 1, centerY - 18, centerX + 1, centerY - 8, (crossAlpha << 24) | 0xD6D6D6);
-        guiGraphics.fill(centerX - 1, centerY + 8, centerX + 1, centerY + 18, (crossAlpha << 24) | 0xD6D6D6);
-        guiGraphics.fill(centerX - 18, centerY - 1, centerX - 8, centerY + 1, ((crossAlpha - 2) << 24) | 0xBEBEBE);
-        guiGraphics.fill(centerX + 8, centerY - 1, centerX + 18, centerY + 1, ((crossAlpha - 2) << 24) | 0xBEBEBE);
+    private static void drawSonicPingHud(GuiGraphics guiGraphics, Player player, long gameTime) {
+        if (!sonicListeningActive || SONIC_SOUND_PINGS.isEmpty()) {
+            return;
+        }
+
+        int frameIndex = (sonicHudTick / SONIC_ECHO_FRAME_DURATION) % SONIC_ECHO_FRAME_COUNT;
+        Vec3 playerPos = player.getPosition(1.0F);
+
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
+
+        PoseStack poseStack = guiGraphics.pose();
+        for (int i = SONIC_SOUND_PINGS.size() - 1; i >= 0; i--) {
+            SoundPing ping = SONIC_SOUND_PINGS.get(i);
+            Vector3f screen = worldToScreen(ping.position.x, ping.position.y, ping.position.z);
+            if (Float.isNaN(screen.x())) {
+                continue;
+            }
+
+            poseStack.pushPose();
+
+            int x = Mth.floor(screen.x());
+            int y = Mth.floor(screen.y());
+            int drawX = -SONIC_ECHO_FRAME_WIDTH / 2;
+            int drawY = -SONIC_ECHO_FRAME_HEIGHT / 2;
+
+            double distance = playerPos.distanceTo(ping.position);
+            float dynamicScale = distance <= 0.1D
+                    ? 1.0F
+                    : 0.1F + 0.9F * (float) Math.pow(Math.max(0.0D, 1.0D - distance / 25.0D), 2.0D);
+            float ageProgress = 1.0F - Mth.clamp((float) (ping.expireAt - gameTime) / ping.durationTicks, 0.0F, 1.0F);
+            float pulseScale = 0.8F + ageProgress * 0.9F;
+            int alpha = Mth.clamp((int) ((1.0F - ageProgress * 0.72F) * 255.0F), 52, 255);
+
+            poseStack.translate(x, y, 0.0F);
+            poseStack.scale(dynamicScale * pulseScale, dynamicScale * pulseScale, 1.0F);
+            RenderSystem.setShaderColor(0.72F, 0.94F, 1.0F, alpha / 255.0F);
+            guiGraphics.blit(
+                    SONIC_ECHO_TEXTURE,
+                    drawX,
+                    drawY,
+                    frameIndex * SONIC_ECHO_FRAME_WIDTH,
+                    0,
+                    SONIC_ECHO_FRAME_WIDTH,
+                    SONIC_ECHO_FRAME_HEIGHT,
+                    SONIC_ECHO_FRAME_WIDTH * SONIC_ECHO_FRAME_COUNT,
+                    SONIC_ECHO_FRAME_HEIGHT);
+
+            poseStack.popPose();
+        }
+
+        RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
+        RenderSystem.disableBlend();
     }
 
     private static void drawDangerOverlay(GuiGraphics guiGraphics, Player player, int width, int height,
@@ -295,113 +360,6 @@ public final class AbilityClientHandler {
         }
     }
 
-    private static void spawnClientParticles(ClientLevel level, Player player, long gameTime) {
-        for (Map.Entry<Integer, Long> entry : SONIC_ENTITY_MARKS.entrySet()) {
-            if (entry.getValue() <= gameTime) {
-                continue;
-            }
-
-            Entity entity = level.getEntity(entry.getKey());
-            if (!(entity instanceof LivingEntity livingEntity) || !livingEntity.isAlive()) {
-                continue;
-            }
-
-            if (gameTime % 2L == 0L) {
-                double halfWidth = livingEntity.getBbWidth() * 0.58D;
-                double heightFactor = livingEntity.getBbHeight() * (0.25D + level.random.nextDouble() * 0.55D);
-                double x = livingEntity.getX() + (level.random.nextBoolean() ? halfWidth : -halfWidth);
-                double y = livingEntity.getY() + heightFactor;
-                double z = livingEntity.getZ() + (level.random.nextBoolean() ? halfWidth : -halfWidth);
-
-                level.addParticle(ParticleTypes.GLOW,
-                        x,
-                        y,
-                        z,
-                        0.0D,
-                        0.0D,
-                        0.0D);
-                level.addParticle(new DustParticleOptions(new Vector3f(0.96F, 0.96F, 0.98F), 0.78F),
-                        x,
-                        y,
-                        z,
-                        0.0D,
-                        0.003D,
-                        0.0D);
-                level.addParticle(new DustParticleOptions(new Vector3f(0.74F, 0.74F, 0.76F), 0.45F),
-                        livingEntity.getX(),
-                        livingEntity.getY() + livingEntity.getBbHeight() * 0.55D,
-                        livingEntity.getZ(),
-                        0.0D,
-                        0.0D,
-                        0.0D);
-            }
-        }
-
-        for (Map.Entry<Integer, Long> entry : DANGER_ENTITY_MARKS.entrySet()) {
-            if (entry.getValue() <= gameTime) {
-                continue;
-            }
-
-            Entity entity = level.getEntity(entry.getKey());
-            if (!(entity instanceof LivingEntity livingEntity) || !livingEntity.isAlive()) {
-                continue;
-            }
-
-            if (gameTime % 3L == 0L) {
-                level.addParticle(new DustParticleOptions(new Vector3f(1.0F, 0.24F, 0.3F), 0.58F),
-                        livingEntity.getX(),
-                        livingEntity.getY() + livingEntity.getBbHeight() + 0.15D,
-                        livingEntity.getZ(),
-                        0.0D,
-                        0.01D,
-                        0.0D);
-                level.addParticle(ParticleTypes.CRIT,
-                        livingEntity.getX() + (level.random.nextDouble() - 0.5D) * livingEntity.getBbWidth(),
-                        livingEntity.getY() + 0.4D + level.random.nextDouble() * livingEntity.getBbHeight(),
-                        livingEntity.getZ() + (level.random.nextDouble() - 0.5D) * livingEntity.getBbWidth(),
-                        0.0D,
-                        0.01D,
-                        0.0D);
-            }
-        }
-
-        Iterator<SoundPing> iterator = SONIC_SOUND_PINGS.iterator();
-        while (iterator.hasNext()) {
-            SoundPing ping = iterator.next();
-            if (ping.expireAt <= gameTime) {
-                iterator.remove();
-                continue;
-            }
-
-            if (gameTime % 2L == 0L) {
-                double angle = (gameTime * 0.2D + ping.position.x * 0.13D + ping.position.z * 0.17D) % (Math.PI * 2.0D);
-                double offsetX = Math.cos(angle) * 0.22D;
-                double offsetZ = Math.sin(angle) * 0.22D;
-                level.addParticle(ParticleTypes.SCULK_SOUL,
-                        ping.position.x,
-                        ping.position.y,
-                        ping.position.z,
-                        0.0D,
-                        0.012D,
-                        0.0D);
-                level.addParticle(new DustParticleOptions(new Vector3f(0.86F, 0.86F, 0.88F), 0.62F),
-                        ping.position.x + offsetX,
-                        ping.position.y + 0.04D,
-                        ping.position.z + offsetZ,
-                        0.0D,
-                        0.008D,
-                        0.0D);
-                level.addParticle(new DustParticleOptions(new Vector3f(0.65F, 0.65F, 0.68F), 0.5F),
-                        ping.position.x - offsetX,
-                        ping.position.y + 0.12D,
-                        ping.position.z - offsetZ,
-                        0.0D,
-                        0.004D,
-                        0.0D);
-            }
-        }
-    }
-
     private static void drawCornerBracket(GuiGraphics guiGraphics, int x, int y, int horizontalDir, int verticalDir,
             int length, int thickness, int color) {
         fillRect(guiGraphics, x, y, x + horizontalDir * length, y + thickness * verticalDir, color);
@@ -429,75 +387,41 @@ public final class AbilityClientHandler {
     }
 
     private static void cleanupExpired(long gameTime) {
-        SONIC_ENTITY_MARKS.entrySet().removeIf(entry -> entry.getValue() <= gameTime);
         DANGER_ENTITY_MARKS.entrySet().removeIf(entry -> entry.getValue() <= gameTime);
         SONIC_SOUND_PINGS.removeIf(ping -> ping.expireAt <= gameTime);
     }
 
-    private static void updateLocalGlowing(ClientLevel level, long gameTime) {
-        Set<Integer> desiredGlow = new HashSet<>();
-
-        for (Map.Entry<Integer, Long> entry : SONIC_ENTITY_MARKS.entrySet()) {
-            if (entry.getValue() > gameTime) {
-                desiredGlow.add(entry.getKey());
-            }
+    private static void updateSonicListeningState(Player player, long gameTime) {
+        if (!hasSonicSense(player)) {
+            sonicListening = false;
+            sonicListeningActive = false;
+            sonicListenStartTime = 0L;
+            return;
         }
 
-        for (Map.Entry<Integer, Long> entry : DANGER_ENTITY_MARKS.entrySet()) {
-            if (entry.getValue() > gameTime) {
-                desiredGlow.add(entry.getKey());
-            }
-        }
-
-        for (Integer entityId : desiredGlow) {
-            Entity entity = level.getEntity(entityId);
-            if (entity != null) {
-                entity.setGlowingTag(true);
-                LOCAL_GLOW_ENTITIES.add(entityId);
-            }
-        }
-
-        Iterator<Integer> iterator = LOCAL_GLOW_ENTITIES.iterator();
-        while (iterator.hasNext()) {
-            Integer entityId = iterator.next();
-            if (desiredGlow.contains(entityId)) {
-                continue;
+        if (player.isCrouching()) {
+            if (!sonicListening) {
+                sonicListening = true;
+                sonicListenStartTime = gameTime;
             }
 
-            Entity entity = level.getEntity(entityId);
-            if (entity != null) {
-                entity.setGlowingTag(false);
+            if (gameTime - sonicListenStartTime >= 15L) {
+                sonicListeningActive = true;
             }
-            iterator.remove();
+        } else {
+            sonicListening = false;
+            sonicListeningActive = false;
+            sonicListenStartTime = 0L;
         }
     }
 
     private static void clearClientMarks() {
-        Minecraft minecraft = Minecraft.getInstance();
-        ClientLevel level = minecraft.level;
-        if (level != null) {
-            for (Integer entityId : LOCAL_GLOW_ENTITIES) {
-                Entity entity = level.getEntity(entityId);
-                if (entity != null) {
-                    entity.setGlowingTag(false);
-                }
-            }
-        }
-
-        LOCAL_GLOW_ENTITIES.clear();
-        SONIC_ENTITY_MARKS.clear();
         DANGER_ENTITY_MARKS.clear();
         SONIC_SOUND_PINGS.clear();
-    }
-
-    private static void markSonicEntity(int entityId, int durationTicks) {
-        Player player = localPlayer();
-        if (player == null) {
-            return;
-        }
-
-        long expireAt = player.level().getGameTime() + durationTicks;
-        SONIC_ENTITY_MARKS.merge(entityId, expireAt, Math::max);
+        sonicListening = false;
+        sonicListeningActive = false;
+        sonicListenStartTime = 0L;
+        sonicHudTick = 0;
     }
 
     private static Player localPlayer() {
@@ -508,6 +432,10 @@ public final class AbilityClientHandler {
         return player.hasEffect(ModMobEffects.SONIC_ATTUNEMENT.get());
     }
 
+    private static boolean canProcessSonicSound(Player player) {
+        return hasSonicSense(player) && sonicListeningActive;
+    }
+
     private static int getEffectLevel(MobEffectInstance effectInstance) {
         return effectInstance == null ? 1 : effectInstance.getAmplifier() + 1;
     }
@@ -516,6 +444,36 @@ public final class AbilityClientHandler {
         return 18.0D + spellLevel * 4.0D;
     }
 
-    private record SoundPing(Vec3 position, long expireAt) {
+    private static Vector3f worldToScreen(double worldX, double worldY, double worldZ) {
+        Minecraft minecraft = Minecraft.getInstance();
+        Camera camera = minecraft.gameRenderer.getMainCamera();
+        Vec3 cameraPos = camera.getPosition();
+
+        float x = (float) (worldX - cameraPos.x);
+        float y = (float) (worldY - cameraPos.y);
+        float z = (float) (worldZ - cameraPos.z);
+
+        Quaternionf rotation = camera.rotation().conjugate(new Quaternionf());
+        Vector3f local = new Vector3f(x, y, z);
+        rotation.transform(local);
+
+        Matrix4f projection = minecraft.gameRenderer.getProjectionMatrix(minecraft.options.fov().get());
+        Vector4f clip = new Vector4f(local.x(), local.y(), local.z(), 1.0F);
+        clip.mul(projection);
+
+        if (clip.w <= 0.0F) {
+            return new Vector3f(Float.NaN, Float.NaN, -1.0F);
+        }
+
+        clip.div(clip.w);
+
+        int screenWidth = minecraft.getWindow().getGuiScaledWidth();
+        int screenHeight = minecraft.getWindow().getGuiScaledHeight();
+        float screenX = (clip.x * 0.5F + 0.5F) * screenWidth;
+        float screenY = (clip.y * -0.5F + 0.5F) * screenHeight;
+        return new Vector3f(screenX, screenY, clip.z);
+    }
+
+    private record SoundPing(Vec3 position, long expireAt, long durationTicks) {
     }
 }

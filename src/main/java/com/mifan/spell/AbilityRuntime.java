@@ -28,6 +28,7 @@ import net.minecraft.core.particles.ParticleTypes;
 import org.joml.Vector3f;
 
 import java.util.Comparator;
+import java.util.List;
 import java.util.UUID;
 
 public final class AbilityRuntime {
@@ -60,6 +61,8 @@ public final class AbilityRuntime {
     public static final String TAG_DOMINANCE_MOBS = "corpse_campus_dominance_mobs";
     public static final String TAG_DOMINANCE_TARGET_PLAYER = "corpse_campus_dominance_target_player";
     public static final String TAG_DOMINANCE_LINK_ACTIVE = "corpse_campus_dominance_link_active";
+    public static final String TAG_DOMINANCE_OWNER = "corpse_campus_dominance_owner";
+    public static final String TAG_DOMINANCE_LEVEL = "corpse_campus_dominance_level";
 
     public static final int EXECUTIONER_DURABILITY_COST = 5;
     private static final float EXECUTIONER_DAMAGE_RATIO = 0.25F;
@@ -187,7 +190,7 @@ public final class AbilityRuntime {
 
     public static Mob findDominanceMobTarget(LivingEntity caster, double range, double minDot) {
         LivingEntity target = findTargetInSight(caster, range, minDot);
-        return target instanceof Mob mob && !(mob instanceof Player) ? mob : null;
+        return target instanceof Mob mob ? mob : null;
     }
 
     public static boolean addDominatedMob(LivingEntity caster, Mob mob, int spellLevel, int maxControlled) {
@@ -253,6 +256,9 @@ public final class AbilityRuntime {
 
         for (Mob mob : dominatedMobs) {
             tagDominatedMob(mob, player.getUUID(), 1);
+            if (mob.getTarget() == player) {
+                mob.setTarget(null);
+            }
             if (forcedTarget != null && mob.getTarget() != forcedTarget) {
                 mob.setTarget(forcedTarget);
             }
@@ -261,8 +267,15 @@ public final class AbilityRuntime {
 
     public static void retargetDominatedMobs(Player player, LivingEntity target) {
         for (Mob mob : getDominatedMobs(player)) {
-            mob.setTarget(target);
+            if (target != player) {
+                mob.setTarget(target);
+            }
         }
+    }
+
+    public static boolean isDominatedBy(Mob mob, Player owner) {
+        CompoundTag tag = mob.getPersistentData();
+        return tag.hasUUID(TAG_DOMINANCE_OWNER) && owner.getUUID().equals(tag.getUUID(TAG_DOMINANCE_OWNER));
     }
 
     public static List<Mob> getDominatedMobs(Player player) {
@@ -299,8 +312,8 @@ public final class AbilityRuntime {
 
     private static void tagDominatedMob(Mob mob, UUID casterId, int spellLevel) {
         CompoundTag tag = mob.getPersistentData();
-        tag.putUUID("corpse_campus_dominance_owner", casterId);
-        tag.putInt("corpse_campus_dominance_level", spellLevel);
+        tag.putUUID(TAG_DOMINANCE_OWNER, casterId);
+        tag.putInt(TAG_DOMINANCE_LEVEL, spellLevel);
     }
 
     public static boolean canExecutionerUse(ItemStack stack) {
