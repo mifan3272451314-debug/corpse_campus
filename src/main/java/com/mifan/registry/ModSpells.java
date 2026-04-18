@@ -4,6 +4,9 @@ import com.mifan.corpsecampus;
 import com.mifan.spell.dongyue.ExecutionerSpell;
 import com.mifan.spell.dongyue.InstinctSpell;
 import com.mifan.spell.dongyue.ManiaSpell;
+import com.mifan.spell.dongyue.NecroticRebirthSpell;
+import com.mifan.spell.xujing.ElementalistSpell;
+import com.mifan.spell.xujing.MarkSpell;
 import com.mifan.spell.xujing.DangerSenseSpell;
 import com.mifan.spell.xujing.SonicSenseSpell;
 import com.mifan.spell.yuzhe.DominanceSpell;
@@ -24,6 +27,8 @@ public final class ModSpells {
             SonicSenseSpell::new);
     public static final RegistryObject<AbstractSpell> DANGER_SENSE = SPELLS.register("danger_sense",
             DangerSenseSpell::new);
+    public static final RegistryObject<AbstractSpell> ELEMENTALIST = SPELLS.register("elementalist",
+            ElementalistSpell::new);
     public static final RegistryObject<AbstractSpell> TELEKINESIS = SPELLS.register("telekinesis",
             TelekinesisSpell::new);
     public static final RegistryObject<AbstractSpell> DOMINANCE = SPELLS.register("dominance", DominanceSpell::new);
@@ -31,8 +36,11 @@ public final class ModSpells {
             MagneticClingSpell::new);
     public static final RegistryObject<AbstractSpell> INSTINCT = SPELLS.register("instinct", InstinctSpell::new);
     public static final RegistryObject<AbstractSpell> MANIA = SPELLS.register("mania", ManiaSpell::new);
+    public static final RegistryObject<AbstractSpell> NECROTIC_REBIRTH = SPELLS.register("necrotic_rebirth",
+            NecroticRebirthSpell::new);
     public static final RegistryObject<AbstractSpell> EXECUTIONER = SPELLS.register("executioner",
             ExecutionerSpell::new);
+    public static final RegistryObject<AbstractSpell> MARK = SPELLS.register("mark", MarkSpell::new);
 
     private ModSpells() {
     }

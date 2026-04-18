@@ -18,6 +18,9 @@ public final class ModMobEffects {
     public static final RegistryObject<MobEffect> DANGER_SENSE = MOB_EFFECTS.register("danger_sense",
             () -> new AbilityMarkerEffect(0x9B1C27));
 
+    public static final RegistryObject<MobEffect> ELEMENTAL_DOMAIN = MOB_EFFECTS.register("elemental_domain",
+            () -> new AbilityMarkerEffect(0x6A8BFF));
+
     public static final RegistryObject<MobEffect> MAGNETIC_CLING = MOB_EFFECTS.register("magnetic_cling",
             () -> new AbilityMarkerEffect(0x5E4CB3));
 
@@ -26,6 +29,12 @@ public final class ModMobEffects {
 
     public static final RegistryObject<MobEffect> MANIA = MOB_EFFECTS.register("mania",
             () -> new AbilityMarkerEffect(0xB13B3B));
+
+    public static final RegistryObject<MobEffect> NECROTIC_REBIRTH_ARMED = MOB_EFFECTS.register("necrotic_rebirth_armed",
+            () -> new AbilityMarkerEffect(0x4F5B44));
+
+    public static final RegistryObject<MobEffect> NECROTIC_UNDEAD = MOB_EFFECTS.register("necrotic_undead",
+            () -> new AbilityMarkerEffect(0x6B8A5A));
 
     private ModMobEffects() {
     }

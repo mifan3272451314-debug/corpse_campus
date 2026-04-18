@@ -1,13 +1,18 @@
 package com.mifan.spell;
 
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.particles.DustParticleOptions;
+import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
+import net.minecraft.tags.DamageTypeTags;
 import net.minecraft.util.Mth;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -20,17 +25,23 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.ShieldItem;
 import net.minecraft.world.item.SwordItem;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-
-import net.minecraft.core.particles.DustParticleOptions;
-import net.minecraft.core.particles.ParticleTypes;
 import org.joml.Vector3f;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Random;
 import java.util.UUID;
 
 public final class AbilityRuntime {
@@ -58,6 +69,18 @@ public final class AbilityRuntime {
     public static final String TAG_MANIA_LAST_PROC = "corpse_campus_mania_last_proc";
     public static final String TAG_MANIA_LAST_SWING = "corpse_campus_mania_last_swing";
 
+    public static final String TAG_NECROTIC_ALLOW_HEAL_UNTIL = "corpse_campus_necrotic_allow_heal_until";
+    public static final String TAG_NECROTIC_LAST_KILL_HEAL = "corpse_campus_necrotic_last_kill_heal";
+    public static final String TAG_NECROTIC_REVIVE_USED = "corpse_campus_necrotic_revive_used";
+
+    public static final String TAG_MARK_ACTIVE = "corpse_campus_mark_active";
+    public static final String TAG_MARK_X = "corpse_campus_mark_x";
+    public static final String TAG_MARK_Y = "corpse_campus_mark_y";
+    public static final String TAG_MARK_Z = "corpse_campus_mark_z";
+    public static final String TAG_MARK_END = "corpse_campus_mark_end";
+    public static final String TAG_MARK_LEVEL = "corpse_campus_mark_level";
+    public static final String TAG_MARK_TRIGGERED = "corpse_campus_mark_triggered";
+
     public static final String TAG_EXECUTIONER_LAST_TICK = "corpse_campus_executioner_last_tick";
     public static final String TAG_EXECUTIONER_BLOCK_HITS = "corpse_campus_executioner_block_hits";
     public static final String TAG_EXECUTIONER_BLOCK_LAST_TICK = "corpse_campus_executioner_block_last_tick";
@@ -69,11 +92,40 @@ public final class AbilityRuntime {
     public static final String TAG_DOMINANCE_LEVEL = "corpse_campus_dominance_level";
 
     public static final String TAG_DANGER_RECENT_ATTACKERS = "corpse_campus_danger_recent_attackers";
+    public static final String TAG_ELEMENTAL_DOMAIN_LAST_TICK = "corpse_campus_elemental_domain_last_tick";
+    public static final String TAG_ELEMENTAL_DOMAIN_START_TICK = "corpse_campus_elemental_domain_start_tick";
+    public static final String TAG_ELEMENTAL_DOMAIN_CENTER_X = "corpse_campus_elemental_domain_center_x";
+    public static final String TAG_ELEMENTAL_DOMAIN_CENTER_Y = "corpse_campus_elemental_domain_center_y";
+    public static final String TAG_ELEMENTAL_DOMAIN_CENTER_Z = "corpse_campus_elemental_domain_center_z";
 
     public static final int EXECUTIONER_DURABILITY_COST = 15;
     private static final float EXECUTIONER_DAMAGE_RATIO = 0.25F;
     private static final float DOMINANCE_MIN_SURVIVAL_HEALTH = 1.0F;
     private static final float DOMINANCE_MAX_HEALTH_LIMIT = 35.0F;
+    private static final int NECROTIC_KILL_HEAL_BASE = 4;
+    private static final int MARK_ROOT_DURATION_TICKS = 200;
+    private static final int ELEMENTAL_DOMAIN_RADIUS = 30;
+    private static final int ELEMENTAL_DOMAIN_INTERVAL = 20;
+    private static final float ELEMENTAL_DOMAIN_EXPAND_RATE = 2.5F;
+    private static final int ELEMENTAL_DOMAIN_RESTORE_PER_TICK = 384;
+    private static final BlockState[] ELEMENTAL_DOMAIN_INNER_BLOCKS = {
+            Blocks.PRISMARINE.defaultBlockState(),
+            Blocks.DARK_PRISMARINE.defaultBlockState(),
+            Blocks.BLUE_ICE.defaultBlockState(),
+            Blocks.SEA_LANTERN.defaultBlockState(),
+            Blocks.MAGMA_BLOCK.defaultBlockState(),
+            Blocks.CRYING_OBSIDIAN.defaultBlockState()
+    };
+    private static final BlockState[] ELEMENTAL_DOMAIN_SHELL_BLOCKS = {
+            Blocks.CRYING_OBSIDIAN.defaultBlockState(),
+            Blocks.BLUE_STAINED_GLASS.defaultBlockState(),
+            Blocks.LIGHT_BLUE_STAINED_GLASS.defaultBlockState(),
+            Blocks.RESPAWN_ANCHOR.defaultBlockState(),
+            Blocks.OBSIDIAN.defaultBlockState()
+    };
+    private static final Map<UUID, ElementalDomainState> ACTIVE_ELEMENTAL_DOMAINS = new HashMap<>();
+    private static final Map<ResourceKey<Level>, Long> ELEMENTAL_DOMAIN_RESTORE_TICKS = new HashMap<>();
+    private static final Random DOMAIN_RANDOM = new Random();
 
     private AbilityRuntime() {
     }
@@ -190,6 +242,431 @@ public final class AbilityRuntime {
 
     public static int getExecutionerDamagePercent() {
         return Math.round(EXECUTIONER_DAMAGE_RATIO * 100.0F);
+    }
+
+    public static int getNecroticHealAmount(int spellLevel) {
+        return NECROTIC_KILL_HEAL_BASE + Math.max(0, spellLevel - 1) * 2;
+    }
+
+    public static int getMarkRadius(int spellLevel) {
+        return 3 + Math.max(0, spellLevel - 1);
+    }
+
+    public static int getMarkDurationSeconds(int spellLevel) {
+        return 20 + spellLevel * 5;
+    }
+
+    public static int getMarkRootSeconds() {
+        return MARK_ROOT_DURATION_TICKS / 20;
+    }
+
+    public static int getElementalistRadius() {
+        return ELEMENTAL_DOMAIN_RADIUS;
+    }
+
+    public static int getElementalistManaDrain(int spellLevel) {
+        return 8 + Math.max(0, spellLevel - 1) * 2;
+    }
+
+    public static int getElementalistInterval() {
+        return ELEMENTAL_DOMAIN_INTERVAL;
+    }
+
+    public static void clearElementalDomain(CompoundTag data) {
+        clear(data,
+                TAG_ELEMENTAL_DOMAIN_LAST_TICK,
+                TAG_ELEMENTAL_DOMAIN_START_TICK,
+                TAG_ELEMENTAL_DOMAIN_CENTER_X,
+                TAG_ELEMENTAL_DOMAIN_CENTER_Y,
+                TAG_ELEMENTAL_DOMAIN_CENTER_Z);
+    }
+
+    public static void beginElementalDomain(ServerLevel level, Player caster) {
+        CompoundTag data = caster.getPersistentData();
+        data.putLong(TAG_ELEMENTAL_DOMAIN_START_TICK, level.getGameTime());
+        data.putLong(TAG_ELEMENTAL_DOMAIN_LAST_TICK, 0L);
+        data.putDouble(TAG_ELEMENTAL_DOMAIN_CENTER_X, caster.getX());
+        data.putDouble(TAG_ELEMENTAL_DOMAIN_CENTER_Y, caster.getY());
+        data.putDouble(TAG_ELEMENTAL_DOMAIN_CENTER_Z, caster.getZ());
+
+        ACTIVE_ELEMENTAL_DOMAINS.compute(caster.getUUID(), (uuid, existing) -> {
+            if (existing != null) {
+                existing.forceDiscard(level);
+            }
+            return new ElementalDomainState(level.dimension(), new BlockPos(
+                    Mth.floor(caster.getX()),
+                    Mth.floor(caster.getY()),
+                    Mth.floor(caster.getZ())));
+        });
+    }
+
+    public static void endElementalDomain(ServerLevel level, Player caster) {
+        ElementalDomainState state = ACTIVE_ELEMENTAL_DOMAINS.get(caster.getUUID());
+        if (state != null) {
+            state.beginRestore(level, caster.blockPosition());
+        }
+    }
+
+    public static Vec3 getElementalistCenter(Player caster) {
+        CompoundTag data = caster.getPersistentData();
+        return new Vec3(
+                data.getDouble(TAG_ELEMENTAL_DOMAIN_CENTER_X),
+                data.getDouble(TAG_ELEMENTAL_DOMAIN_CENTER_Y),
+                data.getDouble(TAG_ELEMENTAL_DOMAIN_CENTER_Z));
+    }
+
+    public static boolean hasElementalistCenter(CompoundTag data) {
+        return data.contains(TAG_ELEMENTAL_DOMAIN_CENTER_X)
+                && data.contains(TAG_ELEMENTAL_DOMAIN_CENTER_Y)
+                && data.contains(TAG_ELEMENTAL_DOMAIN_CENTER_Z);
+    }
+
+    public static void tickElementalDomainTerrain(ServerLevel level, Player caster, long gameTime) {
+        ElementalDomainState state = ACTIVE_ELEMENTAL_DOMAINS.get(caster.getUUID());
+        if (state == null || state.restoring || state.dimension != level.dimension()) {
+            return;
+        }
+
+        long startTick = caster.getPersistentData().getLong(TAG_ELEMENTAL_DOMAIN_START_TICK);
+        float radius = Math.min(ELEMENTAL_DOMAIN_RADIUS, Math.max(0.0F, (gameTime - startTick) * ELEMENTAL_DOMAIN_EXPAND_RATE));
+        state.replaceSphere(level, state.center, state.lastRadius, radius);
+        state.lastRadius = radius;
+        if (radius >= ELEMENTAL_DOMAIN_RADIUS && !state.shellBuilt) {
+            state.buildShell(level, caster.blockPosition());
+        }
+    }
+
+    public static void tickElementalDomainRestoration(ServerLevel level) {
+        long gameTime = level.getGameTime();
+        Long lastTick = ELEMENTAL_DOMAIN_RESTORE_TICKS.get(level.dimension());
+        if (lastTick != null && lastTick == gameTime) {
+            return;
+        }
+        ELEMENTAL_DOMAIN_RESTORE_TICKS.put(level.dimension(), gameTime);
+
+        ACTIVE_ELEMENTAL_DOMAINS.entrySet().removeIf(entry -> {
+            ElementalDomainState state = entry.getValue();
+            if (state.dimension != level.dimension() || !state.restoring) {
+                return false;
+            }
+            return state.tickRestore(level);
+        });
+    }
+
+    public static void triggerElementalistBurst(ServerLevel level, Player caster, LivingEntity target, int spellLevel) {
+        int element = level.random.nextInt(3);
+        switch (element) {
+            case 0 -> strikeElementalistFire(level, caster, target, spellLevel);
+            case 1 -> strikeElementalistWater(level, caster, target, spellLevel);
+            default -> strikeElementalistLightning(level, caster, target, spellLevel);
+        }
+    }
+
+    private static void strikeElementalistFire(ServerLevel level, LivingEntity caster, LivingEntity target, int spellLevel) {
+        float damage = 3.0F + spellLevel * 1.1F;
+        target.invulnerableTime = 0;
+        target.setSecondsOnFire(2 + spellLevel);
+        target.hurt(level.damageSources().indirectMagic(caster, caster), damage);
+        level.sendParticles(ParticleTypes.FLAME,
+                target.getX(),
+                target.getY() + target.getBbHeight() * 0.5D,
+                target.getZ(),
+                18,
+                0.35D,
+                0.45D,
+                0.35D,
+                0.02D);
+        level.sendParticles(ParticleTypes.SMALL_FLAME,
+                target.getX(),
+                target.getY() + 0.2D,
+                target.getZ(),
+                8,
+                0.2D,
+                0.2D,
+                0.2D,
+                0.01D);
+        level.playSound(null, target.blockPosition(), SoundEvents.BLAZE_SHOOT, SoundSource.PLAYERS, 0.2F, 1.15F);
+    }
+
+    private static void strikeElementalistWater(ServerLevel level, LivingEntity caster, LivingEntity target, int spellLevel) {
+        float damage = 2.5F + spellLevel;
+        target.invulnerableTime = 0;
+        target.hurt(level.damageSources().indirectMagic(caster, caster), damage);
+        target.setDeltaMovement(target.getDeltaMovement().scale(0.5D).add(0.0D, 0.12D, 0.0D));
+        target.hurtMarked = true;
+        level.sendParticles(ParticleTypes.SPLASH,
+                target.getX(),
+                target.getY() + target.getBbHeight() * 0.45D,
+                target.getZ(),
+                18,
+                0.35D,
+                0.28D,
+                0.35D,
+                0.08D);
+        level.sendParticles(new DustParticleOptions(new Vector3f(0.45F, 0.76F, 1.0F), 0.9F),
+                target.getX(),
+                target.getY() + target.getBbHeight() * 0.5D,
+                target.getZ(),
+                12,
+                0.3D,
+                0.3D,
+                0.3D,
+                0.0D);
+        level.playSound(null, target.blockPosition(), SoundEvents.GENERIC_SPLASH, SoundSource.PLAYERS, 0.22F, 1.0F);
+    }
+
+    private static void strikeElementalistLightning(ServerLevel level, LivingEntity caster, LivingEntity target, int spellLevel) {
+        float damage = 3.5F + spellLevel * 1.25F;
+        target.invulnerableTime = 0;
+        target.hurt(level.damageSources().lightningBolt(), damage);
+        level.sendParticles(ParticleTypes.ELECTRIC_SPARK,
+                target.getX(),
+                target.getY() + target.getBbHeight() * 0.6D,
+                target.getZ(),
+                22,
+                0.28D,
+                0.5D,
+                0.28D,
+                0.02D);
+        level.sendParticles(new DustParticleOptions(new Vector3f(0.82F, 0.9F, 1.0F), 1.0F),
+                target.getX(),
+                target.getY() + target.getBbHeight() * 0.5D,
+                target.getZ(),
+                10,
+                0.2D,
+                0.35D,
+                0.2D,
+                0.0D);
+        level.playSound(null, target.blockPosition(), SoundEvents.LIGHTNING_BOLT_IMPACT, SoundSource.PLAYERS, 0.22F,
+                1.45F);
+    }
+
+    public static boolean isElementalistValidTarget(Player caster, LivingEntity target) {
+        if (target == caster || !target.isAlive()) {
+            return false;
+        }
+
+        if (target instanceof Player otherPlayer && otherPlayer.isSpectator()) {
+            return false;
+        }
+
+        return !target.getType().is(net.minecraft.tags.EntityTypeTags.FALL_DAMAGE_IMMUNE)
+                || !target.isInvulnerableTo(caster.damageSources().magic());
+    }
+
+    private static BlockState pickElementalReplaceBlock() {
+        return ELEMENTAL_DOMAIN_INNER_BLOCKS[DOMAIN_RANDOM.nextInt(ELEMENTAL_DOMAIN_INNER_BLOCKS.length)];
+    }
+
+    private static BlockState pickElementalShellBlock() {
+        return ELEMENTAL_DOMAIN_SHELL_BLOCKS[DOMAIN_RANDOM.nextInt(ELEMENTAL_DOMAIN_SHELL_BLOCKS.length)];
+    }
+
+    private static boolean isElementalDomainBlock(BlockState state) {
+        for (BlockState blockState : ELEMENTAL_DOMAIN_INNER_BLOCKS) {
+            if (blockState.getBlock() == state.getBlock()) {
+                return true;
+            }
+        }
+        for (BlockState blockState : ELEMENTAL_DOMAIN_SHELL_BLOCKS) {
+            if (blockState.getBlock() == state.getBlock()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public static boolean isElementalDomainVisualBlock(BlockState state) {
+        return isElementalDomainBlock(state);
+    }
+
+    private static final class ElementalDomainState {
+        private final ResourceKey<Level> dimension;
+        private final BlockPos center;
+        private final Map<BlockPos, BlockState> savedStates = new LinkedHashMap<>();
+        private final Map<BlockPos, CompoundTag> savedNbt = new HashMap<>();
+        private List<BlockPos> restoreQueue;
+        private int restoreIndex;
+        private float lastRadius;
+        private boolean shellBuilt;
+        private boolean restoring;
+
+        private ElementalDomainState(ResourceKey<Level> dimension, BlockPos center) {
+            this.dimension = dimension;
+            this.center = center.immutable();
+        }
+
+        private void replaceSphere(ServerLevel level, BlockPos centerPos, float innerR, float outerR) {
+            if (outerR <= 0.0F) {
+                return;
+            }
+
+            float innerSq = innerR * innerR;
+            float outerSq = outerR * outerR;
+            int outerInt = Mth.ceil(outerR);
+            for (int dx = -outerInt; dx <= outerInt; dx++) {
+                for (int dy = -outerInt; dy <= outerInt; dy++) {
+                    for (int dz = -outerInt; dz <= outerInt; dz++) {
+                        float d2 = dx * dx + dy * dy + dz * dz;
+                        if (d2 > outerSq || d2 <= innerSq) {
+                            continue;
+                        }
+
+                        BlockPos pos = centerPos.offset(dx, dy, dz);
+                        if (savedStates.containsKey(pos)) {
+                            continue;
+                        }
+
+                        BlockState state = level.getBlockState(pos);
+                        if (state.isAir() || state.getDestroySpeed(level, pos) < 0.0F || isElementalDomainBlock(state)) {
+                            continue;
+                        }
+
+                        savedStates.put(pos.immutable(), state);
+                        BlockEntity blockEntity = level.getBlockEntity(pos);
+                        if (blockEntity != null) {
+                            savedNbt.put(pos.immutable(), blockEntity.saveWithFullMetadata());
+                            level.removeBlockEntity(pos);
+                        }
+                        level.setBlock(pos, pickElementalReplaceBlock(), 18);
+                    }
+                }
+            }
+        }
+
+        private void buildShell(ServerLevel level, BlockPos soundPos) {
+            int outerRadius = ELEMENTAL_DOMAIN_RADIUS + 1;
+            float innerSq = (ELEMENTAL_DOMAIN_RADIUS - 2.0F) * (ELEMENTAL_DOMAIN_RADIUS - 2.0F);
+            float outerSq = outerRadius * outerRadius;
+            for (int dx = -outerRadius; dx <= outerRadius; dx++) {
+                for (int dy = -outerRadius; dy <= outerRadius; dy++) {
+                    for (int dz = -outerRadius; dz <= outerRadius; dz++) {
+                        float d2 = dx * dx + dy * dy + dz * dz;
+                        if (d2 < innerSq || d2 > outerSq) {
+                            continue;
+                        }
+
+                        BlockPos pos = center.offset(dx, dy, dz);
+                        if (savedStates.containsKey(pos)) {
+                            continue;
+                        }
+
+                        BlockState state = level.getBlockState(pos);
+                        if (state.getDestroySpeed(level, pos) < 0.0F || isElementalDomainBlock(state)) {
+                            continue;
+                        }
+
+                        savedStates.put(pos.immutable(), state);
+                        BlockEntity blockEntity = level.getBlockEntity(pos);
+                        if (blockEntity != null) {
+                            savedNbt.put(pos.immutable(), blockEntity.saveWithFullMetadata());
+                            level.removeBlockEntity(pos);
+                        }
+                        level.setBlock(pos, pickElementalShellBlock(), 18);
+                    }
+                }
+            }
+
+            shellBuilt = true;
+            level.playSound(null, soundPos, SoundEvents.SCULK_BLOCK_SPREAD, SoundSource.BLOCKS, 2.2F, 0.55F);
+        }
+
+        private void beginRestore(ServerLevel level, BlockPos soundPos) {
+            if (restoring || savedStates.isEmpty()) {
+                return;
+            }
+
+            restoreQueue = new ArrayList<>(savedStates.keySet());
+            Collections.reverse(restoreQueue);
+            restoreIndex = 0;
+            restoring = true;
+            level.playSound(null, soundPos, SoundEvents.SCULK_BLOCK_SPREAD, SoundSource.BLOCKS, 1.5F, 1.15F);
+        }
+
+        private boolean tickRestore(ServerLevel level) {
+            if (restoreQueue == null) {
+                return true;
+            }
+
+            int end = Math.min(restoreIndex + ELEMENTAL_DOMAIN_RESTORE_PER_TICK, restoreQueue.size());
+            for (int i = restoreIndex; i < end; i++) {
+                BlockPos pos = restoreQueue.get(i);
+                BlockState original = savedStates.get(pos);
+                if (original == null) {
+                    continue;
+                }
+
+                level.setBlock(pos, original, 3);
+                CompoundTag nbt = savedNbt.get(pos);
+                if (nbt != null) {
+                    BlockEntity blockEntity = level.getBlockEntity(pos);
+                    if (blockEntity != null) {
+                        blockEntity.load(nbt);
+                        blockEntity.setChanged();
+                    }
+                }
+            }
+
+            restoreIndex = end;
+            if (restoreIndex >= restoreQueue.size()) {
+                savedStates.clear();
+                savedNbt.clear();
+                restoreQueue = null;
+                return true;
+            }
+            return false;
+        }
+
+        private void forceDiscard(ServerLevel level) {
+            restoreQueue = new ArrayList<>(savedStates.keySet());
+            restoreIndex = 0;
+            restoring = true;
+            tickRestore(level);
+            while (restoreQueue != null) {
+                tickRestore(level);
+            }
+        }
+    }
+
+    public static void placeMark(LivingEntity caster, int spellLevel, net.minecraft.core.BlockPos blockPos,
+            net.minecraft.core.Direction face) {
+        CompoundTag data = caster.getPersistentData();
+        Vec3 center = Vec3.atCenterOf(blockPos).add(Vec3.atLowerCornerOf(face.getNormal()).scale(0.501D));
+        data.putBoolean(TAG_MARK_ACTIVE, true);
+        data.putDouble(TAG_MARK_X, center.x);
+        data.putDouble(TAG_MARK_Y, center.y);
+        data.putDouble(TAG_MARK_Z, center.z);
+        data.putLong(TAG_MARK_END, caster.level().getGameTime() + getMarkDurationSeconds(spellLevel) * 20L);
+        data.putInt(TAG_MARK_LEVEL, spellLevel);
+        data.put(TAG_MARK_TRIGGERED, new ListTag());
+    }
+
+    public static void clearMark(CompoundTag data) {
+        clear(data, TAG_MARK_ACTIVE, TAG_MARK_X, TAG_MARK_Y, TAG_MARK_Z, TAG_MARK_END, TAG_MARK_LEVEL, TAG_MARK_TRIGGERED);
+    }
+
+    public static Vec3 getMarkCenter(CompoundTag data) {
+        return new Vec3(data.getDouble(TAG_MARK_X), data.getDouble(TAG_MARK_Y), data.getDouble(TAG_MARK_Z));
+    }
+
+    public static ListTag getStringList(CompoundTag data, String key) {
+        return data.contains(key, Tag.TAG_LIST) ? data.getList(key, Tag.TAG_STRING) : new ListTag();
+    }
+
+    public static boolean containsUuid(ListTag list, UUID uuid) {
+        String uuidString = uuid.toString();
+        for (int i = 0; i < list.size(); i++) {
+            if (uuidString.equals(list.getString(i))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public static void appendUuid(ListTag list, UUID uuid) {
+        if (!containsUuid(list, uuid)) {
+            list.add(StringTag.valueOf(uuid.toString()));
+        }
     }
 
     public static boolean isExecutionerWeapon(ItemStack stack) {

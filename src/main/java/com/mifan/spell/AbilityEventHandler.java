@@ -5,20 +5,24 @@ import com.mifan.network.ModNetwork;
 import com.mifan.network.clientbound.DangerSensePingPacket;
 import com.mifan.network.clientbound.InstinctProcPacket;
 import com.mifan.registry.ModMobEffects;
+import io.redspace.ironsspellbooks.api.magic.MagicData;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
+import net.minecraft.util.Mth;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.monster.Zombie;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.BlockState;
@@ -26,8 +30,11 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.player.AttackEntityEvent;
+import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.event.entity.living.LivingAttackEvent;
+import net.minecraftforge.event.entity.living.LivingDeathEvent;
 import net.minecraftforge.event.entity.living.LivingEvent;
+import net.minecraftforge.event.entity.living.LivingHealEvent;
 import net.minecraftforge.event.entity.living.LivingHurtEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -45,14 +52,20 @@ public final class AbilityEventHandler {
         }
 
         Player player = event.player;
+        if (player.level() instanceof ServerLevel serverLevel) {
+            AbilityRuntime.tickElementalDomainRestoration(serverLevel);
+        }
         CompoundTag data = player.getPersistentData();
         long gameTime = player.level().getGameTime();
 
         tickSonicSense(player, gameTime);
         tickDangerSense(player, data, gameTime);
+        tickElementalDomain(player, data, gameTime);
         AbilityRuntime.tickDominance(player);
         tickMagneticCling(player, data, gameTime);
         tickMania(player, data, gameTime);
+        tickNecroticUndead(player, data, gameTime);
+        tickMark(player, data, gameTime);
         clearExpiredInstinct(player, data, gameTime);
     }
 
@@ -141,6 +154,45 @@ public final class AbilityEventHandler {
             if (entity instanceof ServerPlayer serverPlayer) {
                 ModNetwork.sendToPlayer(new InstinctProcPacket(true), serverPlayer);
             }
+        }
+    }
+
+    @SubscribeEvent
+    public static void onLivingHeal(LivingHealEvent event) {
+        LivingEntity entity = event.getEntity();
+        if (entity.level().isClientSide) {
+            return;
+        }
+
+        CompoundTag data = entity.getPersistentData();
+        long gameTime = entity.level().getGameTime();
+        if (entity.hasEffect(ModMobEffects.NECROTIC_UNDEAD.get())
+                && data.getLong(AbilityRuntime.TAG_NECROTIC_ALLOW_HEAL_UNTIL) < gameTime) {
+            event.setCanceled(true);
+        }
+    }
+
+    @SubscribeEvent
+    public static void onLivingDeath(LivingDeathEvent event) {
+        LivingEntity entity = event.getEntity();
+        if (entity.level().isClientSide) {
+            return;
+        }
+
+        reviveNecroticCaster(event, entity);
+        rewardNecroticKill(event);
+    }
+
+    @SubscribeEvent
+    public static void onPlayerClone(PlayerEvent.Clone event) {
+        if (!event.isWasDeath()) {
+            return;
+        }
+
+        CompoundTag oldData = event.getOriginal().getPersistentData();
+        CompoundTag newData = event.getEntity().getPersistentData();
+        if (oldData.getBoolean(AbilityRuntime.TAG_NECROTIC_REVIVE_USED)) {
+            newData.putBoolean(AbilityRuntime.TAG_NECROTIC_REVIVE_USED, true);
         }
     }
 
@@ -269,6 +321,92 @@ public final class AbilityEventHandler {
         }
     }
 
+    private static void tickElementalDomain(Player player, CompoundTag data, long gameTime) {
+        MobEffectInstance effectInstance = player.getEffect(ModMobEffects.ELEMENTAL_DOMAIN.get());
+        if (effectInstance == null) {
+            AbilityRuntime.clearElementalDomain(data);
+            return;
+        }
+
+        int spellLevel = AbilityRuntime.getEffectLevel(effectInstance);
+        MagicData magicData = MagicData.getPlayerMagicData(player);
+
+        if (gameTime % 5L == 0L) {
+            float manaCost = AbilityRuntime.getElementalistManaDrain(spellLevel);
+            if (magicData.getMana() < manaCost) {
+                player.removeEffect(ModMobEffects.ELEMENTAL_DOMAIN.get());
+                if (player.level() instanceof ServerLevel currentServerLevel) {
+                    AbilityRuntime.endElementalDomain(currentServerLevel, player);
+                }
+                AbilityRuntime.clearElementalDomain(data);
+                player.displayClientMessage(net.minecraft.network.chat.Component.translatable(
+                        "message.corpse_campus.elementalist_no_mana"), true);
+                player.level().playSound(null, player.blockPosition(), SoundEvents.BEACON_DEACTIVATE,
+                        SoundSource.PLAYERS, 0.24F, 0.8F);
+                return;
+            }
+
+            magicData.setMana(magicData.getMana() - manaCost);
+        }
+
+        if (!(player.level() instanceof ServerLevel serverLevel)) {
+            return;
+        }
+
+        AbilityRuntime.tickElementalDomainTerrain(serverLevel, player, gameTime);
+
+        if (gameTime % 4L == 0L) {
+            spawnElementalDomainRing(serverLevel, player, spellLevel, gameTime);
+        }
+
+        if (gameTime - data.getLong(AbilityRuntime.TAG_ELEMENTAL_DOMAIN_LAST_TICK) < AbilityRuntime.getElementalistInterval()) {
+            return;
+        }
+
+        data.putLong(AbilityRuntime.TAG_ELEMENTAL_DOMAIN_LAST_TICK, gameTime);
+        double radius = AbilityRuntime.getElementalistRadius();
+        AABB area = player.getBoundingBox().inflate(radius, 8.0D, radius);
+        for (LivingEntity target : serverLevel.getEntitiesOfClass(LivingEntity.class, area,
+                entity -> AbilityRuntime.isElementalistValidTarget(player, entity)
+                        && entity.distanceToSqr(player) <= radius * radius)) {
+            AbilityRuntime.triggerElementalistBurst(serverLevel, player, target, spellLevel);
+        }
+    }
+
+    private static void spawnElementalDomainRing(ServerLevel level, Player player, int spellLevel, long gameTime) {
+        double radius = AbilityRuntime.getElementalistRadius();
+        int points = 24;
+        double y = player.getY() + 0.1D;
+        float rotation = (gameTime % 80L) / 80.0F * Mth.TWO_PI;
+        for (int i = 0; i < points; i++) {
+            float angle = rotation + Mth.TWO_PI * i / points;
+            double x = player.getX() + Mth.cos(angle) * radius;
+            double z = player.getZ() + Mth.sin(angle) * radius;
+            level.sendParticles(ParticleTypes.END_ROD, x, y + 0.2D, z, 1, 0.0D, 0.08D, 0.0D, 0.0D);
+            level.sendParticles(new DustParticleOptions(new Vector3f(0.52F, 0.7F + 0.04F * spellLevel, 1.0F), 1.0F),
+                    x, y, z, 1, 0.05D, 0.05D, 0.05D, 0.0D);
+        }
+
+        level.sendParticles(ParticleTypes.ELECTRIC_SPARK,
+                player.getX(),
+                player.getY() + 1.0D,
+                player.getZ(),
+                6,
+                0.45D,
+                0.6D,
+                0.45D,
+                0.01D);
+        level.sendParticles(ParticleTypes.FLAME,
+                player.getX(),
+                player.getY() + 0.2D,
+                player.getZ(),
+                4,
+                0.35D,
+                0.08D,
+                0.35D,
+                0.01D);
+    }
+
     private static void tickMania(Player player, CompoundTag data, long gameTime) {
         MobEffectInstance effectInstance = player.getEffect(ModMobEffects.MANIA.get());
         if (effectInstance == null) {
@@ -308,6 +446,191 @@ public final class AbilityEventHandler {
         player.swing(player.getUsedItemHand(), true);
         player.resetAttackStrengthTicker();
         player.attack(target);
+    }
+
+    private static void tickNecroticUndead(Player player, CompoundTag data, long gameTime) {
+        if (!player.hasEffect(ModMobEffects.NECROTIC_UNDEAD.get())) {
+            AbilityRuntime.clear(data,
+                    AbilityRuntime.TAG_NECROTIC_ALLOW_HEAL_UNTIL,
+                    AbilityRuntime.TAG_NECROTIC_LAST_KILL_HEAL,
+                    AbilityRuntime.TAG_NECROTIC_REVIVE_USED);
+            return;
+        }
+
+        if (gameTime % 20L == 0L) {
+            player.addEffect(new MobEffectInstance(MobEffects.HUNGER, 40, 0, false, false, false));
+        }
+
+        if (player.level() instanceof ServerLevel serverLevel && gameTime % 10L == 0L) {
+            serverLevel.sendParticles(ParticleTypes.SOUL,
+                    player.getX(),
+                    player.getEyeY() - 0.1D,
+                    player.getZ(),
+                    2,
+                    0.2D,
+                    0.15D,
+                    0.2D,
+                    0.0D);
+        }
+
+        if (player.getHealth() >= player.getMaxHealth() - 0.01F) {
+            player.removeEffect(ModMobEffects.NECROTIC_UNDEAD.get());
+            AbilityRuntime.clear(data,
+                    AbilityRuntime.TAG_NECROTIC_ALLOW_HEAL_UNTIL,
+                    AbilityRuntime.TAG_NECROTIC_LAST_KILL_HEAL,
+                    AbilityRuntime.TAG_NECROTIC_REVIVE_USED);
+            player.displayClientMessage(net.minecraft.network.chat.Component.translatable(
+                    "message.corpse_campus.necrotic_rebirth_restored"), true);
+        }
+    }
+
+    private static void tickMark(Player player, CompoundTag data, long gameTime) {
+        if (!data.getBoolean(AbilityRuntime.TAG_MARK_ACTIVE)) {
+            return;
+        }
+
+        if (data.getLong(AbilityRuntime.TAG_MARK_END) <= gameTime) {
+            AbilityRuntime.clearMark(data);
+            return;
+        }
+
+        int spellLevel = Math.max(1, data.getInt(AbilityRuntime.TAG_MARK_LEVEL));
+        Vec3 center = AbilityRuntime.getMarkCenter(data);
+        double radius = AbilityRuntime.getMarkRadius(spellLevel);
+
+        if (player.level() instanceof ServerLevel serverLevel && gameTime % 8L == 0L) {
+            spawnMarkRing(serverLevel, center, radius);
+        }
+
+        ListTag triggered = AbilityRuntime.getStringList(data, AbilityRuntime.TAG_MARK_TRIGGERED);
+        boolean changed = false;
+        AABB box = new AABB(center, center).inflate(radius, 1.5D, radius);
+        for (LivingEntity target : player.level().getEntitiesOfClass(LivingEntity.class, box,
+                target -> target.isAlive() && target != player)) {
+            Vec3 feet = target.position();
+            double dx = feet.x - center.x;
+            double dz = feet.z - center.z;
+            if (dx * dx + dz * dz > radius * radius || AbilityRuntime.containsUuid(triggered, target.getUUID())) {
+                continue;
+            }
+
+            AbilityRuntime.appendUuid(triggered, target.getUUID());
+            changed = true;
+            target.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN,
+                    AbilityRuntime.getMarkRootSeconds() * 20,
+                    10,
+                    false,
+                    true,
+                    true));
+            target.addEffect(new MobEffectInstance(MobEffects.JUMP,
+                    AbilityRuntime.getMarkRootSeconds() * 20,
+                    128,
+                    false,
+                    false,
+                    true));
+            target.setDeltaMovement(Vec3.ZERO);
+            target.hurtMarked = true;
+
+            player.displayClientMessage(net.minecraft.network.chat.Component.translatable(
+                    "message.corpse_campus.mark_triggered", target.getDisplayName()), true);
+            player.level().playSound(null, target.blockPosition(), SoundEvents.AMETHYST_BLOCK_RESONATE, SoundSource.PLAYERS,
+                    0.45F, 1.6F);
+        }
+
+        if (changed) {
+            data.put(AbilityRuntime.TAG_MARK_TRIGGERED, triggered);
+        }
+    }
+
+    private static void reviveNecroticCaster(LivingDeathEvent event, LivingEntity entity) {
+        if (!(entity instanceof ServerPlayer player)) {
+            return;
+        }
+
+        if (!player.hasEffect(ModMobEffects.NECROTIC_REBIRTH_ARMED.get())) {
+            return;
+        }
+
+        CompoundTag data = player.getPersistentData();
+        if (data.getBoolean(AbilityRuntime.TAG_NECROTIC_REVIVE_USED)) {
+            return;
+        }
+
+        event.setCanceled(true);
+        data.putBoolean(AbilityRuntime.TAG_NECROTIC_REVIVE_USED, true);
+        MobEffectInstance armedEffect = player.getEffect(ModMobEffects.NECROTIC_REBIRTH_ARMED.get());
+        int spellLevel = AbilityRuntime.getEffectLevel(armedEffect);
+        player.removeEffect(ModMobEffects.NECROTIC_REBIRTH_ARMED.get());
+        player.setHealth(1.0F);
+        player.removeAllEffects();
+        player.addEffect(new MobEffectInstance(ModMobEffects.NECROTIC_UNDEAD.get(),
+                AbilityRuntime.TOGGLE_DURATION_TICKS,
+                spellLevel - 1,
+                false,
+                false,
+                false));
+        player.addEffect(new MobEffectInstance(MobEffects.DAMAGE_BOOST, 20 * 30, 0, false, false, true));
+        player.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 20 * 30, 0, false, false, true));
+        player.addEffect(new MobEffectInstance(MobEffects.HUNGER, 20 * 30, 0, false, false, true));
+        player.clearFire();
+        player.invulnerableTime = 20;
+        player.level().playSound(null, player.blockPosition(), SoundEvents.ZOMBIE_INFECT, SoundSource.PLAYERS,
+                0.8F, 0.85F);
+        if (player.level() instanceof ServerLevel serverLevel) {
+            serverLevel.sendParticles(ParticleTypes.SOUL,
+                    player.getX(),
+                    player.getY() + 1.0D,
+                    player.getZ(),
+                    16,
+                    0.45D,
+                    0.55D,
+                    0.45D,
+                    0.02D);
+        }
+        player.displayClientMessage(net.minecraft.network.chat.Component.translatable(
+                "message.corpse_campus.necrotic_rebirth_revived"), false);
+    }
+
+    private static void rewardNecroticKill(LivingDeathEvent event) {
+        DamageSource source = event.getSource();
+        Entity attacker = source.getEntity();
+        if (!(attacker instanceof ServerPlayer player) || attacker == event.getEntity()) {
+            return;
+        }
+
+        MobEffectInstance undeadEffect = player.getEffect(ModMobEffects.NECROTIC_UNDEAD.get());
+        if (undeadEffect == null) {
+            return;
+        }
+
+        int spellLevel = AbilityRuntime.getEffectLevel(undeadEffect);
+        float healAmount = AbilityRuntime.getNecroticHealAmount(spellLevel);
+        CompoundTag data = player.getPersistentData();
+        data.putLong(AbilityRuntime.TAG_NECROTIC_ALLOW_HEAL_UNTIL, player.level().getGameTime() + 2L);
+        data.putFloat(AbilityRuntime.TAG_NECROTIC_LAST_KILL_HEAL, healAmount);
+        player.heal(healAmount);
+        player.level().playSound(null, player.blockPosition(), SoundEvents.ZOMBIE_BREAK_WOODEN_DOOR, SoundSource.PLAYERS,
+                0.35F, 1.15F);
+        player.displayClientMessage(net.minecraft.network.chat.Component.translatable(
+                "message.corpse_campus.necrotic_rebirth_kill_heal", Math.round(healAmount)), true);
+    }
+
+    private static void spawnMarkRing(ServerLevel serverLevel, Vec3 center, double radius) {
+        int points = 24;
+        for (int i = 0; i < points; i++) {
+            double angle = Math.PI * 2.0D * i / points;
+            double x = center.x + Math.cos(angle) * radius;
+            double z = center.z + Math.sin(angle) * radius;
+            serverLevel.sendParticles(new DustParticleOptions(new Vector3f(0.52F, 0.18F, 0.76F), 1.0F),
+                    x,
+                    center.y + 0.02D,
+                    z,
+                    1,
+                    0.03D,
+                    0.0D,
+                    0.03D,
+                    0.0D);
+        }
     }
 
     private static void tickTelekinesisCaster(LivingEntity caster, CompoundTag data, long gameTime) {
