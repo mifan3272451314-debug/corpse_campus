@@ -1,5 +1,6 @@
 package com.mifan.spell.xujing;
 
+import com.mifan.registry.ModMobEffects;
 import com.mifan.registry.ModSchools;
 import com.mifan.spell.AbilityRuntime;
 import io.redspace.ironsspellbooks.api.config.DefaultConfig;
@@ -15,7 +16,10 @@ import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 
 import java.util.List;
@@ -28,22 +32,23 @@ public class DangerSenseSpell extends AbstractSpell {
             .setMinRarity(SpellRarity.COMMON)
             .setSchoolResource(ModSchools.XUJING_RESOURCE)
             .setMaxLevel(5)
-            .setCooldownSeconds(20)
+            .setCooldownSeconds(0)
             .build();
 
     public DangerSenseSpell() {
-        this.manaCostPerLevel = 3;
+        this.manaCostPerLevel = 0;
         this.baseSpellPower = 0;
         this.spellPowerPerLevel = 0;
         this.castTime = 0;
-        this.baseManaCost = 16;
+        this.baseManaCost = 0;
     }
 
     @Override
     public List<MutableComponent> getUniqueInfo(int spellLevel, LivingEntity caster) {
         return List.of(
                 Component.translatable("tooltip.corpse_campus.range_blocks", getThreatRange(spellLevel)),
-                Component.translatable("tooltip.corpse_campus.duration_seconds", getDurationTicks(spellLevel) / 20));
+                Component.translatable("tooltip.corpse_campus.danger_mode"),
+                Component.translatable("tooltip.corpse_campus.toggle_cast"));
     }
 
     @Override
@@ -63,23 +68,39 @@ public class DangerSenseSpell extends AbstractSpell {
 
     @Override
     public Optional<SoundEvent> getCastStartSound() {
-        return Optional.of(SoundEvents.RESPAWN_ANCHOR_CHARGE);
+        return Optional.empty();
     }
 
     @Override
     public Optional<SoundEvent> getCastFinishSound() {
-        return Optional.of(SoundEvents.NOTE_BLOCK_BIT.value());
+        return Optional.empty();
     }
 
     @Override
     public void onCast(Level level, int spellLevel, LivingEntity entity, CastSource castSource,
             MagicData playerMagicData) {
-        AbilityRuntime.activateTimedState(
-                entity,
-                AbilityRuntime.TAG_DANGER_END,
-                AbilityRuntime.TAG_DANGER_LEVEL,
-                getDurationTicks(spellLevel),
-                spellLevel);
+        if (!level.isClientSide) {
+            boolean enabling = !entity.hasEffect(ModMobEffects.DANGER_SENSE.get());
+            if (enabling) {
+                entity.addEffect(new MobEffectInstance(
+                        ModMobEffects.DANGER_SENSE.get(),
+                        AbilityRuntime.TOGGLE_DURATION_TICKS,
+                        spellLevel - 1,
+                        false,
+                        false,
+                        false));
+            } else {
+                entity.removeEffect(ModMobEffects.DANGER_SENSE.get());
+            }
+
+            level.playSound(null, entity.blockPosition(), SoundEvents.RESPAWN_ANCHOR_CHARGE, SoundSource.PLAYERS,
+                    0.18F, enabling ? 1.4F : 0.9F);
+
+            if (entity instanceof Player player) {
+                player.displayClientMessage(Component.translatable(
+                        enabling ? "message.corpse_campus.danger_on" : "message.corpse_campus.danger_off"), true);
+            }
+        }
         super.onCast(level, spellLevel, entity, castSource, playerMagicData);
     }
 
@@ -89,10 +110,6 @@ public class DangerSenseSpell extends AbstractSpell {
     }
 
     private int getThreatRange(int spellLevel) {
-        return 16 + spellLevel * 2;
-    }
-
-    private int getDurationTicks(int spellLevel) {
-        return 160 + spellLevel * 40;
+        return 18 + spellLevel * 3;
     }
 }

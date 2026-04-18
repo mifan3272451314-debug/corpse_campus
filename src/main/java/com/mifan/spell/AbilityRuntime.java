@@ -1,30 +1,31 @@
 package com.mifan.spell;
 
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.Comparator;
 
 public final class AbilityRuntime {
-    public static final String TAG_SONIC_END = "corpse_campus_sonic_end";
-    public static final String TAG_SONIC_LEVEL = "corpse_campus_sonic_level";
+    public static final int TOGGLE_DURATION_TICKS = 20 * 60 * 60 * 4;
 
-    public static final String TAG_DANGER_END = "corpse_campus_danger_end";
-    public static final String TAG_DANGER_LEVEL = "corpse_campus_danger_level";
     public static final String TAG_DANGER_LAST_ALERT = "corpse_campus_danger_last_alert";
 
-    public static final String TAG_TELEKINESIS_END = "corpse_campus_telekinesis_end";
-    public static final String TAG_TELEKINESIS_X = "corpse_campus_telekinesis_x";
-    public static final String TAG_TELEKINESIS_Y = "corpse_campus_telekinesis_y";
-    public static final String TAG_TELEKINESIS_Z = "corpse_campus_telekinesis_z";
+    public static final String TAG_TELEKINESIS_TARGET_ID = "corpse_campus_telekinesis_target_id";
+    public static final String TAG_TELEKINESIS_HOLD_UNTIL = "corpse_campus_telekinesis_hold_until";
+    public static final String TAG_TELEKINESIS_LEVEL = "corpse_campus_telekinesis_level";
+    public static final String TAG_TELEKINESIS_LOOK_X = "corpse_campus_telekinesis_look_x";
+    public static final String TAG_TELEKINESIS_LOOK_Y = "corpse_campus_telekinesis_look_y";
+    public static final String TAG_TELEKINESIS_LOOK_Z = "corpse_campus_telekinesis_look_z";
 
-    public static final String TAG_MAGNETIC_END = "corpse_campus_magnetic_end";
-    public static final String TAG_MAGNETIC_LEVEL = "corpse_campus_magnetic_level";
     public static final String TAG_MAGNETIC_CLINGING = "corpse_campus_magnetic_clinging";
     public static final String TAG_MAGNETIC_CLING_END = "corpse_campus_magnetic_cling_end";
     public static final String TAG_MAGNETIC_LAST_GROUND = "corpse_campus_magnetic_last_ground";
+    public static final String TAG_MAGNETIC_SHOCK_READY = "corpse_campus_magnetic_shock_ready";
 
     public static final String TAG_INSTINCT_END = "corpse_campus_instinct_end";
     public static final String TAG_INSTINCT_LEVEL = "corpse_campus_instinct_level";
@@ -47,6 +48,10 @@ public final class AbilityRuntime {
 
     public static int getLevel(CompoundTag data, String levelKey) {
         return Math.max(1, data.getInt(levelKey));
+    }
+
+    public static int getEffectLevel(MobEffectInstance effectInstance) {
+        return effectInstance == null ? 1 : effectInstance.getAmplifier() + 1;
     }
 
     public static void clear(CompoundTag data, String... keys) {
@@ -74,6 +79,24 @@ public final class AbilityRuntime {
                 })
                 .min(Comparator.comparingDouble(target -> eyePosition.distanceToSqr(target.getEyePosition())))
                 .orElse(null);
+    }
+
+    public static LivingEntity findLivingEntityById(Level level, int entityId) {
+        Entity entity = level.getEntity(entityId);
+        return entity instanceof LivingEntity livingEntity && livingEntity.isAlive() ? livingEntity : null;
+    }
+
+    public static void storeLookVector(CompoundTag data, Vec3 look) {
+        data.putDouble(TAG_TELEKINESIS_LOOK_X, look.x);
+        data.putDouble(TAG_TELEKINESIS_LOOK_Y, look.y);
+        data.putDouble(TAG_TELEKINESIS_LOOK_Z, look.z);
+    }
+
+    public static Vec3 readStoredLookVector(CompoundTag data) {
+        return new Vec3(
+                data.getDouble(TAG_TELEKINESIS_LOOK_X),
+                data.getDouble(TAG_TELEKINESIS_LOOK_Y),
+                data.getDouble(TAG_TELEKINESIS_LOOK_Z));
     }
 
     public static void pushNearbyEntities(LivingEntity source, double radius, double horizontalStrength,

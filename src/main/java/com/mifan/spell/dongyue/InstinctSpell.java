@@ -1,5 +1,6 @@
 package com.mifan.spell.dongyue;
 
+import com.mifan.registry.ModMobEffects;
 import com.mifan.registry.ModSchools;
 import com.mifan.spell.AbilityRuntime;
 import io.redspace.ironsspellbooks.api.config.DefaultConfig;
@@ -15,7 +16,10 @@ import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 
 import java.util.List;
@@ -28,24 +32,24 @@ public class InstinctSpell extends AbstractSpell {
             .setMinRarity(SpellRarity.COMMON)
             .setSchoolResource(ModSchools.DONGYUE_RESOURCE)
             .setMaxLevel(5)
-            .setCooldownSeconds(30)
+            .setCooldownSeconds(0)
             .build();
 
     public InstinctSpell() {
-        this.manaCostPerLevel = 4;
+        this.manaCostPerLevel = 0;
         this.baseSpellPower = 0;
         this.spellPowerPerLevel = 0;
         this.castTime = 0;
-        this.baseManaCost = 18;
+        this.baseManaCost = 0;
     }
 
     @Override
     public List<MutableComponent> getUniqueInfo(int spellLevel, LivingEntity caster) {
         return List.of(
-                Component.translatable("tooltip.corpse_campus.duration_seconds", getDurationTicks(spellLevel) / 20),
                 Component.translatable("tooltip.corpse_campus.dodge_chance",
                         Math.round(getDodgeChance(spellLevel) * 100.0F)),
-                Component.translatable("tooltip.corpse_campus.last_stand", 3));
+                Component.translatable("tooltip.corpse_campus.last_stand", 3),
+                Component.translatable("tooltip.corpse_campus.toggle_cast"));
     }
 
     @Override
@@ -65,23 +69,40 @@ public class InstinctSpell extends AbstractSpell {
 
     @Override
     public Optional<SoundEvent> getCastStartSound() {
-        return Optional.of(SoundEvents.WOLF_SHAKE);
+        return Optional.empty();
     }
 
     @Override
     public Optional<SoundEvent> getCastFinishSound() {
-        return Optional.of(SoundEvents.TOTEM_USE);
+        return Optional.empty();
     }
 
     @Override
     public void onCast(Level level, int spellLevel, LivingEntity entity, CastSource castSource,
             MagicData playerMagicData) {
-        AbilityRuntime.activateTimedState(
-                entity,
-                AbilityRuntime.TAG_INSTINCT_END,
-                AbilityRuntime.TAG_INSTINCT_LEVEL,
-                getDurationTicks(spellLevel),
-                spellLevel);
+        if (!level.isClientSide) {
+            boolean enabling = !entity.hasEffect(ModMobEffects.INSTINCT.get());
+            if (enabling) {
+                entity.addEffect(new MobEffectInstance(
+                        ModMobEffects.INSTINCT.get(),
+                        AbilityRuntime.TOGGLE_DURATION_TICKS,
+                        spellLevel - 1,
+                        false,
+                        false,
+                        false));
+            } else {
+                entity.removeEffect(ModMobEffects.INSTINCT.get());
+            }
+
+            level.playSound(null, entity.blockPosition(), SoundEvents.WOLF_SHAKE, SoundSource.PLAYERS,
+                    0.16F, enabling ? 0.8F : 1.25F);
+
+            if (entity instanceof Player player) {
+                player.displayClientMessage(Component.translatable(
+                        enabling ? "message.corpse_campus.instinct_on" : "message.corpse_campus.instinct_off"), true);
+            }
+        }
+
         entity.getPersistentData().remove(AbilityRuntime.TAG_INSTINCT_USED);
         entity.getPersistentData().remove(AbilityRuntime.TAG_INSTINCT_INVULNERABLE_UNTIL);
         super.onCast(level, spellLevel, entity, castSource, playerMagicData);
@@ -90,10 +111,6 @@ public class InstinctSpell extends AbstractSpell {
     @Override
     public SchoolType getSchoolType() {
         return ModSchools.DONGYUE.get();
-    }
-
-    private int getDurationTicks(int spellLevel) {
-        return 400 + spellLevel * 120;
     }
 
     private float getDodgeChance(int spellLevel) {

@@ -1,5 +1,7 @@
 package com.mifan;
 
+import com.mifan.network.ModNetwork;
+import com.mifan.registry.ModMobEffects;
 import com.mifan.registry.ModSchools;
 import com.mifan.registry.ModSpells;
 import com.mojang.logging.LogUtils;
@@ -90,8 +92,12 @@ public class corpsecampus {
         CREATIVE_MODE_TABS.register(modEventBus);
         // Register custom spell schools for Iron's Spells 'n Spellbooks
         ModSchools.register(modEventBus);
+        // Register custom marker effects for toggle abilities
+        ModMobEffects.register(modEventBus);
         // Register custom spells for Iron's Spells 'n Spellbooks
         ModSpells.register(modEventBus);
+        // Register custom network packets
+        ModNetwork.register();
 
         // Register ourselves for server and other game events we are interested in
         MinecraftForge.EVENT_BUS.register(this);

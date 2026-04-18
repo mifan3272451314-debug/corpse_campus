@@ -15,8 +15,6 @@ import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
-import net.minecraft.world.effect.MobEffectInstance;
-import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.level.Level;
@@ -31,27 +29,28 @@ public class TelekinesisSpell extends AbstractSpell {
             .setMinRarity(SpellRarity.COMMON)
             .setSchoolResource(ModSchools.YUZHE_RESOURCE)
             .setMaxLevel(5)
-            .setCooldownSeconds(14)
+            .setCooldownSeconds(0)
             .build();
 
     public TelekinesisSpell() {
-        this.manaCostPerLevel = 5;
+        this.manaCostPerLevel = 1;
         this.baseSpellPower = 0;
         this.spellPowerPerLevel = 0;
-        this.castTime = 0;
-        this.baseManaCost = 20;
+        this.castTime = 100;
+        this.baseManaCost = 2;
     }
 
     @Override
     public List<MutableComponent> getUniqueInfo(int spellLevel, LivingEntity caster) {
         return List.of(
                 Component.translatable("tooltip.corpse_campus.range_blocks", getCastRange(spellLevel)),
-                Component.translatable("tooltip.corpse_campus.suspend_seconds", getSuspendTicks() / 20));
+                Component.translatable("tooltip.corpse_campus.hold_cast"),
+                Component.translatable("tooltip.corpse_campus.release_throw"));
     }
 
     @Override
     public CastType getCastType() {
-        return CastType.INSTANT;
+        return CastType.CONTINUOUS;
     }
 
     @Override
@@ -66,42 +65,60 @@ public class TelekinesisSpell extends AbstractSpell {
 
     @Override
     public Optional<SoundEvent> getCastStartSound() {
-        return Optional.of(SoundEvents.ENDERMAN_TELEPORT);
+        return Optional.empty();
     }
 
     @Override
     public Optional<SoundEvent> getCastFinishSound() {
-        return Optional.of(SoundEvents.SHULKER_SHOOT);
+        return Optional.empty();
     }
 
     @Override
     public boolean checkPreCastConditions(Level level, int spellLevel, LivingEntity entity, MagicData playerMagicData) {
-        return AbilityRuntime.findTargetInSight(entity, getCastRange(spellLevel), 0.88D) != null
+        return (entity.getPersistentData().contains(AbilityRuntime.TAG_TELEKINESIS_TARGET_ID)
+                || AbilityRuntime.findTargetInSight(entity, getCastRange(spellLevel), 0.84D) != null)
                 && super.checkPreCastConditions(level, spellLevel, entity, playerMagicData);
     }
 
     @Override
     public void onCast(Level level, int spellLevel, LivingEntity entity, CastSource castSource,
             MagicData playerMagicData) {
-        LivingEntity target = AbilityRuntime.findTargetInSight(entity, getCastRange(spellLevel), 0.88D);
-        if (target != null) {
-            Vec3 look = entity.getLookAngle().normalize();
-            Vec3 releaseVelocity = look.scale(1.0D + spellLevel * 0.15D).add(0.0D, 0.75D + spellLevel * 0.05D, 0.0D);
-            target.getPersistentData().putLong(AbilityRuntime.TAG_TELEKINESIS_END,
-                    level.getGameTime() + getSuspendTicks());
-            target.getPersistentData().putDouble(AbilityRuntime.TAG_TELEKINESIS_X, releaseVelocity.x);
-            target.getPersistentData().putDouble(AbilityRuntime.TAG_TELEKINESIS_Y, releaseVelocity.y);
-            target.getPersistentData().putDouble(AbilityRuntime.TAG_TELEKINESIS_Z, releaseVelocity.z);
-            target.setNoGravity(true);
-            target.setDeltaMovement(Vec3.ZERO);
-            target.fallDistance = 0.0F;
-            target.hurtMarked = true;
-            target.hasImpulse = true;
+        if (!level.isClientSide) {
+            LivingEntity target = AbilityRuntime.findLivingEntityById(level,
+                    entity.getPersistentData().getInt(AbilityRuntime.TAG_TELEKINESIS_TARGET_ID));
+            if (target == null) {
+                target = AbilityRuntime.findTargetInSight(entity, getCastRange(spellLevel), 0.84D);
+            }
 
-            entity.addEffect(new MobEffectInstance(MobEffects.HUNGER, 100, 0, false, false, true));
-            entity.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, 60, 0, false, false, true));
+            if (target != null) {
+                Vec3 look = entity.getLookAngle().normalize();
+                entity.getPersistentData().putInt(AbilityRuntime.TAG_TELEKINESIS_TARGET_ID, target.getId());
+                entity.getPersistentData().putLong(AbilityRuntime.TAG_TELEKINESIS_HOLD_UNTIL, level.getGameTime() + 8L);
+                entity.getPersistentData().putInt(AbilityRuntime.TAG_TELEKINESIS_LEVEL, spellLevel);
+                AbilityRuntime.storeLookVector(entity.getPersistentData(), look);
+
+                target.setNoGravity(true);
+                target.fallDistance = 0.0F;
+                target.setDeltaMovement(Vec3.ZERO);
+                target.hasImpulse = true;
+                target.hurtMarked = true;
+
+                if (level.getGameTime() % 12L == 0L) {
+                    level.playSound(null, entity.blockPosition(), SoundEvents.ENDERMAN_TELEPORT,
+                            net.minecraft.sounds.SoundSource.PLAYERS, 0.12F, 1.5F);
+                }
+            }
         }
         super.onCast(level, spellLevel, entity, castSource, playerMagicData);
+    }
+
+    @Override
+    public void onServerCastComplete(Level level, int spellLevel, LivingEntity entity, MagicData playerMagicData,
+            boolean canceled) {
+        if (!level.isClientSide && entity.getPersistentData().contains(AbilityRuntime.TAG_TELEKINESIS_TARGET_ID)) {
+            entity.getPersistentData().putLong(AbilityRuntime.TAG_TELEKINESIS_HOLD_UNTIL, level.getGameTime() - 1L);
+        }
+        super.onServerCastComplete(level, spellLevel, entity, playerMagicData, canceled);
     }
 
     @Override
@@ -111,9 +128,5 @@ public class TelekinesisSpell extends AbstractSpell {
 
     private int getCastRange(int spellLevel) {
         return 10 + spellLevel * 2;
-    }
-
-    private int getSuspendTicks() {
-        return 30;
     }
 }
