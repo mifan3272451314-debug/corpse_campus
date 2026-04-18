@@ -1,6 +1,7 @@
 package com.mifan.registry;
 
 import com.mifan.corpsecampus;
+import com.mifan.spell.dongyue.ExecutionerSpell;
 import com.mifan.spell.dongyue.InstinctSpell;
 import com.mifan.spell.dongyue.ManiaSpell;
 import com.mifan.spell.xujing.DangerSenseSpell;
@@ -28,6 +29,8 @@ public final class ModSpells {
             MagneticClingSpell::new);
     public static final RegistryObject<AbstractSpell> INSTINCT = SPELLS.register("instinct", InstinctSpell::new);
     public static final RegistryObject<AbstractSpell> MANIA = SPELLS.register("mania", ManiaSpell::new);
+    public static final RegistryObject<AbstractSpell> EXECUTIONER = SPELLS.register("executioner",
+            ExecutionerSpell::new);
 
     private ModSpells() {
     }

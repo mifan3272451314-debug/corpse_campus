@@ -10,6 +10,7 @@
   "spell.corpse_campus.magnetic_cling": "Magnetic Cling",
   "spell.corpse_campus.instinct": "Instinct",
   "spell.corpse_campus.mania": "Mania",
+  "spell.corpse_campus.executioner": "Executioner",
   "tooltip.corpse_campus.range_blocks": "Range: %s blocks",
   "tooltip.corpse_campus.duration_seconds": "Duration: %s s",
   "tooltip.corpse_campus.suspend_seconds": "Suspension: %s s",
@@ -19,6 +20,10 @@
   "tooltip.corpse_campus.last_stand": "Last stand: stay at 1 HP and gain %s s immunity",
   "tooltip.corpse_campus.auto_lunge_range": "Front target range: %s blocks",
   "tooltip.corpse_campus.melee_bonus_percent": "Melee damage bonus: %s%%",
+  "tooltip.corpse_campus.executioner_damage_ratio": "Each slash deals %s%% of blade damage",
+  "tooltip.corpse_campus.executioner_durability_cost": "Each slash costs %s durability",
+  "tooltip.corpse_campus.executioner_hold_cast": "Hold to keep releasing slashes; each trigger also spends mana",
+  "tooltip.corpse_campus.executioner_crouch_mode": "While crouching, slashes continuously form at the aimed point",
   "tooltip.corpse_campus.mania_forces_front_attack": "Rushes and attacks targets in front of you, with every hit showing crit impact",
   "tooltip.corpse_campus.toggle_cast": "Cast again to turn it off",
   "tooltip.corpse_campus.hold_cast": "Hold the cast to keep control",
@@ -36,5 +41,6 @@
   "message.corpse_campus.mania_on": "Mania enabled",
   "message.corpse_campus.mania_off": "Mania disabled",
   "message.corpse_campus.instinct_dodge": "Instinct dodge triggered",
-  "message.corpse_campus.instinct_last_stand": "Instinct last stand triggered"
+  "message.corpse_campus.instinct_last_stand": "Instinct last stand triggered",
+  "message.corpse_campus.executioner_need_blade": "Executioner requires a usable blade in your main hand"
 }
