@@ -94,6 +94,7 @@ public final class AbilityEventHandler {
             return;
         }
 
+        AbilityRuntime.tickRecorderOfficer(entity, entity.level().getGameTime());
         tickTelekinesisCaster(entity, entity.getPersistentData(), entity.level().getGameTime());
         updateOlfactionTrail(entity, entity.level().getGameTime());
     }

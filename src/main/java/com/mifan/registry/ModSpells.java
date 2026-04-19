@@ -1,6 +1,7 @@
 package com.mifan.registry;
 
 import com.mifan.corpsecampus;
+import com.mifan.spell.dongyue.DaiyueSpell;
 import com.mifan.spell.dongyue.ExecutionerSpell;
 import com.mifan.spell.dongyue.InstinctSpell;
 import com.mifan.spell.dongyue.ManiaSpell;
@@ -8,6 +9,7 @@ import com.mifan.spell.dongyue.NecroticRebirthSpell;
 import com.mifan.spell.rizhao.MidasTouchSpell;
 import com.mifan.spell.xujing.ElementalistSpell;
 import com.mifan.spell.xujing.MarkSpell;
+import com.mifan.spell.xujing.RecorderOfficerSpell;
 import com.mifan.spell.xujing.DangerSenseSpell;
 import com.mifan.spell.xujing.OlfactionSpell;
 import com.mifan.spell.xujing.SonicSenseSpell;
@@ -33,6 +35,8 @@ public final class ModSpells {
             OlfactionSpell::new);
     public static final RegistryObject<AbstractSpell> ELEMENTALIST = SPELLS.register("elementalist",
             ElementalistSpell::new);
+    public static final RegistryObject<AbstractSpell> RECORDER_OFFICER = SPELLS.register("recorder_officer",
+            RecorderOfficerSpell::new);
     public static final RegistryObject<AbstractSpell> MIDAS_TOUCH = SPELLS.register("midas_touch",
             MidasTouchSpell::new);
     public static final RegistryObject<AbstractSpell> TELEKINESIS = SPELLS.register("telekinesis",
@@ -40,6 +44,7 @@ public final class ModSpells {
     public static final RegistryObject<AbstractSpell> DOMINANCE = SPELLS.register("dominance", DominanceSpell::new);
     public static final RegistryObject<AbstractSpell> MAGNETIC_CLING = SPELLS.register("magnetic_cling",
             MagneticClingSpell::new);
+    public static final RegistryObject<AbstractSpell> DAIYUE = SPELLS.register("daiyue", DaiyueSpell::new);
     public static final RegistryObject<AbstractSpell> INSTINCT = SPELLS.register("instinct", InstinctSpell::new);
     public static final RegistryObject<AbstractSpell> MANIA = SPELLS.register("mania", ManiaSpell::new);
     public static final RegistryObject<AbstractSpell> NECROTIC_REBIRTH = SPELLS.register("necrotic_rebirth",

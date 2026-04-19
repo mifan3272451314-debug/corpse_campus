@@ -1,13 +1,16 @@
 package com.mifan.spell;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
@@ -22,6 +25,7 @@ import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.AxeItem;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.item.ShieldItem;
 import net.minecraft.world.item.SwordItem;
 import net.minecraft.world.level.Level;
@@ -52,6 +56,20 @@ public final class AbilityRuntime {
     public static final int TOGGLE_DURATION_TICKS = 20 * 60 * 60 * 4;
 
     public static final String TAG_DANGER_LAST_ALERT = "corpse_campus_danger_last_alert";
+
+    public static final String TAG_RECORDER_OFFICER_ARMED = "corpse_campus_recorder_officer_armed";
+    public static final String TAG_RECORDER_OFFICER_END = "corpse_campus_recorder_officer_end";
+    public static final String TAG_RECORDER_OFFICER_X = "corpse_campus_recorder_officer_x";
+    public static final String TAG_RECORDER_OFFICER_Y = "corpse_campus_recorder_officer_y";
+    public static final String TAG_RECORDER_OFFICER_Z = "corpse_campus_recorder_officer_z";
+    public static final String TAG_RECORDER_OFFICER_DIMENSION = "corpse_campus_recorder_officer_dimension";
+    public static final String TAG_RECORDER_OFFICER_CASTER = "corpse_campus_recorder_officer_caster";
+
+    public static final String ITEM_TAG_RECORDER_OFFICER_NOTE = "corpse_campus_recorder_officer_note";
+    public static final String ITEM_TAG_RECORDER_OFFICER_X = "x";
+    public static final String ITEM_TAG_RECORDER_OFFICER_Y = "y";
+    public static final String ITEM_TAG_RECORDER_OFFICER_Z = "z";
+    public static final String ITEM_TAG_RECORDER_OFFICER_DIMENSION = "dimension";
 
     public static final String TAG_TELEKINESIS_TARGET_ID = "corpse_campus_telekinesis_target_id";
     public static final String TAG_TELEKINESIS_HOLD_UNTIL = "corpse_campus_telekinesis_hold_until";
@@ -110,6 +128,9 @@ public final class AbilityRuntime {
     public static final String TAG_ELEMENTAL_DOMAIN_CLOSED = "corpse_campus_elemental_domain_closed";
 
     public static final int EXECUTIONER_DURABILITY_COST = 15;
+    public static final int RECORDER_OFFICER_DEFAULT_SECONDS = 15;
+    public static final int RECORDER_OFFICER_MIN_SECONDS = 5;
+    public static final int RECORDER_OFFICER_MAX_SECONDS = 120;
     private static final float EXECUTIONER_DAMAGE_RATIO = 0.25F;
     private static final float DOMINANCE_MIN_SURVIVAL_HEALTH = 1.0F;
     private static final float DOMINANCE_MAX_HEALTH_LIMIT = 35.0F;
@@ -271,6 +292,14 @@ public final class AbilityRuntime {
         return NECROTIC_NON_PLAYER_KILL_HEAL;
     }
 
+    public static int getDaiyueDashRange(int spellLevel) {
+        return 6 + Math.max(0, spellLevel - 1);
+    }
+
+    public static double getDaiyueHitWidth(int spellLevel) {
+        return 2.5D + Math.max(0, spellLevel - 1) * 0.3D;
+    }
+
     public static int getNecroticProvokeDurationTicks() {
         return NECROTIC_PROVOKE_DURATION_TICKS;
     }
@@ -304,6 +333,112 @@ public final class AbilityRuntime {
 
     public static int getMarkRootSeconds() {
         return MARK_ROOT_DURATION_TICKS / 20;
+    }
+
+    public static int clampRecorderOfficerSeconds(int seconds) {
+        return Mth.clamp(seconds, RECORDER_OFFICER_MIN_SECONDS, RECORDER_OFFICER_MAX_SECONDS);
+    }
+
+    public static boolean hasRecorderOfficerRecord(ItemStack stack) {
+        return stack.is(Items.PAPER)
+                && stack.hasTag()
+                && stack.getTag().contains(ITEM_TAG_RECORDER_OFFICER_NOTE, Tag.TAG_COMPOUND);
+    }
+
+    public static void recordRecorderOfficerPaper(ItemStack stack, LivingEntity caster, BlockPos blockPos, Direction face) {
+        CompoundTag note = new CompoundTag();
+        Vec3 center = Vec3.atCenterOf(blockPos).add(Vec3.atLowerCornerOf(face.getNormal()).scale(0.501D));
+        note.putDouble(ITEM_TAG_RECORDER_OFFICER_X, center.x);
+        note.putDouble(ITEM_TAG_RECORDER_OFFICER_Y, center.y);
+        note.putDouble(ITEM_TAG_RECORDER_OFFICER_Z, center.z);
+        note.putString(ITEM_TAG_RECORDER_OFFICER_DIMENSION, caster.level().dimension().location().toString());
+        stack.getOrCreateTag().put(ITEM_TAG_RECORDER_OFFICER_NOTE, note);
+    }
+
+    public static void armRecorderOfficerTarget(ServerPlayer caster, int spellLevel, int targetEntityId, int timerSeconds) {
+        ItemStack stack = caster.getMainHandItem();
+        if (!hasRecorderOfficerRecord(stack)) {
+            caster.displayClientMessage(net.minecraft.network.chat.Component.translatable(
+                    "message.corpse_campus.recorder_officer_no_record"), true);
+            return;
+        }
+
+        LivingEntity target = findLivingEntityById(caster.level(), targetEntityId);
+        if (target == null || target == caster) {
+            caster.displayClientMessage(net.minecraft.network.chat.Component.translatable(
+                    "message.corpse_campus.recorder_officer_no_target"), true);
+            return;
+        }
+
+        CompoundTag note = stack.getTag().getCompound(ITEM_TAG_RECORDER_OFFICER_NOTE);
+        CompoundTag data = target.getPersistentData();
+        data.putBoolean(TAG_RECORDER_OFFICER_ARMED, true);
+        data.putLong(TAG_RECORDER_OFFICER_END, caster.level().getGameTime() + clampRecorderOfficerSeconds(timerSeconds) * 20L);
+        data.putDouble(TAG_RECORDER_OFFICER_X, note.getDouble(ITEM_TAG_RECORDER_OFFICER_X));
+        data.putDouble(TAG_RECORDER_OFFICER_Y, note.getDouble(ITEM_TAG_RECORDER_OFFICER_Y));
+        data.putDouble(TAG_RECORDER_OFFICER_Z, note.getDouble(ITEM_TAG_RECORDER_OFFICER_Z));
+        data.putString(TAG_RECORDER_OFFICER_DIMENSION, note.getString(ITEM_TAG_RECORDER_OFFICER_DIMENSION));
+        data.putUUID(TAG_RECORDER_OFFICER_CASTER, caster.getUUID());
+
+        stack.shrink(1);
+        caster.displayClientMessage(net.minecraft.network.chat.Component.translatable(
+                "message.corpse_campus.recorder_officer_armed", target.getDisplayName(), clampRecorderOfficerSeconds(timerSeconds)), true);
+        caster.level().playSound(null, target.blockPosition(), SoundEvents.AMETHYST_BLOCK_CHIME, SoundSource.PLAYERS, 0.5F, 1.15F);
+    }
+
+    public static void tickRecorderOfficer(LivingEntity entity, long gameTime) {
+        CompoundTag data = entity.getPersistentData();
+        if (!data.getBoolean(TAG_RECORDER_OFFICER_ARMED)) {
+            return;
+        }
+
+        long endTime = data.getLong(TAG_RECORDER_OFFICER_END);
+        double x = data.getDouble(TAG_RECORDER_OFFICER_X);
+        double y = data.getDouble(TAG_RECORDER_OFFICER_Y);
+        double z = data.getDouble(TAG_RECORDER_OFFICER_Z);
+        String dimensionKey = data.getString(TAG_RECORDER_OFFICER_DIMENSION);
+
+        if (endTime > gameTime) {
+            return;
+        }
+
+        clearRecorderOfficer(data);
+
+        if (!(entity.level() instanceof ServerLevel currentLevel)) {
+            return;
+        }
+
+        ServerLevel destinationLevel = currentLevel;
+        ResourceLocation dimensionId = ResourceLocation.tryParse(dimensionKey);
+        if (dimensionId != null && currentLevel.getServer() != null) {
+            ServerLevel resolved = currentLevel.getServer().getLevel(ResourceKey.create(Registries.DIMENSION, dimensionId));
+            if (resolved != null) {
+                destinationLevel = resolved;
+            }
+        }
+
+        if (entity instanceof ServerPlayer serverPlayer) {
+            serverPlayer.teleportTo(destinationLevel, x, y, z, serverPlayer.getYRot(), serverPlayer.getXRot());
+        } else if (entity.level() == destinationLevel) {
+            entity.teleportTo(x, y, z);
+        } else {
+            return;
+        }
+
+        entity.fallDistance = 0.0F;
+        destinationLevel.playSound(null, BlockPos.containing(x, y, z), SoundEvents.CHORUS_FRUIT_TELEPORT, SoundSource.PLAYERS, 0.65F, 1.1F);
+        destinationLevel.sendParticles(ParticleTypes.PORTAL, x, y + 0.6D, z, 30, 0.35D, 0.5D, 0.35D, 0.05D);
+    }
+
+    public static void clearRecorderOfficer(CompoundTag data) {
+        clear(data,
+                TAG_RECORDER_OFFICER_ARMED,
+                TAG_RECORDER_OFFICER_END,
+                TAG_RECORDER_OFFICER_X,
+                TAG_RECORDER_OFFICER_Y,
+                TAG_RECORDER_OFFICER_Z,
+                TAG_RECORDER_OFFICER_DIMENSION,
+                TAG_RECORDER_OFFICER_CASTER);
     }
 
     public static int getElementalistRadius() {
@@ -959,6 +1094,48 @@ public final class AbilityRuntime {
         }
     }
 
+    public static void castDaiyue(Level level, LivingEntity caster, int spellLevel, float spellPower) {
+        Vec3 start = caster.position();
+        Vec3 eyeStart = caster.getEyePosition();
+        Vec3 direction = caster.getLookAngle();
+        Vec3 horizontalDirection = new Vec3(direction.x, 0.0D, direction.z);
+        if (horizontalDirection.lengthSqr() < 1.0E-4D) {
+            horizontalDirection = new Vec3(0.0D, 0.0D, 1.0D);
+        }
+        horizontalDirection = horizontalDirection.normalize();
+
+        double range = getDaiyueDashRange(spellLevel);
+        BlockHitResult blockHitResult = level.clip(new net.minecraft.world.level.ClipContext(
+                eyeStart,
+                eyeStart.add(horizontalDirection.scale(range)),
+                net.minecraft.world.level.ClipContext.Block.COLLIDER,
+                net.minecraft.world.level.ClipContext.Fluid.NONE,
+                caster));
+        double actualRange = blockHitResult.getType() == HitResult.Type.BLOCK
+                ? Math.max(1.2D, eyeStart.distanceTo(blockHitResult.getLocation()) - 0.6D)
+                : range;
+
+        Vec3 end = start.add(horizontalDirection.scale(actualRange));
+        float damage = Math.max(4.0F, spellPower + 3.0F + spellLevel * 0.8F);
+        double hitWidth = getDaiyueHitWidth(spellLevel);
+        AABB hitBox = new AABB(start, end).inflate(hitWidth, 1.0D, hitWidth);
+
+        hitEntitiesInSlash(level, caster, hitBox, start.add(0.0D, caster.getBbHeight() * 0.45D, 0.0D),
+                horizontalDirection, actualRange + 0.75D, 0.2D, damage);
+
+        caster.setDeltaMovement(horizontalDirection.x * 1.6D,
+                caster.onGround() ? 0.18D : Math.max(caster.getDeltaMovement().y, 0.05D),
+                horizontalDirection.z * 1.6D);
+        caster.hurtMarked = true;
+        caster.fallDistance = 0.0F;
+
+        spawnDaiyueTrail(level, start, end, spellLevel);
+        level.playSound(null, caster.blockPosition(), SoundEvents.PLAYER_ATTACK_SWEEP, SoundSource.PLAYERS,
+                0.55F, 0.75F + spellLevel * 0.04F);
+        level.playSound(null, caster.blockPosition(), SoundEvents.ZOMBIE_ATTACK_IRON_DOOR, SoundSource.PLAYERS,
+                0.22F, 1.45F);
+    }
+
     private static float getExecutionerDamage(LivingEntity caster, ItemStack weapon) {
         float base = 4.0F;
         if (weapon.getItem() instanceof SwordItem swordItem) {
@@ -1065,6 +1242,83 @@ public final class AbilityRuntime {
                     0.04D,
                     0.0D);
         }
+    }
+
+    private static void spawnDaiyueTrail(Level level, Vec3 start, Vec3 end, int spellLevel) {
+        if (!(level instanceof ServerLevel serverLevel)) {
+            return;
+        }
+
+        Vec3 delta = end.subtract(start);
+        Vec3 forward = delta.lengthSqr() < 1.0E-4D ? new Vec3(0.0D, 0.0D, 1.0D) : delta.normalize();
+        Vec3 side = new Vec3(-forward.z, 0.0D, forward.x);
+        int steps = 16 + spellLevel * 2;
+        for (int i = 0; i <= steps; i++) {
+            double t = i / (double) steps;
+            Vec3 point = start.add(delta.scale(t)).add(0.0D, 0.15D, 0.0D);
+            double bladeWidth = 0.2D + 0.02D * spellLevel;
+
+            serverLevel.sendParticles(ParticleTypes.SWEEP_ATTACK,
+                    point.x,
+                    point.y + 0.55D,
+                    point.z,
+                    1,
+                    0.0D,
+                    0.0D,
+                    0.0D,
+                    0.0D);
+            serverLevel.sendParticles(ParticleTypes.CRIT,
+                    point.x,
+                    point.y + 0.35D,
+                    point.z,
+                    3,
+                    0.18D,
+                    0.18D,
+                    0.18D,
+                    0.01D);
+            serverLevel.sendParticles(new DustParticleOptions(new Vector3f(0.82F, 0.84F, 0.9F), 1.0F),
+                    point.x,
+                    point.y + 0.35D,
+                    point.z,
+                    2,
+                    bladeWidth,
+                    0.08D,
+                    bladeWidth,
+                    0.0D);
+
+            if ((i & 1) == 0) {
+                Vec3 left = point.add(side.scale(0.45D + 0.015D * spellLevel));
+                Vec3 right = point.subtract(side.scale(0.45D + 0.015D * spellLevel));
+                serverLevel.sendParticles(ParticleTypes.END_ROD,
+                        left.x,
+                        left.y + 0.4D,
+                        left.z,
+                        1,
+                        0.0D,
+                        0.0D,
+                        0.0D,
+                        0.0D);
+                serverLevel.sendParticles(ParticleTypes.END_ROD,
+                        right.x,
+                        right.y + 0.4D,
+                        right.z,
+                        1,
+                        0.0D,
+                        0.0D,
+                        0.0D,
+                        0.0D);
+            }
+        }
+
+        serverLevel.sendParticles(new DustParticleOptions(new Vector3f(0.95F, 0.95F, 1.0F), 1.35F),
+                end.x,
+                end.y + 0.6D,
+                end.z,
+                12,
+                0.35D,
+                0.2D,
+                0.35D,
+                0.0D);
     }
 
     private static void spawnExecutionerBurst(Level level, Vec3 center, double radius) {

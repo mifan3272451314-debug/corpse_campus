@@ -3,11 +3,13 @@ package com.mifan.spell;
 import com.mifan.corpsecampus;
 import com.mifan.client.screen.DominanceTargetScreen;
 import com.mifan.client.screen.MidasTouchTimerScreen;
+import com.mifan.client.screen.RecorderOfficerTimerScreen;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mifan.network.clientbound.DangerSensePingPacket;
 import com.mifan.network.clientbound.InstinctProcPacket;
 import com.mifan.network.clientbound.OpenMidasTouchScreenPacket;
+import com.mifan.network.clientbound.OpenRecorderOfficerScreenPacket;
 import com.mifan.registry.ModMobEffects;
 import net.minecraft.client.Camera;
 import net.minecraft.client.gui.GuiGraphics;
@@ -91,6 +93,20 @@ public final class AbilityClientHandler {
                 packet.getDefaultPowerLevel(),
                 packet.getMinPowerLevel(),
                 packet.getMaxPowerLevel()));
+    }
+
+    public static void openRecorderOfficerScreen(OpenRecorderOfficerScreenPacket packet) {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.player == null || minecraft.level == null) {
+            return;
+        }
+        minecraft.setScreen(new RecorderOfficerTimerScreen(
+                packet.getSpellLevel(),
+                packet.getTargetEntityId(),
+                packet.getTargetName(),
+                packet.getDefaultSeconds(),
+                packet.getMinSeconds(),
+                packet.getMaxSeconds()));
     }
 
     public static void handleDangerPing(DangerSensePingPacket packet) {
@@ -458,7 +474,7 @@ public final class AbilityClientHandler {
     }
 
     private static void drawSonicPingHud(GuiGraphics guiGraphics, Player player, long gameTime) {
-        if (!sonicListeningActive || SONIC_SOUND_PINGS.isEmpty()) {
+        if (SONIC_SOUND_PINGS.isEmpty()) {
             return;
         }
 
@@ -489,11 +505,11 @@ public final class AbilityClientHandler {
                     : 0.45F + 1.1F * (float) Math.pow(Math.max(0.0D, 1.0D - distance / 28.0D), 1.45D);
             float ageProgress = 1.0F - Mth.clamp((float) (ping.expireAt - gameTime) / ping.durationTicks, 0.0F, 1.0F);
             float pulseScale = 1.0F + ageProgress * 1.15F;
-            int alpha = Mth.clamp((int) ((1.08F - ageProgress * 0.38F) * 255.0F), 160, 255);
+            int alpha = Mth.clamp((int) ((1.12F - ageProgress * 0.26F) * 255.0F), 210, 255);
 
             poseStack.translate(x, y, 0.0F);
             poseStack.scale(dynamicScale * pulseScale, dynamicScale * pulseScale, 1.0F);
-            RenderSystem.setShaderColor(0.86F, 0.98F, 1.0F, alpha / 255.0F);
+            RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, alpha / 255.0F);
             guiGraphics.blit(
                     SONIC_ECHO_TEXTURE,
                     drawX,
@@ -591,19 +607,10 @@ public final class AbilityClientHandler {
             return;
         }
 
-        if (player.isCrouching()) {
-            if (!sonicListening) {
-                sonicListening = true;
-                sonicListenStartTime = gameTime;
-            }
-
-            if (gameTime - sonicListenStartTime >= 15L) {
-                sonicListeningActive = true;
-            }
-        } else {
-            sonicListening = false;
-            sonicListeningActive = false;
-            sonicListenStartTime = 0L;
+        sonicListening = true;
+        sonicListeningActive = true;
+        if (sonicListenStartTime == 0L) {
+            sonicListenStartTime = gameTime;
         }
     }
 
@@ -711,7 +718,7 @@ public final class AbilityClientHandler {
     }
 
     private static boolean canProcessSonicSound(Player player) {
-        return hasSonicSense(player) && sonicListeningActive;
+        return hasSonicSense(player);
     }
 
     private static void spawnOlfactionTrails(Player player, ClientLevel level, long gameTime) {
