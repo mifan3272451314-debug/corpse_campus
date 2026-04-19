@@ -48,6 +48,7 @@ public class SonicSenseSpell extends AbstractSpell {
         return List.of(
                 Component.translatable("tooltip.corpse_campus.range_blocks", getRevealRange(spellLevel)),
                 Component.translatable("tooltip.corpse_campus.sonic_mode"),
+                Component.translatable("tooltip.corpse_campus.sonic_mute_radius", "1.5"),
                 Component.translatable("tooltip.corpse_campus.toggle_cast"));
     }
 

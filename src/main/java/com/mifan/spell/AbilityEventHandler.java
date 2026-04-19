@@ -457,7 +457,7 @@ public final class AbilityEventHandler {
             spawnElementalDomainRing(serverLevel, player, spellLevel, gameTime);
         }
 
-        if (gameTime - data.getLong(AbilityRuntime.TAG_ELEMENTAL_DOMAIN_LAST_TICK) < AbilityRuntime.getElementalistInterval()) {
+        if (gameTime - data.getLong(AbilityRuntime.TAG_ELEMENTAL_DOMAIN_LAST_TICK) < AbilityRuntime.getElementalistInterval(data)) {
             return;
         }
 

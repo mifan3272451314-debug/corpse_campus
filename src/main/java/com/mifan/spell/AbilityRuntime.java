@@ -469,8 +469,8 @@ public final class AbilityRuntime {
         return 8 + Math.max(0, spellLevel - 1) * 2;
     }
 
-    public static int getElementalistInterval() {
-        return ELEMENTAL_DOMAIN_INTERVAL;
+    public static int getElementalistInterval(CompoundTag data) {
+        return data.getBoolean(TAG_ELEMENTAL_DOMAIN_CLOSED) ? 6 : ELEMENTAL_DOMAIN_INTERVAL;
     }
 
     public static void clearElementalDomain(CompoundTag data) {
@@ -558,37 +558,46 @@ public final class AbilityRuntime {
     }
 
     public static void triggerElementalistBurst(ServerLevel level, Player caster, LivingEntity target, int spellLevel) {
+        boolean closedDomain = caster.getPersistentData().getBoolean(TAG_ELEMENTAL_DOMAIN_CLOSED);
+        int rapidCastCount = closedDomain ? 2 : 1;
         int element = level.random.nextInt(3);
         switch (element) {
             case 0 -> castRegisteredElementalSpell(level, caster, target, spellLevel,
-                    SpellRegistry.FIREBOLT_SPELL.get(), ElementalSpellType.FIRE);
+                    SpellRegistry.FIREBOLT_SPELL.get(), ElementalSpellType.FIRE, rapidCastCount);
             case 1 -> castRegisteredElementalSpell(level, caster, target, spellLevel,
-                    SpellRegistry.ICICLE_SPELL.get(), ElementalSpellType.WATER);
+                    SpellRegistry.ICICLE_SPELL.get(), ElementalSpellType.WATER, rapidCastCount);
             default -> castRegisteredElementalSpell(level, caster, target, spellLevel,
-                    SpellRegistry.LIGHTNING_BOLT_SPELL.get(), ElementalSpellType.LIGHTNING);
+                    SpellRegistry.LIGHTNING_BOLT_SPELL.get(), ElementalSpellType.LIGHTNING, rapidCastCount);
         }
     }
 
     private static void castRegisteredElementalSpell(ServerLevel level, Player caster, LivingEntity target, int spellLevel,
-            AbstractSpell spell, ElementalSpellType type) {
+            AbstractSpell spell, ElementalSpellType type, int casts) {
         MagicData magicData = MagicData.getPlayerMagicData(caster);
         Vec3 originalPos = caster.position();
         float originalYRot = caster.getYRot();
         float originalXRot = caster.getXRot();
 
-        Vec3 castOrigin = getElementalCastOrigin(target, type);
-        Vec3 direction = target.getEyePosition().subtract(castOrigin).normalize();
+        for (int i = 0; i < casts; i++) {
+            Vec3 castOrigin = getElementalCastOrigin(caster, target, type, i);
+            Vec3 aimTarget = target.getBoundingBox().getCenter().add(0.0D, target.getBbHeight() * 0.15D, 0.0D);
+            Vec3 direction = aimTarget.subtract(castOrigin);
+            if (direction.lengthSqr() < 1.0E-4D) {
+                continue;
+            }
 
-        caster.teleportTo(castOrigin.x, castOrigin.y, castOrigin.z);
-        float yaw = (float) Mth.wrapDegrees(Math.toDegrees(Math.atan2(-direction.x, direction.z)));
-        float pitch = (float) Mth.wrapDegrees(-Math.toDegrees(Math.atan2(direction.y,
-                Math.sqrt(direction.x * direction.x + direction.z * direction.z))));
-        caster.setYRot(yaw);
-        caster.setYHeadRot(yaw);
-        caster.setYBodyRot(yaw);
-        caster.setXRot(pitch);
+            direction = direction.normalize();
+            caster.teleportTo(castOrigin.x, castOrigin.y, castOrigin.z);
+            float yaw = (float) Mth.wrapDegrees(Math.toDegrees(Math.atan2(-direction.x, direction.z)));
+            float pitch = (float) Mth.wrapDegrees(-Math.toDegrees(Math.atan2(direction.y,
+                    Math.sqrt(direction.x * direction.x + direction.z * direction.z))));
+            caster.setYRot(yaw);
+            caster.setYHeadRot(yaw);
+            caster.setYBodyRot(yaw);
+            caster.setXRot(pitch);
 
-        spell.onCast(level, Math.max(1, Math.min(3, spellLevel)), caster, CastSource.NONE, magicData);
+            spell.onCast(level, 1, caster, CastSource.NONE, magicData);
+        }
 
         caster.teleportTo(originalPos.x, originalPos.y, originalPos.z);
         caster.setYRot(originalYRot);
@@ -597,11 +606,19 @@ public final class AbilityRuntime {
         caster.setXRot(originalXRot);
     }
 
-    private static Vec3 getElementalCastOrigin(LivingEntity target, ElementalSpellType type) {
-        Vec3 base = target.getEyePosition();
+    private static Vec3 getElementalCastOrigin(LivingEntity caster, LivingEntity target, ElementalSpellType type, int castIndex) {
+        Vec3 base = target.getBoundingBox().getCenter();
+        Vec3 fromCaster = base.subtract(caster.getEyePosition());
+        Vec3 horizontal = new Vec3(fromCaster.x, 0.0D, fromCaster.z);
+        if (horizontal.lengthSqr() < 1.0E-4D) {
+            horizontal = new Vec3(0.0D, 0.0D, 1.0D);
+        }
+        horizontal = horizontal.normalize();
+        Vec3 side = new Vec3(-horizontal.z, 0.0D, horizontal.x);
+        double lateral = castIndex == 0 ? -0.45D : 0.45D;
         return switch (type) {
-            case FIRE -> base.add(0.0D, 0.15D, -1.4D);
-            case WATER -> base.add(0.0D, 0.1D, -1.6D);
+            case FIRE -> base.subtract(horizontal.scale(3.0D)).add(side.scale(lateral)).add(0.0D, 0.4D, 0.0D);
+            case WATER -> base.subtract(horizontal.scale(3.3D)).add(side.scale(lateral * 0.85D)).add(0.0D, 0.55D, 0.0D);
             case LIGHTNING -> base.add(0.0D, 6.0D, 0.0D);
         };
     }
