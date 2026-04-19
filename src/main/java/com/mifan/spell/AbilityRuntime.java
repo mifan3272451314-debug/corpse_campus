@@ -347,7 +347,8 @@ public final class AbilityRuntime {
                 && stack.getTag().contains(ITEM_TAG_RECORDER_OFFICER_NOTE, Tag.TAG_COMPOUND);
     }
 
-    public static void recordRecorderOfficerPaper(ItemStack stack, LivingEntity caster, BlockPos blockPos, Direction face) {
+    public static void recordRecorderOfficerPaper(ItemStack stack, LivingEntity caster, BlockPos blockPos,
+            Direction face) {
         CompoundTag note = new CompoundTag();
         Vec3 center = Vec3.atCenterOf(blockPos).add(Vec3.atLowerCornerOf(face.getNormal()).scale(0.501D));
         note.putDouble(ITEM_TAG_RECORDER_OFFICER_X, center.x);
@@ -357,7 +358,8 @@ public final class AbilityRuntime {
         stack.getOrCreateTag().put(ITEM_TAG_RECORDER_OFFICER_NOTE, note);
     }
 
-    public static void armRecorderOfficerTarget(ServerPlayer caster, int spellLevel, int targetEntityId, int timerSeconds) {
+    public static void armRecorderOfficerTarget(ServerPlayer caster, int spellLevel, int targetEntityId,
+            int timerSeconds) {
         ItemStack stack = caster.getMainHandItem();
         if (!hasRecorderOfficerRecord(stack)) {
             caster.displayClientMessage(net.minecraft.network.chat.Component.translatable(
@@ -375,7 +377,8 @@ public final class AbilityRuntime {
         CompoundTag note = stack.getTag().getCompound(ITEM_TAG_RECORDER_OFFICER_NOTE);
         CompoundTag data = target.getPersistentData();
         data.putBoolean(TAG_RECORDER_OFFICER_ARMED, true);
-        data.putLong(TAG_RECORDER_OFFICER_END, caster.level().getGameTime() + clampRecorderOfficerSeconds(timerSeconds) * 20L);
+        data.putLong(TAG_RECORDER_OFFICER_END,
+                caster.level().getGameTime() + clampRecorderOfficerSeconds(timerSeconds) * 20L);
         data.putDouble(TAG_RECORDER_OFFICER_X, note.getDouble(ITEM_TAG_RECORDER_OFFICER_X));
         data.putDouble(TAG_RECORDER_OFFICER_Y, note.getDouble(ITEM_TAG_RECORDER_OFFICER_Y));
         data.putDouble(TAG_RECORDER_OFFICER_Z, note.getDouble(ITEM_TAG_RECORDER_OFFICER_Z));
@@ -384,8 +387,10 @@ public final class AbilityRuntime {
 
         stack.shrink(1);
         caster.displayClientMessage(net.minecraft.network.chat.Component.translatable(
-                "message.corpse_campus.recorder_officer_armed", target.getDisplayName(), clampRecorderOfficerSeconds(timerSeconds)), true);
-        caster.level().playSound(null, target.blockPosition(), SoundEvents.AMETHYST_BLOCK_CHIME, SoundSource.PLAYERS, 0.5F, 1.15F);
+                "message.corpse_campus.recorder_officer_armed", target.getDisplayName(),
+                clampRecorderOfficerSeconds(timerSeconds)), true);
+        caster.level().playSound(null, target.blockPosition(), SoundEvents.AMETHYST_BLOCK_CHIME, SoundSource.PLAYERS,
+                0.5F, 1.15F);
     }
 
     public static void tickRecorderOfficer(LivingEntity entity, long gameTime) {
@@ -413,7 +418,8 @@ public final class AbilityRuntime {
         ServerLevel destinationLevel = currentLevel;
         ResourceLocation dimensionId = ResourceLocation.tryParse(dimensionKey);
         if (dimensionId != null && currentLevel.getServer() != null) {
-            ServerLevel resolved = currentLevel.getServer().getLevel(ResourceKey.create(Registries.DIMENSION, dimensionId));
+            ServerLevel resolved = currentLevel.getServer()
+                    .getLevel(ResourceKey.create(Registries.DIMENSION, dimensionId));
             if (resolved != null) {
                 destinationLevel = resolved;
             }
@@ -428,7 +434,8 @@ public final class AbilityRuntime {
         }
 
         entity.fallDistance = 0.0F;
-        destinationLevel.playSound(null, BlockPos.containing(x, y, z), SoundEvents.CHORUS_FRUIT_TELEPORT, SoundSource.PLAYERS, 0.65F, 1.1F);
+        destinationLevel.playSound(null, BlockPos.containing(x, y, z), SoundEvents.CHORUS_FRUIT_TELEPORT,
+                SoundSource.PLAYERS, 0.65F, 1.1F);
         destinationLevel.sendParticles(ParticleTypes.PORTAL, x, y + 0.6D, z, 30, 0.35D, 0.5D, 0.35D, 0.05D);
     }
 
@@ -472,7 +479,7 @@ public final class AbilityRuntime {
     }
 
     public static int getElementalistInterval(CompoundTag data) {
-        return data.getBoolean(TAG_ELEMENTAL_DOMAIN_CLOSED) ? 6 : ELEMENTAL_DOMAIN_INTERVAL;
+        return data.getBoolean(TAG_ELEMENTAL_DOMAIN_CLOSED) ? 12 : ELEMENTAL_DOMAIN_INTERVAL * 2;
     }
 
     public static void clearElementalDomain(CompoundTag data) {
@@ -565,7 +572,8 @@ public final class AbilityRuntime {
         ElementalBurstOption burst = switch (level.random.nextInt(3)) {
             case 0 -> pickRandomFireBurst(level.random);
             case 1 -> pickRandomIceBurst(level.random);
-            default -> new ElementalBurstOption(SpellRegistry.LIGHTNING_BOLT_SPELL.get(), ElementalSpellType.LIGHTNING, 1);
+            default ->
+                new ElementalBurstOption(SpellRegistry.LIGHTNING_BOLT_SPELL.get(), ElementalSpellType.LIGHTNING, 1);
         };
 
         castRegisteredElementalSpell(level, caster, target, spellLevel,
@@ -573,32 +581,38 @@ public final class AbilityRuntime {
     }
 
     private static ElementalBurstOption pickRandomFireBurst(RandomSource random) {
-        return switch (random.nextInt(6)) {
+        return switch (random.nextInt(5)) {
             case 0 -> new ElementalBurstOption(SpellRegistry.FIREBOLT_SPELL.get(), ElementalSpellType.FIRE, 1);
             case 1 -> new ElementalBurstOption(SpellRegistry.FIREBALL_SPELL.get(), ElementalSpellType.FIRE, 1);
-            case 2 -> new ElementalBurstOption(SpellRegistry.FIRE_BREATH_SPELL.get(), ElementalSpellType.FIRE, 1);
-            case 3 -> new ElementalBurstOption(SpellRegistry.BLAZE_STORM_SPELL.get(), ElementalSpellType.FIRE, 1);
-            case 4 -> new ElementalBurstOption(SpellRegistry.MAGMA_BOMB_SPELL.get(), ElementalSpellType.FIRE, 1);
+            case 2 -> new ElementalBurstOption(SpellRegistry.BLAZE_STORM_SPELL.get(), ElementalSpellType.FIRE, 1);
+            case 3 -> new ElementalBurstOption(SpellRegistry.MAGMA_BOMB_SPELL.get(), ElementalSpellType.FIRE, 1);
             default -> new ElementalBurstOption(SpellRegistry.FIREFLY_SWARM_SPELL.get(), ElementalSpellType.FIRE, 2);
         };
     }
 
     private static ElementalBurstOption pickRandomIceBurst(RandomSource random) {
-        return switch (random.nextInt(3)) {
+        return switch (random.nextInt(2)) {
             case 0 -> new ElementalBurstOption(SpellRegistry.ICICLE_SPELL.get(), ElementalSpellType.WATER, 1);
-            case 1 -> new ElementalBurstOption(SpellRegistry.ICE_BLOCK_SPELL.get(), ElementalSpellType.WATER, 1);
-            default -> new ElementalBurstOption(SpellRegistry.CONE_OF_COLD_SPELL.get(), ElementalSpellType.WATER, 1);
+            default -> new ElementalBurstOption(SpellRegistry.ICE_BLOCK_SPELL.get(), ElementalSpellType.WATER, 1);
         };
     }
 
-    private static void castRegisteredElementalSpell(ServerLevel level, Player caster, LivingEntity target, int spellLevel,
+    private static void castRegisteredElementalSpell(ServerLevel level, Player caster, LivingEntity target,
+            int spellLevel,
             AbstractSpell spell, ElementalSpellType type, int casts) {
         MagicData magicData = MagicData.getPlayerMagicData(caster);
         Vec3 originalPos = caster.position();
         float originalYRot = caster.getYRot();
         float originalXRot = caster.getXRot();
 
+        int actualCasts = 0;
         for (int i = 0; i < casts; i++) {
+            // 50%概率跳过这次施法
+            if (level.random.nextBoolean()) {
+                continue;
+            }
+
+            actualCasts++;
             Vec3 castOrigin = getElementalCastOrigin(caster, target, type, i);
             Vec3 aimTarget = target.getBoundingBox().getCenter().add(0.0D, target.getBbHeight() * 0.15D, 0.0D);
             Vec3 direction = aimTarget.subtract(castOrigin);
@@ -616,7 +630,27 @@ public final class AbilityRuntime {
             caster.setYBodyRot(yaw);
             caster.setXRot(pitch);
 
-            spell.onCast(level, 1, caster, CastSource.NONE, magicData);
+            spell.onCast(level, spellLevel, caster, CastSource.NONE, magicData);
+        }
+
+        // 如果一次都没施法（运气极差），至少施法一次作为保底
+        if (actualCasts == 0 && casts > 0) {
+            // 使用第一个位置施法一次
+            Vec3 castOrigin = getElementalCastOrigin(caster, target, type, 0);
+            Vec3 aimTarget = target.getBoundingBox().getCenter().add(0.0D, target.getBbHeight() * 0.15D, 0.0D);
+            Vec3 direction = aimTarget.subtract(castOrigin);
+            if (direction.lengthSqr() >= 1.0E-4D) {
+                direction = direction.normalize();
+                caster.teleportTo(castOrigin.x, castOrigin.y, castOrigin.z);
+                float yaw = (float) Mth.wrapDegrees(Math.toDegrees(Math.atan2(-direction.x, direction.z)));
+                float pitch = (float) Mth.wrapDegrees(-Math.toDegrees(Math.atan2(direction.y,
+                        Math.sqrt(direction.x * direction.x + direction.z * direction.z))));
+                caster.setYRot(yaw);
+                caster.setYHeadRot(yaw);
+                caster.setYBodyRot(yaw);
+                caster.setXRot(pitch);
+                spell.onCast(level, spellLevel, caster, CastSource.NONE, magicData);
+            }
         }
 
         caster.teleportTo(originalPos.x, originalPos.y, originalPos.z);
@@ -626,7 +660,8 @@ public final class AbilityRuntime {
         caster.setXRot(originalXRot);
     }
 
-    private static Vec3 getElementalCastOrigin(LivingEntity caster, LivingEntity target, ElementalSpellType type, int castIndex) {
+    private static Vec3 getElementalCastOrigin(LivingEntity caster, LivingEntity target, ElementalSpellType type,
+            int castIndex) {
         Vec3 base = target.getBoundingBox().getCenter();
         Vec3 fromCaster = base.subtract(caster.getEyePosition());
         Vec3 horizontal = new Vec3(fromCaster.x, 0.0D, fromCaster.z);
@@ -881,7 +916,8 @@ public final class AbilityRuntime {
     }
 
     public static void clearMark(CompoundTag data) {
-        clear(data, TAG_MARK_ACTIVE, TAG_MARK_X, TAG_MARK_Y, TAG_MARK_Z, TAG_MARK_END, TAG_MARK_LEVEL, TAG_MARK_TRIGGERED);
+        clear(data, TAG_MARK_ACTIVE, TAG_MARK_X, TAG_MARK_Y, TAG_MARK_Z, TAG_MARK_END, TAG_MARK_LEVEL,
+                TAG_MARK_TRIGGERED);
     }
 
     public static Vec3 getMarkCenter(CompoundTag data) {
@@ -1130,7 +1166,8 @@ public final class AbilityRuntime {
         }
 
         if (weapon.isDamageableItem()) {
-            weapon.hurtAndBreak(EXECUTIONER_DURABILITY_COST, caster, broken -> broken.broadcastBreakEvent(caster.getUsedItemHand()));
+            weapon.hurtAndBreak(EXECUTIONER_DURABILITY_COST, caster,
+                    broken -> broken.broadcastBreakEvent(caster.getUsedItemHand()));
         }
     }
 
@@ -1207,7 +1244,9 @@ public final class AbilityRuntime {
         if (weapon.getItem() instanceof SwordItem swordItem) {
             base = swordItem.getDamage();
         }
-        return Math.max(1.0F, base * EXECUTIONER_DAMAGE_RATIO + (float) caster.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.ATTACK_DAMAGE) * 0.1F);
+        return Math.max(1.0F, base * EXECUTIONER_DAMAGE_RATIO
+                + (float) caster.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.ATTACK_DAMAGE)
+                        * 0.1F);
     }
 
     private static void performExecutionerWaveSlash(Level level, LivingEntity caster, int spellLevel, float damage) {
@@ -1272,7 +1311,7 @@ public final class AbilityRuntime {
             if (dot < minDot) {
                 continue;
             }
-            
+
             target.invulnerableTime = 0;
             target.hurt(level.damageSources().mobAttack(caster), damage);
             incrementExecutionerShieldPressure(target);

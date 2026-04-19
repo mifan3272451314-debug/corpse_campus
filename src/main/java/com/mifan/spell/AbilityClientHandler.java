@@ -66,7 +66,10 @@ public final class AbilityClientHandler {
     private static final int SONIC_ECHO_FRAME_DURATION = 10;
     private static final float SONIC_WORLD_ICON_BASE_SCALE = 0.045F;
     private static final double SONIC_NEAR_SOUND_MUTE_RADIUS = 1.5D;
+    private static final long OLFACTION_FOOTPRINT_DURATION_TICKS = 300L;
+    private static final long OLFACTION_FOOTPRINT_SPAWN_INTERVAL_TICKS = 6L;
     private static final Map<Integer, Long> DANGER_ENTITY_MARKS = new HashMap<>();
+    private static final List<OlfactionFootprintParticle> OLFACTION_FOOTPRINTS = new ArrayList<>();
     private static boolean sonicListening;
     private static boolean sonicListeningActive;
     private static long sonicListenStartTime;
@@ -738,7 +741,13 @@ public final class AbilityClientHandler {
     }
 
     private static void spawnOlfactionTrails(Player player, ClientLevel level, long gameTime) {
-        if (!hasOlfaction(player) || gameTime % 3L != 0L) {
+        if (!hasOlfaction(player)) {
+            OLFACTION_FOOTPRINTS.clear();
+            return;
+        }
+
+        renderOlfactionFootprints(level, gameTime);
+        if (gameTime % 3L != 0L) {
             return;
         }
 
@@ -749,13 +758,26 @@ public final class AbilityClientHandler {
 
         for (LivingEntity entity : level.getEntitiesOfClass(LivingEntity.class, box,
                 target -> target != player && target.isAlive() && isOlfactionTrackable(target))) {
-            spawnOlfactionFootprint(level, entity, gameTime);
+            captureOlfactionFootprint(entity, gameTime);
         }
     }
 
-    private static void spawnOlfactionFootprint(ClientLevel level, LivingEntity entity, long gameTime) {
+    private static void captureOlfactionFootprint(LivingEntity entity, long gameTime) {
         double motion = entity.position().distanceToSqr(new Vec3(entity.xo, entity.yo, entity.zo));
         if (motion < 0.0025D && gameTime % 9L != 0L) {
+            return;
+        }
+
+        long lastSpawnTime = Long.MIN_VALUE;
+        for (int i = OLFACTION_FOOTPRINTS.size() - 1; i >= 0; i--) {
+            OlfactionFootprintParticle footprint = OLFACTION_FOOTPRINTS.get(i);
+            if (footprint.entityId == entity.getId()) {
+                lastSpawnTime = footprint.createdAt;
+                break;
+            }
+        }
+
+        if (gameTime - lastSpawnTime < OLFACTION_FOOTPRINT_SPAWN_INTERVAL_TICKS) {
             return;
         }
 
@@ -764,20 +786,37 @@ public final class AbilityClientHandler {
         double z = Mth.lerp(progress, entity.zo, entity.getZ());
         double y = entity.getY() + 0.03D;
 
-        level.addParticle(new DustParticleOptions(new Vector3f(0.92F, 0.12F, 0.16F), 0.9F),
-                x,
-                y,
-                z,
-                0.0D,
-                0.01D,
-                0.0D);
-        level.addParticle(new DustParticleOptions(new Vector3f(0.72F, 0.05F, 0.08F), 0.55F),
-                x + (entity.getBbWidth() * 0.2D),
-                y,
-                z - (entity.getBbWidth() * 0.2D),
-                0.0D,
-                0.005D,
-                0.0D);
+        OLFACTION_FOOTPRINTS.add(new OlfactionFootprintParticle(entity.getId(), x, y, z,
+                gameTime + OLFACTION_FOOTPRINT_DURATION_TICKS, gameTime));
+    }
+
+    private static void renderOlfactionFootprints(ClientLevel level, long gameTime) {
+        Iterator<OlfactionFootprintParticle> iterator = OLFACTION_FOOTPRINTS.iterator();
+        while (iterator.hasNext()) {
+            OlfactionFootprintParticle footprint = iterator.next();
+            if (footprint.expireAt <= gameTime) {
+                iterator.remove();
+                continue;
+            }
+
+            double ageRatio = 1.0D - (double) (footprint.expireAt - gameTime) / (double) OLFACTION_FOOTPRINT_DURATION_TICKS;
+            double alphaScale = Mth.clamp(1.0D - ageRatio * 0.75D, 0.2D, 1.0D);
+
+            level.addParticle(new DustParticleOptions(new Vector3f(0.92F, 0.12F, 0.16F), (float) (0.55F + alphaScale * 0.35F)),
+                    footprint.x,
+                    footprint.y,
+                    footprint.z,
+                    0.0D,
+                    0.002D,
+                    0.0D);
+            level.addParticle(new DustParticleOptions(new Vector3f(0.72F, 0.05F, 0.08F), (float) (0.3F + alphaScale * 0.25F)),
+                    footprint.x + 0.08D,
+                    footprint.y,
+                    footprint.z - 0.08D,
+                    0.0D,
+                    0.001D,
+                    0.0D);
+        }
     }
 
     private static boolean isOlfactionTrackable(LivingEntity entity) {
@@ -786,6 +825,24 @@ public final class AbilityClientHandler {
 
     private static int getEffectLevel(MobEffectInstance effectInstance) {
         return effectInstance == null ? 1 : effectInstance.getAmplifier() + 1;
+    }
+
+    private static final class OlfactionFootprintParticle {
+        private final int entityId;
+        private final double x;
+        private final double y;
+        private final double z;
+        private final long expireAt;
+        private final long createdAt;
+
+        private OlfactionFootprintParticle(int entityId, double x, double y, double z, long expireAt, long createdAt) {
+            this.entityId = entityId;
+            this.x = x;
+            this.y = y;
+            this.z = z;
+            this.expireAt = expireAt;
+            this.createdAt = createdAt;
+        }
     }
 
     private static double getSonicRevealRange(int spellLevel) {
