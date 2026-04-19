@@ -5,6 +5,7 @@ import com.mifan.spell.dongyue.ExecutionerSpell;
 import com.mifan.spell.dongyue.InstinctSpell;
 import com.mifan.spell.dongyue.ManiaSpell;
 import com.mifan.spell.dongyue.NecroticRebirthSpell;
+import com.mifan.spell.rizhao.MidasTouchSpell;
 import com.mifan.spell.xujing.ElementalistSpell;
 import com.mifan.spell.xujing.MarkSpell;
 import com.mifan.spell.xujing.DangerSenseSpell;
@@ -32,6 +33,8 @@ public final class ModSpells {
             OlfactionSpell::new);
     public static final RegistryObject<AbstractSpell> ELEMENTALIST = SPELLS.register("elementalist",
             ElementalistSpell::new);
+    public static final RegistryObject<AbstractSpell> MIDAS_TOUCH = SPELLS.register("midas_touch",
+            MidasTouchSpell::new);
     public static final RegistryObject<AbstractSpell> TELEKINESIS = SPELLS.register("telekinesis",
             TelekinesisSpell::new);
     public static final RegistryObject<AbstractSpell> DOMINANCE = SPELLS.register("dominance", DominanceSpell::new);

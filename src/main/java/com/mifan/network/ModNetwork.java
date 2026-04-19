@@ -4,7 +4,9 @@ import com.mifan.corpsecampus;
 import com.mifan.network.clientbound.DangerSensePingPacket;
 import com.mifan.network.clientbound.InstinctProcPacket;
 import com.mifan.network.clientbound.OpenDominanceScreenPacket;
+import com.mifan.network.clientbound.OpenMidasTouchScreenPacket;
 import com.mifan.network.serverbound.SetDominanceTargetPacket;
+import com.mifan.network.serverbound.SetMidasTouchTimerPacket;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkDirection;
@@ -51,10 +53,22 @@ public final class ModNetwork {
                 .consumerMainThread(OpenDominanceScreenPacket::handle)
                 .add();
 
+        CHANNEL.messageBuilder(OpenMidasTouchScreenPacket.class, packetId++, NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(OpenMidasTouchScreenPacket::encode)
+                .decoder(OpenMidasTouchScreenPacket::decode)
+                .consumerMainThread(OpenMidasTouchScreenPacket::handle)
+                .add();
+
         CHANNEL.messageBuilder(SetDominanceTargetPacket.class, packetId++, NetworkDirection.PLAY_TO_SERVER)
                 .encoder(SetDominanceTargetPacket::encode)
                 .decoder(SetDominanceTargetPacket::decode)
                 .consumerMainThread(SetDominanceTargetPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(SetMidasTouchTimerPacket.class, packetId++, NetworkDirection.PLAY_TO_SERVER)
+                .encoder(SetMidasTouchTimerPacket::encode)
+                .decoder(SetMidasTouchTimerPacket::decode)
+                .consumerMainThread(SetMidasTouchTimerPacket::handle)
                 .add();
     }
 

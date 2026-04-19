@@ -23,6 +23,7 @@ import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.monster.Zombie;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -30,6 +31,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.event.entity.player.AttackEntityEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.event.entity.living.LivingAttackEvent;
@@ -64,11 +66,22 @@ public final class AbilityEventHandler {
         tickOlfaction(player, gameTime);
         tickElementalDomain(player, data, gameTime);
         AbilityRuntime.tickDominance(player);
+        MidasBombRuntime.tickPlayerInventory(player);
         tickMagneticCling(player, data, gameTime);
         tickMania(player, data, gameTime);
         tickNecroticUndead(player, data, gameTime);
         tickMark(player, data, gameTime);
         clearExpiredInstinct(player, data, gameTime);
+    }
+
+    @SubscribeEvent
+    public static void onLevelTick(TickEvent.LevelTickEvent event) {
+        if (event.phase != TickEvent.Phase.END || event.level.isClientSide()) {
+            return;
+        }
+        if (event.level instanceof ServerLevel serverLevel) {
+            MidasBombRuntime.tickLevel(serverLevel);
+        }
     }
 
     @SubscribeEvent
@@ -245,6 +258,38 @@ public final class AbilityEventHandler {
 
         AbilityRuntime.retargetDominatedMobs(player, livingTarget);
         player.getPersistentData().remove(AbilityRuntime.TAG_DOMINANCE_TARGET_PLAYER);
+    }
+
+    @SubscribeEvent
+    public static void onRightClickItem(PlayerInteractEvent.RightClickItem event) {
+        if (event.getLevel().isClientSide) {
+            return;
+        }
+        if (MidasBombRuntime.detonateHeldBomb(event.getEntity(), event.getHand())) {
+            event.setCanceled(true);
+        }
+    }
+
+    @SubscribeEvent
+    public static void onRightClickBlock(PlayerInteractEvent.RightClickBlock event) {
+        if (event.getLevel().isClientSide) {
+            return;
+        }
+        boolean explodedBlock = MidasBombRuntime.detonateBlockIfArmed(event.getLevel(), event.getPos());
+        boolean explodedItem = MidasBombRuntime.detonateHeldBomb(event.getEntity(), event.getHand());
+        if (explodedBlock || explodedItem) {
+            event.setCanceled(true);
+        }
+    }
+
+    @SubscribeEvent
+    public static void onLeftClickBlock(PlayerInteractEvent.LeftClickBlock event) {
+        if (event.getLevel().isClientSide) {
+            return;
+        }
+        if (MidasBombRuntime.detonateBlockIfArmed(event.getLevel(), event.getPos())) {
+            event.setCanceled(true);
+        }
     }
 
     private static void tickSonicSense(Player player, long gameTime) {

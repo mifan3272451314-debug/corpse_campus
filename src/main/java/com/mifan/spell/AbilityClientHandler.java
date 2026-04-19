@@ -2,10 +2,12 @@ package com.mifan.spell;
 
 import com.mifan.corpsecampus;
 import com.mifan.client.screen.DominanceTargetScreen;
+import com.mifan.client.screen.MidasTouchTimerScreen;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mifan.network.clientbound.DangerSensePingPacket;
 import com.mifan.network.clientbound.InstinctProcPacket;
+import com.mifan.network.clientbound.OpenMidasTouchScreenPacket;
 import com.mifan.registry.ModMobEffects;
 import net.minecraft.client.Camera;
 import net.minecraft.client.gui.GuiGraphics;
@@ -74,6 +76,18 @@ public final class AbilityClientHandler {
             return;
         }
         minecraft.setScreen(new DominanceTargetScreen());
+    }
+
+    public static void openMidasTouchTimerScreen(OpenMidasTouchScreenPacket packet) {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.player == null || minecraft.level == null) {
+            return;
+        }
+        minecraft.setScreen(new MidasTouchTimerScreen(
+                packet.getSpellLevel(),
+                packet.getDefaultSeconds(),
+                packet.getMinSeconds(),
+                packet.getMaxSeconds()));
     }
 
     public static void handleDangerPing(DangerSensePingPacket packet) {
