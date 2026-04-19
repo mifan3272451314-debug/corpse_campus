@@ -5,13 +5,19 @@ import com.mifan.client.screen.DominanceTargetScreen;
 import com.mifan.client.screen.MidasTouchTimerScreen;
 import com.mifan.client.screen.RecorderOfficerTimerScreen;
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.BufferBuilder;
+import com.mojang.blaze3d.vertex.BufferUploader;
+import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.Tesselator;
+import com.mojang.blaze3d.vertex.VertexFormat;
 import com.mifan.network.clientbound.DangerSensePingPacket;
 import com.mifan.network.clientbound.InstinctProcPacket;
 import com.mifan.network.clientbound.OpenMidasTouchScreenPacket;
 import com.mifan.network.clientbound.OpenRecorderOfficerScreenPacket;
 import com.mifan.registry.ModMobEffects;
 import net.minecraft.client.Camera;
+import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.Minecraft;
@@ -29,6 +35,7 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.RenderGuiOverlayEvent;
+import net.minecraftforge.client.event.RenderLevelStageEvent;
 import net.minecraftforge.client.event.ViewportEvent;
 import net.minecraftforge.event.PlayLevelSoundEvent;
 import net.minecraftforge.event.TickEvent;
@@ -37,9 +44,7 @@ import net.minecraftforge.fml.common.Mod;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvents;
 import org.joml.Matrix4f;
-import org.joml.Quaternionf;
 import org.joml.Vector3f;
-import org.joml.Vector4f;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -58,6 +63,7 @@ public final class AbilityClientHandler {
     private static final int SONIC_ECHO_FRAME_HEIGHT = 32;
     private static final int SONIC_ECHO_FRAME_COUNT = 5;
     private static final int SONIC_ECHO_FRAME_DURATION = 10;
+    private static final float SONIC_WORLD_ICON_BASE_SCALE = 0.045F;
     private static final Map<Integer, Long> DANGER_ENTITY_MARKS = new HashMap<>();
     private static final List<SoundPing> SONIC_SOUND_PINGS = new ArrayList<>();
     private static boolean sonicListening;
@@ -312,6 +318,20 @@ public final class AbilityClientHandler {
     }
 
     @SubscribeEvent
+    public static void onRenderLevelStage(RenderLevelStageEvent event) {
+        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_TRANSLUCENT_BLOCKS) {
+            return;
+        }
+
+        Player player = localPlayer();
+        if (player == null || !hasSonicSense(player) || SONIC_SOUND_PINGS.isEmpty()) {
+            return;
+        }
+
+        renderSonicPingsInWorld(event.getPoseStack(), player, event.getPartialTick());
+    }
+
+    @SubscribeEvent
     public static void onRenderOverlay(RenderGuiOverlayEvent.Post event) {
         Player player = localPlayer();
         if (player == null) {
@@ -328,7 +348,6 @@ public final class AbilityClientHandler {
 
         if (hasSonicSense(player)) {
             drawDarkSonicOverlay(event.getGuiGraphics(), width, height, gameTime);
-            drawSonicPingHud(event.getGuiGraphics(), player, gameTime);
         }
 
         if (instinctOverlayUntil > gameTime) {
@@ -485,57 +504,62 @@ public final class AbilityClientHandler {
         guiGraphics.fill(width - 14, 0, width, height, (vignetteAlpha << 24) | 0x0D1318);
     }
 
-    private static void drawSonicPingHud(GuiGraphics guiGraphics, Player player, long gameTime) {
+    private static void renderSonicPingsInWorld(PoseStack poseStack, Player player, float partialTick) {
         if (SONIC_SOUND_PINGS.isEmpty()) {
             return;
         }
 
+        Minecraft minecraft = Minecraft.getInstance();
+        Camera camera = minecraft.gameRenderer.getMainCamera();
+        Vec3 cameraPos = camera.getPosition();
+        Vec3 playerPos = player.getPosition(partialTick);
+        long gameTime = player.level().getGameTime();
         int frameIndex = (sonicHudTick / SONIC_ECHO_FRAME_DURATION) % SONIC_ECHO_FRAME_COUNT;
-        Vec3 playerPos = player.getPosition(1.0F);
 
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
+        RenderSystem.depthMask(false);
+        RenderSystem.setShader(GameRenderer::getPositionTexColorShader);
+        RenderSystem.setShaderTexture(0, SONIC_ECHO_TEXTURE);
 
-        PoseStack poseStack = guiGraphics.pose();
         for (int i = SONIC_SOUND_PINGS.size() - 1; i >= 0; i--) {
             SoundPing ping = SONIC_SOUND_PINGS.get(i);
-            Vector3f screen = worldToScreen(ping.position.x, ping.position.y, ping.position.z);
-            if (Float.isNaN(screen.x())) {
-                continue;
-            }
-
             poseStack.pushPose();
 
-            int x = Mth.floor(screen.x());
-            int y = Mth.floor(screen.y());
-            int drawX = -SONIC_ECHO_FRAME_WIDTH / 2;
-            int drawY = -SONIC_ECHO_FRAME_HEIGHT / 2;
-
             double distance = playerPos.distanceTo(ping.position);
-            float dynamicScale = distance <= 0.1D
+            float distanceScale = distance <= 0.1D
                     ? 1.35F
-                    : 0.45F + 1.1F * (float) Math.pow(Math.max(0.0D, 1.0D - distance / 28.0D), 1.45D);
+                    : 0.55F + 0.9F * (float) Math.pow(Math.max(0.0D, 1.0D - distance / 28.0D), 1.2D);
             float ageProgress = 1.0F - Mth.clamp((float) (ping.expireAt - gameTime) / ping.durationTicks, 0.0F, 1.0F);
             float pulseScale = 1.0F + ageProgress * 1.15F;
-            int alpha = Mth.clamp((int) ((1.12F - ageProgress * 0.26F) * 255.0F), 210, 255);
+            float renderScale = SONIC_WORLD_ICON_BASE_SCALE * distanceScale * pulseScale;
+            int alpha = Mth.clamp((int) ((1.08F - ageProgress * 0.32F) * 255.0F), 180, 255);
 
-            poseStack.translate(x, y, 0.0F);
-            poseStack.scale(dynamicScale * pulseScale, dynamicScale * pulseScale, 1.0F);
-            RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, alpha / 255.0F);
-            guiGraphics.blit(
-                    SONIC_ECHO_TEXTURE,
-                    drawX,
-                    drawY,
-                    frameIndex * SONIC_ECHO_FRAME_WIDTH,
-                    0,
-                    SONIC_ECHO_FRAME_WIDTH,
-                    SONIC_ECHO_FRAME_HEIGHT,
-                    SONIC_ECHO_FRAME_WIDTH * SONIC_ECHO_FRAME_COUNT,
-                    SONIC_ECHO_FRAME_HEIGHT);
+            poseStack.translate(
+                    ping.position.x - cameraPos.x,
+                    ping.position.y - cameraPos.y,
+                    ping.position.z - cameraPos.z);
+            poseStack.mulPose(camera.rotation());
+            poseStack.scale(-renderScale, -renderScale, renderScale);
+
+            Matrix4f matrix = poseStack.last().pose();
+            float minU = (frameIndex * SONIC_ECHO_FRAME_WIDTH) / (float) (SONIC_ECHO_FRAME_WIDTH * SONIC_ECHO_FRAME_COUNT);
+            float maxU = ((frameIndex + 1) * SONIC_ECHO_FRAME_WIDTH)
+                    / (float) (SONIC_ECHO_FRAME_WIDTH * SONIC_ECHO_FRAME_COUNT);
+            float halfSize = SONIC_ECHO_FRAME_WIDTH / 2.0F;
+
+            BufferBuilder bufferBuilder = Tesselator.getInstance().getBuilder();
+            bufferBuilder.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR);
+            bufferBuilder.vertex(matrix, -halfSize, -halfSize, 0.0F).uv(minU, 1.0F).color(255, 255, 255, alpha).endVertex();
+            bufferBuilder.vertex(matrix, halfSize, -halfSize, 0.0F).uv(maxU, 1.0F).color(255, 255, 255, alpha).endVertex();
+            bufferBuilder.vertex(matrix, halfSize, halfSize, 0.0F).uv(maxU, 0.0F).color(255, 255, 255, alpha).endVertex();
+            bufferBuilder.vertex(matrix, -halfSize, halfSize, 0.0F).uv(minU, 0.0F).color(255, 255, 255, alpha).endVertex();
+            BufferUploader.drawWithShader(bufferBuilder.end());
 
             poseStack.popPose();
         }
 
+        RenderSystem.depthMask(true);
         RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
         RenderSystem.disableBlend();
     }
