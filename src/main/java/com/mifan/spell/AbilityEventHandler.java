@@ -11,6 +11,7 @@ import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.Tag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
@@ -60,6 +61,7 @@ public final class AbilityEventHandler {
 
         tickSonicSense(player, gameTime);
         tickDangerSense(player, data, gameTime);
+        tickOlfaction(player, gameTime);
         tickElementalDomain(player, data, gameTime);
         AbilityRuntime.tickDominance(player);
         tickMagneticCling(player, data, gameTime);
@@ -77,6 +79,7 @@ public final class AbilityEventHandler {
         }
 
         tickTelekinesisCaster(entity, entity.getPersistentData(), entity.level().getGameTime());
+        updateOlfactionTrail(entity, entity.level().getGameTime());
     }
 
     @SubscribeEvent
@@ -321,6 +324,30 @@ public final class AbilityEventHandler {
         }
     }
 
+    private static void tickOlfaction(Player player, long gameTime) {
+        MobEffectInstance effectInstance = player.getEffect(ModMobEffects.OLFACTION.get());
+        if (effectInstance == null || !(player.level() instanceof ServerLevel serverLevel)) {
+            return;
+        }
+
+        int spellLevel = AbilityRuntime.getEffectLevel(effectInstance);
+        double radius = AbilityRuntime.getOlfactionTrackRange(spellLevel);
+        AABB box = player.getBoundingBox().inflate(radius, 6.0D, radius);
+        boolean foundTrail = false;
+
+        for (LivingEntity target : serverLevel.getEntitiesOfClass(LivingEntity.class, box,
+                entity -> entity != player && entity.isAlive() && isOlfactionTrackable(entity))) {
+            if (isNearOlfactionTrail(player, target.getPersistentData(), gameTime)) {
+                foundTrail = true;
+                break;
+            }
+        }
+
+        if (foundTrail) {
+            player.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 30, 1, false, false, true));
+        }
+    }
+
     private static void tickElementalDomain(Player player, CompoundTag data, long gameTime) {
         MobEffectInstance effectInstance = player.getEffect(ModMobEffects.ELEMENTAL_DOMAIN.get());
         if (effectInstance == null) {
@@ -405,6 +432,78 @@ public final class AbilityEventHandler {
                 0.08D,
                 0.35D,
                 0.01D);
+    }
+
+    private static void updateOlfactionTrail(LivingEntity entity, long gameTime) {
+        CompoundTag data = entity.getPersistentData();
+        ListTag trail = data.getList(AbilityRuntime.TAG_OLFACTION_TRAIL, Tag.TAG_COMPOUND);
+        pruneExpiredOlfactionTrail(trail, gameTime);
+
+        if (!isOlfactionTrackable(entity)) {
+            if (trail.isEmpty()) {
+                data.remove(AbilityRuntime.TAG_OLFACTION_TRAIL);
+                data.remove(AbilityRuntime.TAG_OLFACTION_LAST_TRAIL_TICK);
+            } else {
+                data.put(AbilityRuntime.TAG_OLFACTION_TRAIL, trail);
+            }
+            return;
+        }
+
+        if (gameTime - data.getLong(AbilityRuntime.TAG_OLFACTION_LAST_TRAIL_TICK) < 6L) {
+            if (!trail.isEmpty()) {
+                data.put(AbilityRuntime.TAG_OLFACTION_TRAIL, trail);
+            }
+            return;
+        }
+
+        data.putLong(AbilityRuntime.TAG_OLFACTION_LAST_TRAIL_TICK, gameTime);
+
+        CompoundTag footprint = new CompoundTag();
+        footprint.putDouble("x", entity.getX());
+        footprint.putDouble("y", entity.getY() + 0.02D);
+        footprint.putDouble("z", entity.getZ());
+        footprint.putLong("expire", gameTime + 40L);
+        trail.add(footprint);
+
+        while (trail.size() > 12) {
+            trail.remove(0);
+        }
+
+        data.put(AbilityRuntime.TAG_OLFACTION_TRAIL, trail);
+    }
+
+    private static void pruneExpiredOlfactionTrail(ListTag trail, long gameTime) {
+        for (int i = trail.size() - 1; i >= 0; i--) {
+            if (!(trail.get(i) instanceof CompoundTag entry) || entry.getLong("expire") <= gameTime) {
+                trail.remove(i);
+            }
+        }
+    }
+
+    private static boolean isNearOlfactionTrail(Player player, CompoundTag data, long gameTime) {
+        ListTag trail = data.getList(AbilityRuntime.TAG_OLFACTION_TRAIL, Tag.TAG_COMPOUND);
+        pruneExpiredOlfactionTrail(trail, gameTime);
+        if (trail.isEmpty()) {
+            return false;
+        }
+
+        Vec3 feet = player.position();
+        for (Tag tag : trail) {
+            if (!(tag instanceof CompoundTag entry)) {
+                continue;
+            }
+
+            double dx = feet.x - entry.getDouble("x");
+            double dz = feet.z - entry.getDouble("z");
+            if (dx * dx + dz * dz <= 3.24D) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean isOlfactionTrackable(LivingEntity entity) {
+        return entity.getMaxHealth() > 0.0F && entity.getHealth() / entity.getMaxHealth() < 0.75F;
     }
 
     private static void tickMania(Player player, CompoundTag data, long gameTime) {

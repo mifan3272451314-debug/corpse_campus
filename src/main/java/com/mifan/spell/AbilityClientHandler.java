@@ -20,6 +20,7 @@ import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.RenderGuiOverlayEvent;
@@ -149,6 +150,7 @@ public final class AbilityClientHandler {
 
         long gameTime = level.getGameTime();
         updateSonicListeningState(player, gameTime);
+        spawnOlfactionTrails(player, level, gameTime);
         updateElementalDomainState(player);
         cleanupExpired(gameTime);
         sonicHudTick++;
@@ -157,7 +159,17 @@ public final class AbilityClientHandler {
     @SubscribeEvent
     public static void onSoundAtEntity(PlayLevelSoundEvent.AtEntity event) {
         Player player = localPlayer();
-        if (player == null || !canProcessSonicSound(player)) {
+        if (player == null) {
+            return;
+        }
+
+        if (hasOlfaction(player) && event.getEntity() != null
+                && player.distanceToSqr(event.getEntity()) <= AbilityRuntime.getOlfactionSilenceRadius()
+                        * AbilityRuntime.getOlfactionSilenceRadius()) {
+            event.setNewVolume(0.0F);
+        }
+
+        if (!canProcessSonicSound(player)) {
             return;
         }
 
@@ -183,7 +195,17 @@ public final class AbilityClientHandler {
     @SubscribeEvent
     public static void onSoundAtPosition(PlayLevelSoundEvent.AtPosition event) {
         Player player = localPlayer();
-        if (player == null || !canProcessSonicSound(player)) {
+        if (player == null) {
+            return;
+        }
+
+        if (hasOlfaction(player)
+                && player.position().distanceToSqr(event.getPosition()) <= AbilityRuntime.getOlfactionSilenceRadius()
+                        * AbilityRuntime.getOlfactionSilenceRadius()) {
+            event.setNewVolume(0.0F);
+        }
+
+        if (!canProcessSonicSound(player)) {
             return;
         }
 
@@ -588,6 +610,10 @@ public final class AbilityClientHandler {
         return player.hasEffect(ModMobEffects.SONIC_ATTUNEMENT.get());
     }
 
+    private static boolean hasOlfaction(Player player) {
+        return player.hasEffect(ModMobEffects.OLFACTION.get());
+    }
+
     private static boolean hasElementalDomain(Player player) {
         return player.hasEffect(ModMobEffects.ELEMENTAL_DOMAIN.get());
     }
@@ -669,6 +695,53 @@ public final class AbilityClientHandler {
 
     private static boolean canProcessSonicSound(Player player) {
         return hasSonicSense(player) && sonicListeningActive;
+    }
+
+    private static void spawnOlfactionTrails(Player player, ClientLevel level, long gameTime) {
+        if (!hasOlfaction(player) || gameTime % 3L != 0L) {
+            return;
+        }
+
+        MobEffectInstance effectInstance = player.getEffect(ModMobEffects.OLFACTION.get());
+        int spellLevel = getEffectLevel(effectInstance);
+        double radius = AbilityRuntime.getOlfactionTrackRange(spellLevel);
+        AABB box = player.getBoundingBox().inflate(radius, 6.0D, radius);
+
+        for (LivingEntity entity : level.getEntitiesOfClass(LivingEntity.class, box,
+                target -> target != player && target.isAlive() && isOlfactionTrackable(target))) {
+            spawnOlfactionFootprint(level, entity, gameTime);
+        }
+    }
+
+    private static void spawnOlfactionFootprint(ClientLevel level, LivingEntity entity, long gameTime) {
+        double motion = entity.position().distanceToSqr(new Vec3(entity.xo, entity.yo, entity.zo));
+        if (motion < 0.0025D && gameTime % 9L != 0L) {
+            return;
+        }
+
+        double progress = ((gameTime / 3L) % 2L == 0L) ? 0.35D : 0.7D;
+        double x = Mth.lerp(progress, entity.xo, entity.getX());
+        double z = Mth.lerp(progress, entity.zo, entity.getZ());
+        double y = entity.getY() + 0.03D;
+
+        level.addParticle(new DustParticleOptions(new Vector3f(0.92F, 0.12F, 0.16F), 0.9F),
+                x,
+                y,
+                z,
+                0.0D,
+                0.01D,
+                0.0D);
+        level.addParticle(new DustParticleOptions(new Vector3f(0.72F, 0.05F, 0.08F), 0.55F),
+                x + (entity.getBbWidth() * 0.2D),
+                y,
+                z - (entity.getBbWidth() * 0.2D),
+                0.0D,
+                0.005D,
+                0.0D);
+    }
+
+    private static boolean isOlfactionTrackable(LivingEntity entity) {
+        return entity.getMaxHealth() > 0.0F && entity.getHealth() / entity.getMaxHealth() < 0.75F;
     }
 
     private static int getEffectLevel(MobEffectInstance effectInstance) {

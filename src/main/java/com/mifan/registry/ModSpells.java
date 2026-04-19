@@ -8,6 +8,7 @@ import com.mifan.spell.dongyue.NecroticRebirthSpell;
 import com.mifan.spell.xujing.ElementalistSpell;
 import com.mifan.spell.xujing.MarkSpell;
 import com.mifan.spell.xujing.DangerSenseSpell;
+import com.mifan.spell.xujing.OlfactionSpell;
 import com.mifan.spell.xujing.SonicSenseSpell;
 import com.mifan.spell.yuzhe.DominanceSpell;
 import com.mifan.spell.yuzhe.MagneticClingSpell;
@@ -27,6 +28,8 @@ public final class ModSpells {
             SonicSenseSpell::new);
     public static final RegistryObject<AbstractSpell> DANGER_SENSE = SPELLS.register("danger_sense",
             DangerSenseSpell::new);
+    public static final RegistryObject<AbstractSpell> OLFACTION = SPELLS.register("olfaction",
+            OlfactionSpell::new);
     public static final RegistryObject<AbstractSpell> ELEMENTALIST = SPELLS.register("elementalist",
             ElementalistSpell::new);
     public static final RegistryObject<AbstractSpell> TELEKINESIS = SPELLS.register("telekinesis",

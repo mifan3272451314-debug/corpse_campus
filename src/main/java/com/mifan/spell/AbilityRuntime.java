@@ -92,6 +92,8 @@ public final class AbilityRuntime {
     public static final String TAG_DOMINANCE_LEVEL = "corpse_campus_dominance_level";
 
     public static final String TAG_DANGER_RECENT_ATTACKERS = "corpse_campus_danger_recent_attackers";
+    public static final String TAG_OLFACTION_TRAIL = "corpse_campus_olfaction_trail";
+    public static final String TAG_OLFACTION_LAST_TRAIL_TICK = "corpse_campus_olfaction_last_trail_tick";
     public static final String TAG_ELEMENTAL_DOMAIN_LAST_TICK = "corpse_campus_elemental_domain_last_tick";
     public static final String TAG_ELEMENTAL_DOMAIN_START_TICK = "corpse_campus_elemental_domain_start_tick";
     public static final String TAG_ELEMENTAL_DOMAIN_CENTER_X = "corpse_campus_elemental_domain_center_x";
@@ -262,6 +264,18 @@ public final class AbilityRuntime {
 
     public static int getElementalistRadius() {
         return ELEMENTAL_DOMAIN_RADIUS;
+    }
+
+    public static int getOlfactionSilenceRadius() {
+        return 10;
+    }
+
+    public static int getOlfactionTrackRange(int spellLevel) {
+        return 20 + Math.max(0, spellLevel - 1) * 4;
+    }
+
+    public static int getOlfactionLowHealthPercent() {
+        return 75;
     }
 
     public static int getElementalistManaDrain(int spellLevel) {

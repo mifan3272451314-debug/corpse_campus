@@ -18,6 +18,9 @@ public final class ModMobEffects {
     public static final RegistryObject<MobEffect> DANGER_SENSE = MOB_EFFECTS.register("danger_sense",
             () -> new AbilityMarkerEffect(0x9B1C27));
 
+    public static final RegistryObject<MobEffect> OLFACTION = MOB_EFFECTS.register("olfaction",
+            () -> new AbilityMarkerEffect(0x9E2230));
+
     public static final RegistryObject<MobEffect> ELEMENTAL_DOMAIN = MOB_EFFECTS.register("elemental_domain",
             () -> new AbilityMarkerEffect(0x6A8BFF));
 
