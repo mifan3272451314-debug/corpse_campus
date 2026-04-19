@@ -503,7 +503,10 @@ public final class AbilityRuntime {
                         }
 
                         BlockState state = level.getBlockState(pos);
-                        if (state.isAir() || state.getDestroySpeed(level, pos) < 0.0F || isElementalDomainBlock(state)) {
+                        if (state.isAir()
+                                || state.getDestroySpeed(level, pos) < 0.0F
+                                || isElementalDomainBlock(state)
+                                || shouldSkipElementalReplacement(level, pos, state)) {
                             continue;
                         }
 
@@ -537,7 +540,9 @@ public final class AbilityRuntime {
                         }
 
                         BlockState state = level.getBlockState(pos);
-                        if (state.getDestroySpeed(level, pos) < 0.0F || isElementalDomainBlock(state)) {
+                        if (state.getDestroySpeed(level, pos) < 0.0F
+                                || isElementalDomainBlock(state)
+                                || shouldSkipElementalReplacement(level, pos, state)) {
                             continue;
                         }
 
@@ -610,6 +615,25 @@ public final class AbilityRuntime {
             while (restoreQueue != null) {
                 tickRestore(level);
             }
+        }
+
+        private boolean shouldSkipElementalReplacement(ServerLevel level, BlockPos pos, BlockState state) {
+            if (state.canBeReplaced()) {
+                return true;
+            }
+
+            if (!state.getFluidState().isEmpty()) {
+                return true;
+            }
+
+            if (!state.getCollisionShape(level, pos).isEmpty() && state.isCollisionShapeFullBlock(level, pos)) {
+                return false;
+            }
+
+            return state.getBlock() instanceof net.minecraft.world.level.block.BushBlock
+                    || state.getBlock() instanceof net.minecraft.world.level.block.LeavesBlock
+                    || state.getBlock() instanceof net.minecraft.world.level.block.CropBlock
+                    || state.getBlock() instanceof net.minecraft.world.level.block.DoublePlantBlock;
         }
     }
 

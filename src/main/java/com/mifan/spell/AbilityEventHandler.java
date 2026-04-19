@@ -34,6 +34,7 @@ import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.event.entity.player.AttackEntityEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
+import net.minecraftforge.event.entity.player.PlayerEvent.PlayerLoggedOutEvent;
 import net.minecraftforge.event.entity.living.LivingAttackEvent;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
 import net.minecraftforge.event.entity.living.LivingEvent;
@@ -195,6 +196,10 @@ public final class AbilityEventHandler {
             return;
         }
 
+        if (entity instanceof ServerPlayer player) {
+            cleanupElementalDomain(player);
+        }
+
         reviveNecroticCaster(event, entity);
         rewardNecroticKill(event);
     }
@@ -207,8 +212,16 @@ public final class AbilityEventHandler {
 
         CompoundTag oldData = event.getOriginal().getPersistentData();
         CompoundTag newData = event.getEntity().getPersistentData();
+        AbilityRuntime.clearElementalDomain(newData);
         if (oldData.getBoolean(AbilityRuntime.TAG_NECROTIC_REVIVE_USED)) {
             newData.putBoolean(AbilityRuntime.TAG_NECROTIC_REVIVE_USED, true);
+        }
+    }
+
+    @SubscribeEvent
+    public static void onPlayerLoggedOut(PlayerLoggedOutEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player) {
+            cleanupElementalDomain(player);
         }
     }
 
@@ -757,6 +770,14 @@ public final class AbilityEventHandler {
                 0.35F, 1.15F);
         player.displayClientMessage(net.minecraft.network.chat.Component.translatable(
                 "message.corpse_campus.necrotic_rebirth_kill_heal", Math.round(healAmount)), true);
+    }
+
+    private static void cleanupElementalDomain(ServerPlayer player) {
+        if (player.hasEffect(ModMobEffects.ELEMENTAL_DOMAIN.get())) {
+            player.removeEffect(ModMobEffects.ELEMENTAL_DOMAIN.get());
+        }
+        AbilityRuntime.endElementalDomain(player.serverLevel(), player);
+        AbilityRuntime.clearElementalDomain(player.getPersistentData());
     }
 
     private static void spawnMarkRing(ServerLevel serverLevel, Vec3 center, double radius) {
