@@ -19,6 +19,7 @@ import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.sounds.SoundEvent;
 import net.minecraft.util.Mth;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.Entity;
@@ -68,6 +69,7 @@ public final class AbilityClientHandler {
     private static boolean elementalDomainActive;
     private static int elementalDomainTick;
     private static int elementalDomainReleaseTick;
+    private static final double SONIC_MIN_ENTITY_SOUND_DISTANCE_SQR = 1.0D;
 
     private AbilityClientHandler() {
     }
@@ -211,6 +213,11 @@ public final class AbilityClientHandler {
             return;
         }
 
+        SoundEvent sound = event.getSound().value();
+        if (!shouldCreateSonicPingFromEntitySound(soundEntity, sound)) {
+            return;
+        }
+
         int spellLevel = getEffectLevel(player.getEffect(ModMobEffects.SONIC_ATTUNEMENT.get()));
         double maxRange = getSonicRevealRange(spellLevel);
         if (player.distanceToSqr(soundEntity) > maxRange * maxRange) {
@@ -219,10 +226,13 @@ public final class AbilityClientHandler {
 
         event.setNewVolume(Math.min(event.getNewVolume(), event.getOriginalVolume() * 0.33F));
         int durationTicks = 18 + spellLevel * 5;
-        SONIC_SOUND_PINGS.add(new SoundPing(
-                soundEntity.position().add(0.0D, soundEntity.getBbHeight() * 0.6D, 0.0D),
-                player.level().getGameTime() + durationTicks,
-                durationTicks));
+        Vec3 pingPosition = soundEntity.position().add(0.0D, 0.08D, 0.0D);
+        if (player.distanceToSqr(pingPosition) > SONIC_MIN_ENTITY_SOUND_DISTANCE_SQR) {
+            SONIC_SOUND_PINGS.add(new SoundPing(
+                    pingPosition,
+                    player.level().getGameTime() + durationTicks,
+                    durationTicks));
+        }
     }
 
     @SubscribeEvent
@@ -250,10 +260,12 @@ public final class AbilityClientHandler {
 
         event.setNewVolume(Math.min(event.getNewVolume(), event.getOriginalVolume() * 0.33F));
         int durationTicks = 16 + spellLevel * 5;
-        SONIC_SOUND_PINGS.add(new SoundPing(
-                event.getPosition(),
-                player.level().getGameTime() + durationTicks,
-                durationTicks));
+        if (player.position().distanceToSqr(event.getPosition()) > 0.64D) {
+            SONIC_SOUND_PINGS.add(new SoundPing(
+                    event.getPosition(),
+                    player.level().getGameTime() + durationTicks,
+                    durationTicks));
+        }
     }
 
     @SubscribeEvent
@@ -719,6 +731,25 @@ public final class AbilityClientHandler {
 
     private static boolean canProcessSonicSound(Player player) {
         return hasSonicSense(player);
+    }
+
+    private static boolean shouldCreateSonicPingFromEntitySound(Entity soundEntity, SoundEvent sound) {
+        ResourceLocation soundId = sound.getLocation();
+        String path = soundId.getPath();
+
+        if (path.contains("step") || path.contains("swim") || path.contains("splash") || path.contains("breath")
+                || path.contains("breathe") || path.contains("idle") || path.contains("ambient")
+                || path.contains("hurt_freeze") || path.contains("freeze") || path.contains("flap")
+                || path.contains("small_fall")) {
+            return false;
+        }
+
+        Vec3 motionDelta = soundEntity.position().subtract(new Vec3(soundEntity.xo, soundEntity.yo, soundEntity.zo));
+        if (motionDelta.lengthSqr() < 0.0025D && (path.contains("ambient") || path.contains("breath") || path.contains("step"))) {
+            return false;
+        }
+
+        return true;
     }
 
     private static void spawnOlfactionTrails(Player player, ClientLevel level, long gameTime) {

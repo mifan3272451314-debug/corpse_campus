@@ -1117,15 +1117,11 @@ public final class AbilityRuntime {
 
         Vec3 end = start.add(horizontalDirection.scale(actualRange));
         float damage = Math.max(4.0F, spellPower + 3.0F + spellLevel * 0.8F);
-        double hitWidth = getDaiyueHitWidth(spellLevel);
-        AABB hitBox = new AABB(start, end).inflate(hitWidth, 1.0D, hitWidth);
+        performDaiyueDash(level, caster, start, end, horizontalDirection, spellLevel, damage);
 
-        hitEntitiesInSlash(level, caster, hitBox, start.add(0.0D, caster.getBbHeight() * 0.45D, 0.0D),
-                horizontalDirection, actualRange + 0.75D, 0.2D, damage);
-
-        caster.setDeltaMovement(horizontalDirection.x * 1.6D,
-                caster.onGround() ? 0.18D : Math.max(caster.getDeltaMovement().y, 0.05D),
-                horizontalDirection.z * 1.6D);
+        caster.setDeltaMovement(horizontalDirection.x * 2.35D,
+                caster.onGround() ? 0.12D : Math.max(caster.getDeltaMovement().y, 0.03D),
+                horizontalDirection.z * 2.35D);
         caster.hurtMarked = true;
         caster.fallDistance = 0.0F;
 
@@ -1134,6 +1130,36 @@ public final class AbilityRuntime {
                 0.55F, 0.75F + spellLevel * 0.04F);
         level.playSound(null, caster.blockPosition(), SoundEvents.ZOMBIE_ATTACK_IRON_DOOR, SoundSource.PLAYERS,
                 0.22F, 1.45F);
+    }
+
+    private static void performDaiyueDash(Level level, LivingEntity caster, Vec3 start, Vec3 end, Vec3 direction,
+            int spellLevel, float damage) {
+        Vec3 delta = end.subtract(start);
+        double distance = delta.length();
+        if (distance < 1.0E-4D) {
+            return;
+        }
+
+        int steps = Math.max(6, Mth.ceil(distance * 4.0D));
+        double hitRadius = Math.max(0.75D, getDaiyueHitWidth(spellLevel) * 0.4D);
+        java.util.List<Integer> hitEntityIds = new java.util.ArrayList<>();
+
+        for (int i = 1; i <= steps; i++) {
+            double t = i / (double) steps;
+            Vec3 point = start.add(delta.scale(t));
+            caster.setPos(point.x, point.y, point.z);
+
+            AABB stepBox = caster.getBoundingBox().inflate(hitRadius, 0.45D, hitRadius);
+            for (LivingEntity target : level.getEntitiesOfClass(LivingEntity.class, stepBox,
+                    target -> target != caster && target.isAlive() && !hitEntityIds.contains(target.getId()))) {
+                target.invulnerableTime = 0;
+                if (target.hurt(level.damageSources().mobAttack(caster), damage)) {
+                    hitEntityIds.add(target.getId());
+                    target.knockback(0.2D + spellLevel * 0.03D, -direction.x, -direction.z);
+                    spawnDaiyueTargetSlash(level, target, direction);
+                }
+            }
+        }
     }
 
     private static float getExecutionerDamage(LivingEntity caster, ItemStack weapon) {
@@ -1250,74 +1276,69 @@ public final class AbilityRuntime {
         }
 
         Vec3 delta = end.subtract(start);
-        Vec3 forward = delta.lengthSqr() < 1.0E-4D ? new Vec3(0.0D, 0.0D, 1.0D) : delta.normalize();
-        Vec3 side = new Vec3(-forward.z, 0.0D, forward.x);
-        int steps = 16 + spellLevel * 2;
+        int steps = Math.max(4, 6 + spellLevel);
         for (int i = 0; i <= steps; i++) {
             double t = i / (double) steps;
-            Vec3 point = start.add(delta.scale(t)).add(0.0D, 0.15D, 0.0D);
-            double bladeWidth = 0.2D + 0.02D * spellLevel;
+            Vec3 point = start.add(delta.scale(t)).add(0.0D, 0.65D, 0.0D);
+            serverLevel.sendParticles(ParticleTypes.CLOUD,
+                    point.x,
+                    point.y,
+                    point.z,
+                    1,
+                    0.03D,
+                    0.02D,
+                    0.03D,
+                    0.0D);
+        }
+    }
 
+    private static void spawnDaiyueTargetSlash(Level level, LivingEntity target, Vec3 direction) {
+        if (!(level instanceof ServerLevel serverLevel)) {
+            return;
+        }
+
+        Vec3 center = target.getBoundingBox().getCenter();
+        Vec3 forward = new Vec3(direction.x, 0.0D, direction.z);
+        if (forward.lengthSqr() < 1.0E-4D) {
+            forward = new Vec3(0.0D, 0.0D, 1.0D);
+        }
+        forward = forward.normalize();
+        Vec3 side = new Vec3(-forward.z, 0.0D, forward.x).normalize();
+        Vec3 slashStart = center.add(side.scale(0.6D)).add(0.0D, 0.35D, 0.0D);
+        Vec3 slashEnd = center.subtract(side.scale(0.6D)).add(0.0D, -0.2D, 0.0D);
+        Vec3 slashDelta = slashEnd.subtract(slashStart);
+
+        for (int i = 0; i <= 4; i++) {
+            double t = i / 4.0D;
+            Vec3 point = slashStart.add(slashDelta.scale(t));
             serverLevel.sendParticles(ParticleTypes.SWEEP_ATTACK,
                     point.x,
-                    point.y + 0.55D,
+                    point.y,
                     point.z,
                     1,
                     0.0D,
                     0.0D,
                     0.0D,
                     0.0D);
-            serverLevel.sendParticles(ParticleTypes.CRIT,
-                    point.x,
-                    point.y + 0.35D,
-                    point.z,
-                    3,
-                    0.18D,
-                    0.18D,
-                    0.18D,
-                    0.01D);
-            serverLevel.sendParticles(new DustParticleOptions(new Vector3f(0.82F, 0.84F, 0.9F), 1.0F),
-                    point.x,
-                    point.y + 0.35D,
-                    point.z,
-                    2,
-                    bladeWidth,
-                    0.08D,
-                    bladeWidth,
-                    0.0D);
-
-            if ((i & 1) == 0) {
-                Vec3 left = point.add(side.scale(0.45D + 0.015D * spellLevel));
-                Vec3 right = point.subtract(side.scale(0.45D + 0.015D * spellLevel));
-                serverLevel.sendParticles(ParticleTypes.END_ROD,
-                        left.x,
-                        left.y + 0.4D,
-                        left.z,
-                        1,
-                        0.0D,
-                        0.0D,
-                        0.0D,
-                        0.0D);
-                serverLevel.sendParticles(ParticleTypes.END_ROD,
-                        right.x,
-                        right.y + 0.4D,
-                        right.z,
-                        1,
-                        0.0D,
-                        0.0D,
-                        0.0D,
-                        0.0D);
-            }
         }
 
-        serverLevel.sendParticles(new DustParticleOptions(new Vector3f(0.95F, 0.95F, 1.0F), 1.35F),
-                end.x,
-                end.y + 0.6D,
-                end.z,
-                12,
+        serverLevel.sendParticles(new DustParticleOptions(new Vector3f(0.9F, 0.92F, 1.0F), 1.0F),
+                center.x,
+                center.y,
+                center.z,
+                6,
+                0.15D,
                 0.35D,
-                0.2D,
-                0.35D,
+                0.15D,
+                0.0D);
+        serverLevel.sendParticles(ParticleTypes.CRIT,
+                center.x,
+                center.y,
+                center.z,
+                4,
+                0.12D,
+                0.25D,
+                0.12D,
                 0.0D);
     }
 
