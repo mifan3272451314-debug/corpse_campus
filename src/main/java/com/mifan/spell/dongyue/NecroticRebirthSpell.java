@@ -81,12 +81,16 @@ public class NecroticRebirthSpell extends AbstractSpell {
     public void onCast(Level level, int spellLevel, LivingEntity entity, CastSource castSource,
             MagicData playerMagicData) {
         if (!level.isClientSide) {
-            boolean enabling = !entity.hasEffect(ModMobEffects.NECROTIC_REBIRTH_ARMED.get());
+            boolean active = entity.hasEffect(ModMobEffects.NECROTIC_REBIRTH_ARMED.get())
+                    || entity.hasEffect(ModMobEffects.NECROTIC_UNDEAD.get());
+            boolean enabling = !active;
             entity.removeEffect(ModMobEffects.NECROTIC_UNDEAD.get());
             AbilityRuntime.clear(entity.getPersistentData(),
                     AbilityRuntime.TAG_NECROTIC_ALLOW_HEAL_UNTIL,
                     AbilityRuntime.TAG_NECROTIC_LAST_KILL_HEAL,
-                    AbilityRuntime.TAG_NECROTIC_REVIVE_USED);
+                    AbilityRuntime.TAG_NECROTIC_REVIVE_USED,
+                    AbilityRuntime.TAG_NECROTIC_ORIGINAL_MAX_HEALTH,
+                    AbilityRuntime.TAG_NECROTIC_MAX_HEALTH_APPLIED);
 
             if (enabling) {
                 entity.addEffect(new MobEffectInstance(

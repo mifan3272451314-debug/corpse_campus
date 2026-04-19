@@ -485,15 +485,15 @@ public final class AbilityClientHandler {
 
             double distance = playerPos.distanceTo(ping.position);
             float dynamicScale = distance <= 0.1D
-                    ? 1.0F
-                    : 0.1F + 0.9F * (float) Math.pow(Math.max(0.0D, 1.0D - distance / 25.0D), 2.0D);
+                    ? 1.35F
+                    : 0.45F + 1.1F * (float) Math.pow(Math.max(0.0D, 1.0D - distance / 28.0D), 1.45D);
             float ageProgress = 1.0F - Mth.clamp((float) (ping.expireAt - gameTime) / ping.durationTicks, 0.0F, 1.0F);
-            float pulseScale = 0.8F + ageProgress * 0.9F;
-            int alpha = Mth.clamp((int) ((1.0F - ageProgress * 0.72F) * 255.0F), 52, 255);
+            float pulseScale = 1.0F + ageProgress * 1.15F;
+            int alpha = Mth.clamp((int) ((1.08F - ageProgress * 0.38F) * 255.0F), 160, 255);
 
             poseStack.translate(x, y, 0.0F);
             poseStack.scale(dynamicScale * pulseScale, dynamicScale * pulseScale, 1.0F);
-            RenderSystem.setShaderColor(0.72F, 0.94F, 1.0F, alpha / 255.0F);
+            RenderSystem.setShaderColor(0.86F, 0.98F, 1.0F, alpha / 255.0F);
             guiGraphics.blit(
                     SONIC_ECHO_TEXTURE,
                     drawX,

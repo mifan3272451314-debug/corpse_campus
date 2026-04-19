@@ -47,8 +47,10 @@ public class ElementalistSpell extends AbstractSpell {
     public List<MutableComponent> getUniqueInfo(int spellLevel, LivingEntity caster) {
         return List.of(
                 Component.translatable("tooltip.corpse_campus.elementalist_domain_radius", AbilityRuntime.getElementalistRadius()),
+                Component.translatable("tooltip.corpse_campus.elementalist_closed_domain_radius", AbilityRuntime.getElementalistClosedRadius()),
                 Component.translatable("tooltip.corpse_campus.elementalist_mana_drain", AbilityRuntime.getElementalistManaDrain(spellLevel)),
                 Component.translatable("tooltip.corpse_campus.elementalist_random_barrage"),
+                Component.translatable("tooltip.corpse_campus.elementalist_crouch_closed_domain"),
                 Component.translatable("tooltip.corpse_campus.toggle_cast"));
     }
 
@@ -91,7 +93,7 @@ public class ElementalistSpell extends AbstractSpell {
                         false,
                         false));
                 if (level instanceof net.minecraft.server.level.ServerLevel serverLevel && entity instanceof Player player) {
-                    AbilityRuntime.beginElementalDomain(serverLevel, player);
+                    AbilityRuntime.beginElementalDomain(serverLevel, player, entity.isCrouching());
                 }
             } else {
                 entity.removeEffect(ModMobEffects.ELEMENTAL_DOMAIN.get());

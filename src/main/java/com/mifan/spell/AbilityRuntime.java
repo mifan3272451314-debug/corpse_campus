@@ -76,6 +76,8 @@ public final class AbilityRuntime {
     public static final String TAG_NECROTIC_ALLOW_HEAL_UNTIL = "corpse_campus_necrotic_allow_heal_until";
     public static final String TAG_NECROTIC_LAST_KILL_HEAL = "corpse_campus_necrotic_last_kill_heal";
     public static final String TAG_NECROTIC_REVIVE_USED = "corpse_campus_necrotic_revive_used";
+    public static final String TAG_NECROTIC_ORIGINAL_MAX_HEALTH = "corpse_campus_necrotic_original_max_health";
+    public static final String TAG_NECROTIC_MAX_HEALTH_APPLIED = "corpse_campus_necrotic_max_health_applied";
 
     public static final String TAG_MARK_ACTIVE = "corpse_campus_mark_active";
     public static final String TAG_MARK_X = "corpse_campus_mark_x";
@@ -103,14 +105,17 @@ public final class AbilityRuntime {
     public static final String TAG_ELEMENTAL_DOMAIN_CENTER_X = "corpse_campus_elemental_domain_center_x";
     public static final String TAG_ELEMENTAL_DOMAIN_CENTER_Y = "corpse_campus_elemental_domain_center_y";
     public static final String TAG_ELEMENTAL_DOMAIN_CENTER_Z = "corpse_campus_elemental_domain_center_z";
+    public static final String TAG_ELEMENTAL_DOMAIN_CLOSED = "corpse_campus_elemental_domain_closed";
 
     public static final int EXECUTIONER_DURABILITY_COST = 15;
     private static final float EXECUTIONER_DAMAGE_RATIO = 0.25F;
     private static final float DOMINANCE_MIN_SURVIVAL_HEALTH = 1.0F;
     private static final float DOMINANCE_MAX_HEALTH_LIMIT = 35.0F;
     private static final int NECROTIC_KILL_HEAL_BASE = 4;
+    private static final double NECROTIC_UNDEAD_MAX_HEALTH = 40.0D;
     private static final int MARK_ROOT_DURATION_TICKS = 200;
     private static final int ELEMENTAL_DOMAIN_RADIUS = 30;
+    private static final int ELEMENTAL_DOMAIN_CLOSED_RADIUS = 15;
     private static final int ELEMENTAL_DOMAIN_INTERVAL = 20;
     private static final float ELEMENTAL_DOMAIN_EXPAND_RATE = 2.5F;
     private static final int ELEMENTAL_DOMAIN_RESTORE_PER_TICK = 384;
@@ -254,6 +259,10 @@ public final class AbilityRuntime {
         return NECROTIC_KILL_HEAL_BASE + Math.max(0, spellLevel - 1) * 2;
     }
 
+    public static double getNecroticUndeadMaxHealth() {
+        return NECROTIC_UNDEAD_MAX_HEALTH;
+    }
+
     public static int getMarkRadius(int spellLevel) {
         return 3 + Math.max(0, spellLevel - 1);
     }
@@ -268,6 +277,14 @@ public final class AbilityRuntime {
 
     public static int getElementalistRadius() {
         return ELEMENTAL_DOMAIN_RADIUS;
+    }
+
+    public static int getElementalistClosedRadius() {
+        return ELEMENTAL_DOMAIN_CLOSED_RADIUS;
+    }
+
+    public static int getElementalistActiveRadius(CompoundTag data) {
+        return data.getBoolean(TAG_ELEMENTAL_DOMAIN_CLOSED) ? ELEMENTAL_DOMAIN_CLOSED_RADIUS : ELEMENTAL_DOMAIN_RADIUS;
     }
 
     public static int getOlfactionSilenceRadius() {
@@ -296,16 +313,18 @@ public final class AbilityRuntime {
                 TAG_ELEMENTAL_DOMAIN_START_TICK,
                 TAG_ELEMENTAL_DOMAIN_CENTER_X,
                 TAG_ELEMENTAL_DOMAIN_CENTER_Y,
-                TAG_ELEMENTAL_DOMAIN_CENTER_Z);
+                TAG_ELEMENTAL_DOMAIN_CENTER_Z,
+                TAG_ELEMENTAL_DOMAIN_CLOSED);
     }
 
-    public static void beginElementalDomain(ServerLevel level, Player caster) {
+    public static void beginElementalDomain(ServerLevel level, Player caster, boolean closedDomain) {
         CompoundTag data = caster.getPersistentData();
         data.putLong(TAG_ELEMENTAL_DOMAIN_START_TICK, level.getGameTime());
         data.putLong(TAG_ELEMENTAL_DOMAIN_LAST_TICK, 0L);
         data.putDouble(TAG_ELEMENTAL_DOMAIN_CENTER_X, caster.getX());
         data.putDouble(TAG_ELEMENTAL_DOMAIN_CENTER_Y, caster.getY());
         data.putDouble(TAG_ELEMENTAL_DOMAIN_CENTER_Z, caster.getZ());
+        data.putBoolean(TAG_ELEMENTAL_DOMAIN_CLOSED, closedDomain);
 
         ACTIVE_ELEMENTAL_DOMAINS.compute(caster.getUUID(), (uuid, existing) -> {
             if (existing != null) {
@@ -314,7 +333,7 @@ public final class AbilityRuntime {
             return new ElementalDomainState(level.dimension(), new BlockPos(
                     Mth.floor(caster.getX()),
                     Mth.floor(caster.getY()),
-                    Mth.floor(caster.getZ())));
+                    Mth.floor(caster.getZ())), closedDomain);
         });
     }
 
@@ -346,10 +365,11 @@ public final class AbilityRuntime {
         }
 
         long startTick = caster.getPersistentData().getLong(TAG_ELEMENTAL_DOMAIN_START_TICK);
-        float radius = Math.min(ELEMENTAL_DOMAIN_RADIUS, Math.max(0.0F, (gameTime - startTick) * ELEMENTAL_DOMAIN_EXPAND_RATE));
+        int maxRadius = getElementalistActiveRadius(caster.getPersistentData());
+        float radius = Math.min(maxRadius, Math.max(0.0F, (gameTime - startTick) * ELEMENTAL_DOMAIN_EXPAND_RATE));
         state.replaceSphere(level, state.center, state.lastRadius, radius);
         state.lastRadius = radius;
-        if (radius >= ELEMENTAL_DOMAIN_RADIUS && !state.shellBuilt) {
+        if (state.closedDomain && radius >= maxRadius && !state.shellBuilt) {
             state.buildShell(level, caster.blockPosition());
         }
     }
@@ -468,6 +488,7 @@ public final class AbilityRuntime {
     private static final class ElementalDomainState {
         private final ResourceKey<Level> dimension;
         private final BlockPos center;
+        private final boolean closedDomain;
         private final Map<BlockPos, BlockState> savedStates = new LinkedHashMap<>();
         private final Map<BlockPos, CompoundTag> savedNbt = new HashMap<>();
         private List<BlockPos> restoreQueue;
@@ -476,9 +497,10 @@ public final class AbilityRuntime {
         private boolean shellBuilt;
         private boolean restoring;
 
-        private ElementalDomainState(ResourceKey<Level> dimension, BlockPos center) {
+        private ElementalDomainState(ResourceKey<Level> dimension, BlockPos center, boolean closedDomain) {
             this.dimension = dimension;
             this.center = center.immutable();
+            this.closedDomain = closedDomain;
         }
 
         private void replaceSphere(ServerLevel level, BlockPos centerPos, float innerR, float outerR) {
@@ -489,6 +511,7 @@ public final class AbilityRuntime {
             float innerSq = innerR * innerR;
             float outerSq = outerR * outerR;
             int outerInt = Mth.ceil(outerR);
+            List<BlockPos> positions = new ArrayList<>();
             for (int dx = -outerInt; dx <= outerInt; dx++) {
                 for (int dy = -outerInt; dy <= outerInt; dy++) {
                     for (int dz = -outerInt; dz <= outerInt; dz++) {
@@ -502,30 +525,37 @@ public final class AbilityRuntime {
                             continue;
                         }
 
-                        BlockState state = level.getBlockState(pos);
-                        if (state.isAir()
-                                || state.getDestroySpeed(level, pos) < 0.0F
-                                || isElementalDomainBlock(state)
-                                || shouldSkipElementalReplacement(level, pos, state)) {
-                            continue;
-                        }
-
-                        savedStates.put(pos.immutable(), state);
-                        BlockEntity blockEntity = level.getBlockEntity(pos);
-                        if (blockEntity != null) {
-                            savedNbt.put(pos.immutable(), blockEntity.saveWithFullMetadata());
-                            level.removeBlockEntity(pos);
-                        }
-                        level.setBlock(pos, pickElementalReplaceBlock(), 18);
+                        positions.add(pos.immutable());
                     }
                 }
+            }
+
+            positions.sort(Comparator.comparingInt((BlockPos blockPos) -> blockPos.getY()).reversed());
+            for (BlockPos pos : positions) {
+                BlockState state = level.getBlockState(pos);
+                if (state.isAir()
+                        || state.getDestroySpeed(level, pos) < 0.0F
+                        || isElementalDomainBlock(state)
+                        || shouldSkipElementalReplacement(level, pos, state)) {
+                    continue;
+                }
+
+                savedStates.put(pos.immutable(), state);
+                BlockEntity blockEntity = level.getBlockEntity(pos);
+                if (blockEntity != null) {
+                    savedNbt.put(pos.immutable(), blockEntity.saveWithFullMetadata());
+                    level.removeBlockEntity(pos);
+                }
+                level.setBlock(pos, pickElementalReplaceBlock(), 18);
             }
         }
 
         private void buildShell(ServerLevel level, BlockPos soundPos) {
-            int outerRadius = ELEMENTAL_DOMAIN_RADIUS + 1;
-            float innerSq = (ELEMENTAL_DOMAIN_RADIUS - 2.0F) * (ELEMENTAL_DOMAIN_RADIUS - 2.0F);
+            int domainRadius = closedDomain ? ELEMENTAL_DOMAIN_CLOSED_RADIUS : ELEMENTAL_DOMAIN_RADIUS;
+            int outerRadius = domainRadius + 1;
+            float innerSq = (domainRadius - 2.0F) * (domainRadius - 2.0F);
             float outerSq = outerRadius * outerRadius;
+            List<BlockPos> positions = new ArrayList<>();
             for (int dx = -outerRadius; dx <= outerRadius; dx++) {
                 for (int dy = -outerRadius; dy <= outerRadius; dy++) {
                     for (int dz = -outerRadius; dz <= outerRadius; dz++) {
@@ -539,22 +569,27 @@ public final class AbilityRuntime {
                             continue;
                         }
 
-                        BlockState state = level.getBlockState(pos);
-                        if (state.getDestroySpeed(level, pos) < 0.0F
-                                || isElementalDomainBlock(state)
-                                || shouldSkipElementalReplacement(level, pos, state)) {
-                            continue;
-                        }
-
-                        savedStates.put(pos.immutable(), state);
-                        BlockEntity blockEntity = level.getBlockEntity(pos);
-                        if (blockEntity != null) {
-                            savedNbt.put(pos.immutable(), blockEntity.saveWithFullMetadata());
-                            level.removeBlockEntity(pos);
-                        }
-                        level.setBlock(pos, pickElementalShellBlock(), 18);
+                        positions.add(pos.immutable());
                     }
                 }
+            }
+
+            positions.sort(Comparator.comparingInt((BlockPos blockPos) -> blockPos.getY()).reversed());
+            for (BlockPos pos : positions) {
+                BlockState state = level.getBlockState(pos);
+                if (state.getDestroySpeed(level, pos) < 0.0F
+                        || isElementalDomainBlock(state)
+                        || shouldSkipElementalReplacement(level, pos, state)) {
+                    continue;
+                }
+
+                savedStates.put(pos.immutable(), state);
+                BlockEntity blockEntity = level.getBlockEntity(pos);
+                if (blockEntity != null) {
+                    savedNbt.put(pos.immutable(), blockEntity.saveWithFullMetadata());
+                    level.removeBlockEntity(pos);
+                }
+                level.setBlock(pos, pickElementalShellBlock(), 18);
             }
 
             shellBuilt = true;
@@ -567,7 +602,7 @@ public final class AbilityRuntime {
             }
 
             restoreQueue = new ArrayList<>(savedStates.keySet());
-            Collections.reverse(restoreQueue);
+            restoreQueue.sort(Comparator.comparingInt((BlockPos blockPos) -> blockPos.getY()));
             restoreIndex = 0;
             restoring = true;
             level.playSound(null, soundPos, SoundEvents.SCULK_BLOCK_SPREAD, SoundSource.BLOCKS, 1.5F, 1.15F);
@@ -586,7 +621,7 @@ public final class AbilityRuntime {
                     continue;
                 }
 
-                level.setBlock(pos, original, 3);
+                level.setBlock(pos, original, 18);
                 CompoundTag nbt = savedNbt.get(pos);
                 if (nbt != null) {
                     BlockEntity blockEntity = level.getBlockEntity(pos);
@@ -618,22 +653,11 @@ public final class AbilityRuntime {
         }
 
         private boolean shouldSkipElementalReplacement(ServerLevel level, BlockPos pos, BlockState state) {
-            if (state.canBeReplaced()) {
-                return true;
-            }
-
             if (!state.getFluidState().isEmpty()) {
                 return true;
             }
 
-            if (!state.getCollisionShape(level, pos).isEmpty() && state.isCollisionShapeFullBlock(level, pos)) {
-                return false;
-            }
-
-            return state.getBlock() instanceof net.minecraft.world.level.block.BushBlock
-                    || state.getBlock() instanceof net.minecraft.world.level.block.LeavesBlock
-                    || state.getBlock() instanceof net.minecraft.world.level.block.CropBlock
-                    || state.getBlock() instanceof net.minecraft.world.level.block.DoublePlantBlock;
+            return false;
         }
     }
 

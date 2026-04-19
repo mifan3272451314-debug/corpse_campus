@@ -20,6 +20,8 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.entity.ai.attributes.AttributeInstance;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
@@ -607,12 +609,17 @@ public final class AbilityEventHandler {
 
     private static void tickNecroticUndead(Player player, CompoundTag data, long gameTime) {
         if (!player.hasEffect(ModMobEffects.NECROTIC_UNDEAD.get())) {
+            restoreNecroticMaxHealth(player, data);
             AbilityRuntime.clear(data,
                     AbilityRuntime.TAG_NECROTIC_ALLOW_HEAL_UNTIL,
                     AbilityRuntime.TAG_NECROTIC_LAST_KILL_HEAL,
-                    AbilityRuntime.TAG_NECROTIC_REVIVE_USED);
+                    AbilityRuntime.TAG_NECROTIC_REVIVE_USED,
+                    AbilityRuntime.TAG_NECROTIC_ORIGINAL_MAX_HEALTH,
+                    AbilityRuntime.TAG_NECROTIC_MAX_HEALTH_APPLIED);
             return;
         }
+
+        applyNecroticMaxHealth(player, data);
 
         if (gameTime % 20L == 0L) {
             player.addEffect(new MobEffectInstance(MobEffects.HUNGER, 40, 0, false, false, false));
@@ -630,15 +637,6 @@ public final class AbilityEventHandler {
                     0.0D);
         }
 
-        if (player.getHealth() >= player.getMaxHealth() - 0.01F) {
-            player.removeEffect(ModMobEffects.NECROTIC_UNDEAD.get());
-            AbilityRuntime.clear(data,
-                    AbilityRuntime.TAG_NECROTIC_ALLOW_HEAL_UNTIL,
-                    AbilityRuntime.TAG_NECROTIC_LAST_KILL_HEAL,
-                    AbilityRuntime.TAG_NECROTIC_REVIVE_USED);
-            player.displayClientMessage(net.minecraft.network.chat.Component.translatable(
-                    "message.corpse_campus.necrotic_rebirth_restored"), true);
-        }
     }
 
     private static void tickMark(Player player, CompoundTag data, long gameTime) {
@@ -726,6 +724,8 @@ public final class AbilityEventHandler {
                 false,
                 false,
                 false));
+        applyNecroticMaxHealth(player, data);
+        player.setHealth((float) player.getMaxHealth());
         player.addEffect(new MobEffectInstance(MobEffects.DAMAGE_BOOST, 20 * 30, 0, false, false, true));
         player.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 20 * 30, 0, false, false, true));
         player.addEffect(new MobEffectInstance(MobEffects.HUNGER, 20 * 30, 0, false, false, true));
@@ -770,6 +770,36 @@ public final class AbilityEventHandler {
                 0.35F, 1.15F);
         player.displayClientMessage(net.minecraft.network.chat.Component.translatable(
                 "message.corpse_campus.necrotic_rebirth_kill_heal", Math.round(healAmount)), true);
+    }
+
+    private static void applyNecroticMaxHealth(Player player, CompoundTag data) {
+        AttributeInstance maxHealth = player.getAttribute(Attributes.MAX_HEALTH);
+        if (maxHealth == null) {
+            return;
+        }
+
+        if (!data.getBoolean(AbilityRuntime.TAG_NECROTIC_MAX_HEALTH_APPLIED)) {
+            data.putDouble(AbilityRuntime.TAG_NECROTIC_ORIGINAL_MAX_HEALTH, maxHealth.getBaseValue());
+            data.putBoolean(AbilityRuntime.TAG_NECROTIC_MAX_HEALTH_APPLIED, true);
+        }
+
+        if (Math.abs(maxHealth.getBaseValue() - AbilityRuntime.getNecroticUndeadMaxHealth()) > 0.01D) {
+            maxHealth.setBaseValue(AbilityRuntime.getNecroticUndeadMaxHealth());
+        }
+    }
+
+    private static void restoreNecroticMaxHealth(Player player, CompoundTag data) {
+        if (!data.getBoolean(AbilityRuntime.TAG_NECROTIC_MAX_HEALTH_APPLIED)) {
+            return;
+        }
+
+        AttributeInstance maxHealth = player.getAttribute(Attributes.MAX_HEALTH);
+        if (maxHealth != null && data.contains(AbilityRuntime.TAG_NECROTIC_ORIGINAL_MAX_HEALTH)) {
+            maxHealth.setBaseValue(data.getDouble(AbilityRuntime.TAG_NECROTIC_ORIGINAL_MAX_HEALTH));
+            if (player.getHealth() > player.getMaxHealth()) {
+                player.setHealth((float) player.getMaxHealth());
+            }
+        }
     }
 
     private static void cleanupElementalDomain(ServerPlayer player) {
