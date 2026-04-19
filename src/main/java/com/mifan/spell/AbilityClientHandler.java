@@ -430,10 +430,10 @@ public final class AbilityClientHandler {
     }
 
     private static void drawDarkSonicOverlay(GuiGraphics guiGraphics, int width, int height, long gameTime) {
-        int veilAlpha = 92 + (int) (Math.sin(gameTime * 0.05D) * 6.0D + 6.0D);
+        int veilAlpha = 54 + (int) (Math.sin(gameTime * 0.05D) * 4.0D + 4.0D);
         guiGraphics.fill(0, 0, width, height, (veilAlpha << 24) | 0x050608);
 
-        int vignetteAlpha = 40 + (int) (Math.sin(gameTime * 0.08D) * 5.0D + 5.0D);
+        int vignetteAlpha = 22 + (int) (Math.sin(gameTime * 0.08D) * 3.0D + 3.0D);
         guiGraphics.fill(0, 0, width, 20, (vignetteAlpha << 24) | 0x0D1318);
         guiGraphics.fill(0, height - 20, width, height, (vignetteAlpha << 24) | 0x0D1318);
         guiGraphics.fill(0, 0, 14, height, (vignetteAlpha << 24) | 0x0D1318);
