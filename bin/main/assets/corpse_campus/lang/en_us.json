@@ -60,6 +60,8 @@
   "tooltip.corpse_campus.elementalist_random_barrage": "All creatures inside the domain are repeatedly struck by random tier-1 fire, water, or lightning attacks",
   "tooltip.corpse_campus.midas_touch_targets": "Turns your held item and the aimed block into bombs",
   "tooltip.corpse_campus.midas_touch_timer_range": "Timer range: %s-%s s",
+  "tooltip.corpse_campus.midas_touch_power_range": "Blast level range: %s-%s",
+  "tooltip.corpse_campus.midas_touch_max_power_cost": "Maximum blast level consumes a massive %s mana",
   "tooltip.corpse_campus.midas_touch_remote_trigger": "Bomb blocks explode when interacted with, and bomb items explode when right-clicked",
   "tooltip.corpse_campus.midas_touch_inventory_trigger": "Bomb items still detonate when the timer expires inside inventories",
   "tooltip.corpse_campus.mark_radius": "Mark radius: %s blocks",
@@ -75,7 +77,8 @@
   "message.corpse_campus.elementalist_off": "Elemental domain dismissed",
   "message.corpse_campus.elementalist_no_mana": "Not enough mana. The elemental domain collapses",
   "message.corpse_campus.midas_touch_no_target": "You need at least a held item or a targeted block to arm a bomb",
-  "message.corpse_campus.midas_touch_armed": "Bombs armed. Countdown: %s s",
+  "message.corpse_campus.midas_touch_armed": "Bombs armed. Countdown: %s s, blast level: %s",
+  "message.corpse_campus.midas_touch_no_mana": "Not enough mana. Arming this blast level requires %s mana",
   "message.corpse_campus.midas_touch_inventory_boom": "A bomb in your inventory detonated",
   "message.corpse_campus.dominance_no_target": "No valid mob to dominate",
   "message.corpse_campus.dominance_bound": "Mob brought under dominance",
@@ -103,5 +106,8 @@
   "screen.corpse_campus.midas_touch.subtitle": "Set the bomb countdown before arming your target",
   "screen.corpse_campus.midas_touch.slider": "Countdown: %s s",
   "screen.corpse_campus.midas_touch.seconds": "Selected countdown: %s s",
+  "screen.corpse_campus.midas_touch.power": "Blast level: %s  |  Power: %s",
+  "screen.corpse_campus.midas_touch.mana_cost": "Mana cost: %s",
+  "screen.corpse_campus.midas_touch.power_slider": "Blast level: %s  |  Mana: %s",
   "screen.corpse_campus.midas_touch.confirm": "Arm"
 }

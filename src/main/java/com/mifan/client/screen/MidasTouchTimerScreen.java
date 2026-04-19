@@ -13,30 +13,39 @@ public class MidasTouchTimerScreen extends Screen {
     private final int spellLevel;
     private final int minSeconds;
     private final int maxSeconds;
+    private final int minPowerLevel;
+    private final int maxPowerLevel;
     private int timerSeconds;
+    private int powerLevel;
     private TimerSlider slider;
+    private PowerSlider powerSlider;
 
-    public MidasTouchTimerScreen(int spellLevel, int defaultSeconds, int minSeconds, int maxSeconds) {
+    public MidasTouchTimerScreen(int spellLevel, int defaultSeconds, int minSeconds, int maxSeconds,
+            int defaultPowerLevel, int minPowerLevel, int maxPowerLevel) {
         super(Component.translatable("screen.corpse_campus.midas_touch.title"));
         this.spellLevel = spellLevel;
         this.minSeconds = minSeconds;
         this.maxSeconds = maxSeconds;
+        this.minPowerLevel = minPowerLevel;
+        this.maxPowerLevel = maxPowerLevel;
         this.timerSeconds = MidasBombRuntime.clampSeconds(defaultSeconds);
+        this.powerLevel = MidasBombRuntime.clampPowerLevel(defaultPowerLevel);
     }
 
     @Override
     protected void init() {
         int left = this.width / 2 - 100;
-        int top = this.height / 2 - 30;
+        int top = this.height / 2 - 40;
 
         this.slider = addRenderableWidget(new TimerSlider(left, top, 200, 20));
+        this.powerSlider = addRenderableWidget(new PowerSlider(left, top + 26, 200, 20));
         addRenderableWidget(Button.builder(Component.translatable("screen.corpse_campus.midas_touch.confirm"), button -> {
-            ModNetwork.CHANNEL.sendToServer(new SetMidasTouchTimerPacket(spellLevel, timerSeconds));
+            ModNetwork.CHANNEL.sendToServer(new SetMidasTouchTimerPacket(spellLevel, timerSeconds, powerLevel));
             onClose();
-        }).pos(left, top + 34).size(96, 20).build());
+        }).pos(left, top + 60).size(96, 20).build());
 
         addRenderableWidget(Button.builder(Component.translatable("gui.cancel"), button -> onClose())
-                .pos(left + 104, top + 34)
+                .pos(left + 104, top + 60)
                 .size(96, 20)
                 .build());
     }
@@ -59,6 +68,18 @@ public class MidasTouchTimerScreen extends Screen {
                 centerX,
                 titleY + 34,
                 0xFFF6D9);
+        guiGraphics.drawCenteredString(this.font,
+                Component.translatable("screen.corpse_campus.midas_touch.power", powerLevel,
+                        String.format("%.2f", MidasBombRuntime.getExplosionPowerForUi(powerLevel))),
+                centerX,
+                titleY + 48,
+                0xFFD38A);
+        guiGraphics.drawCenteredString(this.font,
+                Component.translatable("screen.corpse_campus.midas_touch.mana_cost",
+                        MidasBombRuntime.getManaCostForPowerLevel(powerLevel)),
+                centerX,
+                titleY + 62,
+                0xFF9F6E);
     }
 
     @Override
@@ -95,6 +116,29 @@ public class MidasTouchTimerScreen extends Screen {
 
         private int fromValue(double value) {
             return minSeconds + (int) Math.round(value * (maxSeconds - minSeconds));
+        }
+    }
+
+    private class PowerSlider extends AbstractSliderButton {
+        protected PowerSlider(int x, int y, int width, int height) {
+            super(x, y, width, height, Component.empty(), MidasTouchTimerScreen.this.maxPowerLevel <= MidasTouchTimerScreen.this.minPowerLevel
+                    ? 0.0D
+                    : (double) (MidasTouchTimerScreen.this.powerLevel - MidasTouchTimerScreen.this.minPowerLevel)
+                            / (double) (MidasTouchTimerScreen.this.maxPowerLevel - MidasTouchTimerScreen.this.minPowerLevel));
+            updateMessage();
+        }
+
+        @Override
+        protected void updateMessage() {
+            setMessage(Component.translatable("screen.corpse_campus.midas_touch.power_slider", powerLevel,
+                    MidasBombRuntime.getManaCostForPowerLevel(powerLevel)));
+        }
+
+        @Override
+        protected void applyValue() {
+            powerLevel = minPowerLevel + (int) Math.round(this.value * (maxPowerLevel - minPowerLevel));
+            powerLevel = MidasBombRuntime.clampPowerLevel(powerLevel);
+            updateMessage();
         }
     }
 }

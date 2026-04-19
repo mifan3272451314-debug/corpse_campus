@@ -61,6 +61,8 @@
   "tooltip.corpse_campus.elementalist_random_barrage": "领域内所有生物会持续遭受随机火焰、水流或闪电一级法术轰击",
   "tooltip.corpse_campus.midas_touch_targets": "将主手物品与瞄准的方块转化为炸弹",
   "tooltip.corpse_campus.midas_touch_timer_range": "倒计时范围：%s-%s 秒",
+  "tooltip.corpse_campus.midas_touch_power_range": "爆炸等级范围：%s-%s 级",
+  "tooltip.corpse_campus.midas_touch_max_power_cost": "最高爆炸等级会消耗海量法力：%s",
   "tooltip.corpse_campus.midas_touch_remote_trigger": "炸弹方块被交互时立刻爆炸，炸弹物品被右键时也会引爆",
   "tooltip.corpse_campus.midas_touch_inventory_trigger": "炸弹物品即使放在物品栏内，倒计时结束后也会爆炸",
   "tooltip.corpse_campus.mark_radius": "标记半径：%s 格",
@@ -76,7 +78,8 @@
   "message.corpse_campus.elementalist_off": "元素领域已关闭",
   "message.corpse_campus.elementalist_no_mana": "法力不足，元素领域已崩解",
   "message.corpse_campus.midas_touch_no_target": "至少需要主手物品或一个瞄准方块才能布置炸弹",
-  "message.corpse_campus.midas_touch_armed": "已完成炸弹化，倒计时：%s 秒",
+  "message.corpse_campus.midas_touch_armed": "已完成炸弹化，倒计时：%s 秒，爆炸等级：%s",
+  "message.corpse_campus.midas_touch_no_mana": "法力不足，当前爆炸等级需要消耗 %s 点法力",
   "message.corpse_campus.midas_touch_inventory_boom": "你物品栏内的炸弹已经爆炸",
   "message.corpse_campus.dominance_no_target": "未找到可支配的生物",
   "message.corpse_campus.dominance_bound": "已支配目标生物",
@@ -105,5 +108,8 @@
   "screen.corpse_campus.midas_touch.subtitle": "先设定倒计时，再把目标变成炸弹",
   "screen.corpse_campus.midas_touch.slider": "倒计时：%s 秒",
   "screen.corpse_campus.midas_touch.seconds": "当前选择：%s 秒",
+  "screen.corpse_campus.midas_touch.power": "爆炸等级：%s 级 ｜ 当前威力：%s",
+  "screen.corpse_campus.midas_touch.mana_cost": "法力消耗：%s",
+  "screen.corpse_campus.midas_touch.power_slider": "爆炸等级：%s 级 ｜ 法力：%s",
   "screen.corpse_campus.midas_touch.confirm": "引爆预设"
 }

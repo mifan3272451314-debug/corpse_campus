@@ -49,6 +49,11 @@ public class MidasTouchSpell extends AbstractSpell {
                 Component.translatable("tooltip.corpse_campus.midas_touch_timer_range",
                         MidasBombRuntime.MIN_TIMER_SECONDS,
                         MidasBombRuntime.MAX_TIMER_SECONDS),
+                Component.translatable("tooltip.corpse_campus.midas_touch_power_range",
+                        MidasBombRuntime.MIN_POWER_LEVEL,
+                        MidasBombRuntime.MAX_POWER_LEVEL),
+                Component.translatable("tooltip.corpse_campus.midas_touch_max_power_cost",
+                        MidasBombRuntime.getManaCostForPowerLevel(MidasBombRuntime.MAX_POWER_LEVEL)),
                 Component.translatable("tooltip.corpse_campus.midas_touch_remote_trigger"),
                 Component.translatable("tooltip.corpse_campus.midas_touch_inventory_trigger"));
     }
@@ -85,10 +90,26 @@ public class MidasTouchSpell extends AbstractSpell {
             ModNetwork.sendToPlayer(new OpenMidasTouchScreenPacket(spellLevel,
                     MidasBombRuntime.DEFAULT_TIMER_SECONDS,
                     MidasBombRuntime.MIN_TIMER_SECONDS,
-                    MidasBombRuntime.MAX_TIMER_SECONDS), serverPlayer);
+                    MidasBombRuntime.MAX_TIMER_SECONDS,
+                    MidasBombRuntime.DEFAULT_POWER_LEVEL,
+                    MidasBombRuntime.MIN_POWER_LEVEL,
+                    MidasBombRuntime.MAX_POWER_LEVEL), serverPlayer);
             level.playSound(null, entity.blockPosition(), SoundEvents.ENCHANTMENT_TABLE_USE, SoundSource.PLAYERS, 0.35F, 1.1F);
         }
         super.onCast(level, spellLevel, entity, castSource, playerMagicData);
+    }
+
+    public static boolean consumeMidasMana(net.minecraft.server.level.ServerPlayer player, MagicData playerMagicData,
+            int powerLevel) {
+        int manaCost = MidasBombRuntime.getManaCostForPowerLevel(powerLevel);
+        float currentMana = playerMagicData.getMana();
+        if (currentMana + 1.0E-4F < manaCost) {
+            player.displayClientMessage(Component.translatable("message.corpse_campus.midas_touch_no_mana", manaCost), true);
+            player.level().playSound(null, player.blockPosition(), SoundEvents.NOTE_BLOCK_BASS.value(), SoundSource.PLAYERS, 0.35F, 0.7F);
+            return false;
+        }
+        playerMagicData.setMana(currentMana - manaCost);
+        return true;
     }
 
     @Override

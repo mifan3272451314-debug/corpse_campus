@@ -27,14 +27,33 @@ public final class MidasBombRuntime {
     public static final int MIN_TIMER_SECONDS = 1;
     public static final int MAX_TIMER_SECONDS = 120;
     public static final int DEFAULT_TIMER_SECONDS = 15;
+    public static final int MIN_POWER_LEVEL = 1;
+    public static final int MAX_POWER_LEVEL = 5;
+    public static final int DEFAULT_POWER_LEVEL = 5;
 
     private static final String ITEM_TAG_ARMED = "corpse_campus_midas_bomb_armed";
     private static final String ITEM_TAG_END = "corpse_campus_midas_bomb_end";
     private static final String ITEM_TAG_LEVEL = "corpse_campus_midas_bomb_level";
     private static final String ITEM_TAG_OWNER = "corpse_campus_midas_bomb_owner";
     private static final String ITEM_TAG_SECONDS = "corpse_campus_midas_bomb_seconds";
+    private static final String ITEM_TAG_POWER = "corpse_campus_midas_bomb_power";
 
-    private static final float BASE_EXPLOSION_POWER = 3.5F;
+    private static final float[] EXPLOSION_POWER_BY_LEVEL = {
+            0.0F,
+            1.5F,
+            2.25F,
+            3.0F,
+            3.75F,
+            4.5F
+    };
+    private static final int[] MANA_COST_BY_POWER_LEVEL = {
+            0,
+            30,
+            55,
+            90,
+            140,
+            220
+    };
     private static final Map<Level, Map<BlockPos, ArmedBlockBomb>> BLOCK_BOMBS = new HashMap<>();
 
     private MidasBombRuntime() {
@@ -44,14 +63,27 @@ public final class MidasBombRuntime {
         return Math.max(MIN_TIMER_SECONDS, Math.min(MAX_TIMER_SECONDS, seconds));
     }
 
-    public static void armFromPlayerSelection(ServerPlayer player, int spellLevel, int timerSeconds) {
+    public static int clampPowerLevel(int powerLevel) {
+        return Math.max(MIN_POWER_LEVEL, Math.min(MAX_POWER_LEVEL, powerLevel));
+    }
+
+    public static int getManaCostForPowerLevel(int powerLevel) {
+        return MANA_COST_BY_POWER_LEVEL[clampPowerLevel(powerLevel)];
+    }
+
+    public static float getExplosionPowerForUi(int powerLevel) {
+        return EXPLOSION_POWER_BY_LEVEL[clampPowerLevel(powerLevel)];
+    }
+
+    public static void armFromPlayerSelection(ServerPlayer player, int spellLevel, int timerSeconds, int powerLevel) {
         int seconds = clampSeconds(timerSeconds);
+        int clampedPowerLevel = clampPowerLevel(powerLevel);
         long endGameTime = player.level().getGameTime() + seconds * 20L;
         boolean armedAnything = false;
 
         ItemStack heldStack = player.getMainHandItem();
         if (!heldStack.isEmpty()) {
-            armItemStack(heldStack, player.getUUID(), spellLevel, seconds, endGameTime);
+            armItemStack(heldStack, player.getUUID(), spellLevel, seconds, clampedPowerLevel, endGameTime);
             armedAnything = true;
         }
 
@@ -60,7 +92,7 @@ public final class MidasBombRuntime {
                 && player.level() instanceof ServerLevel serverLevel) {
             BlockPos pos = blockHitResult.getBlockPos();
             if (!serverLevel.isEmptyBlock(pos)) {
-                armBlock(serverLevel, pos, player.getUUID(), spellLevel, seconds, endGameTime);
+                armBlock(serverLevel, pos, player.getUUID(), spellLevel, seconds, clampedPowerLevel, endGameTime);
                 armedAnything = true;
             }
         }
@@ -77,7 +109,7 @@ public final class MidasBombRuntime {
                 0.4F,
                 1.15F);
         player.displayClientMessage(
-                Component.translatable("message.corpse_campus.midas_touch_armed", seconds),
+                Component.translatable("message.corpse_campus.midas_touch_armed", seconds, clampedPowerLevel),
                 true);
     }
 
@@ -95,7 +127,7 @@ public final class MidasBombRuntime {
                 continue;
             }
 
-            float power = getExplosionPower(getBombLevel(stack));
+            float power = getExplosionPower(getBombLevel(stack), getBombPowerLevel(stack));
             clearBomb(stack);
             stacks.set(i, ItemStack.EMPTY);
             explode(player.level(), player.getX(), player.getY() + 0.5D, player.getZ(), power);
@@ -120,7 +152,7 @@ public final class MidasBombRuntime {
                 }
                 if (bomb.endGameTime <= gameTime) {
                     iterator.remove();
-                    detonateBlock(level, pos, bomb.level);
+                    detonateBlock(level, pos, bomb.level, bomb.powerLevel);
                 }
             }
             if (blockBombs.isEmpty()) {
@@ -133,7 +165,7 @@ public final class MidasBombRuntime {
             if (!isBomb(stack) || getBombEndTime(stack) > level.getGameTime()) {
                 continue;
             }
-            float power = getExplosionPower(getBombLevel(stack));
+            float power = getExplosionPower(getBombLevel(stack), getBombPowerLevel(stack));
             clearBomb(stack);
             itemEntity.discard();
             explode(level, itemEntity.getX(), itemEntity.getY() + 0.1D, itemEntity.getZ(), power);
@@ -145,7 +177,7 @@ public final class MidasBombRuntime {
         if (!isBomb(stack)) {
             return false;
         }
-        float power = getExplosionPower(getBombLevel(stack));
+        float power = getExplosionPower(getBombLevel(stack), getBombPowerLevel(stack));
         clearBomb(stack);
         player.setItemInHand(hand, ItemStack.EMPTY);
         explode(player.level(), player.getX(), player.getY() + 0.5D, player.getZ(), power);
@@ -162,7 +194,7 @@ public final class MidasBombRuntime {
             return false;
         }
         if (level instanceof ServerLevel serverLevel) {
-            detonateBlock(serverLevel, pos, bomb.level);
+            detonateBlock(serverLevel, pos, bomb.level, bomb.powerLevel);
         }
         if (blockBombs.isEmpty()) {
             BLOCK_BOMBS.remove(level);
@@ -170,27 +202,30 @@ public final class MidasBombRuntime {
         return true;
     }
 
-    private static void armItemStack(ItemStack stack, UUID owner, int spellLevel, int seconds, long endGameTime) {
+    private static void armItemStack(ItemStack stack, UUID owner, int spellLevel, int seconds, int powerLevel,
+            long endGameTime) {
         CompoundTag tag = stack.getOrCreateTag();
         tag.putBoolean(ITEM_TAG_ARMED, true);
         tag.putLong(ITEM_TAG_END, endGameTime);
         tag.putInt(ITEM_TAG_LEVEL, spellLevel);
         tag.putUUID(ITEM_TAG_OWNER, owner);
         tag.putInt(ITEM_TAG_SECONDS, seconds);
+        tag.putInt(ITEM_TAG_POWER, clampPowerLevel(powerLevel));
     }
 
-    private static void armBlock(ServerLevel level, BlockPos pos, UUID owner, int spellLevel, int seconds, long endGameTime) {
+    private static void armBlock(ServerLevel level, BlockPos pos, UUID owner, int spellLevel, int seconds,
+            int powerLevel, long endGameTime) {
         BLOCK_BOMBS.computeIfAbsent(level, ignored -> new HashMap<>())
-                .put(pos.immutable(), new ArmedBlockBomb(owner, spellLevel, seconds, endGameTime));
+                .put(pos.immutable(), new ArmedBlockBomb(owner, spellLevel, seconds, clampPowerLevel(powerLevel), endGameTime));
         level.playSound(null, pos, SoundEvents.STONE_BUTTON_CLICK_ON, SoundSource.BLOCKS, 0.35F, 1.4F);
     }
 
-    private static void detonateBlock(ServerLevel level, BlockPos pos, int spellLevel) {
+    private static void detonateBlock(ServerLevel level, BlockPos pos, int spellLevel, int powerLevel) {
         BlockState state = level.getBlockState(pos);
         if (!state.isAir()) {
             level.removeBlock(pos, false);
         }
-        explode(level, pos.getX() + 0.5D, pos.getY() + 0.5D, pos.getZ() + 0.5D, getExplosionPower(spellLevel));
+        explode(level, pos.getX() + 0.5D, pos.getY() + 0.5D, pos.getZ() + 0.5D, getExplosionPower(spellLevel, powerLevel));
     }
 
     private static void explode(Level level, double x, double y, double z, float power) {
@@ -210,6 +245,10 @@ public final class MidasBombRuntime {
         return stack.getTag() == null ? 1 : Math.max(1, stack.getTag().getInt(ITEM_TAG_LEVEL));
     }
 
+    private static int getBombPowerLevel(ItemStack stack) {
+        return stack.getTag() == null ? DEFAULT_POWER_LEVEL : clampPowerLevel(stack.getTag().getInt(ITEM_TAG_POWER));
+    }
+
     private static void clearBomb(ItemStack stack) {
         if (stack.getTag() == null) {
             return;
@@ -220,15 +259,17 @@ public final class MidasBombRuntime {
         tag.remove(ITEM_TAG_LEVEL);
         tag.remove(ITEM_TAG_OWNER);
         tag.remove(ITEM_TAG_SECONDS);
+        tag.remove(ITEM_TAG_POWER);
         if (tag.isEmpty()) {
             stack.setTag(null);
         }
     }
 
-    private static float getExplosionPower(int spellLevel) {
-        return BASE_EXPLOSION_POWER + Math.max(0, spellLevel - 1) * 0.5F;
+    private static float getExplosionPower(int spellLevel, int powerLevel) {
+        float basePower = EXPLOSION_POWER_BY_LEVEL[clampPowerLevel(powerLevel)];
+        return basePower + Math.max(0, spellLevel - 1) * 0.2F;
     }
 
-    private record ArmedBlockBomb(UUID owner, int level, int seconds, long endGameTime) {
+    private record ArmedBlockBomb(UUID owner, int level, int seconds, int powerLevel, long endGameTime) {
     }
 }

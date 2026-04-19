@@ -507,10 +507,10 @@ public final class AbilityEventHandler {
         footprint.putDouble("x", entity.getX());
         footprint.putDouble("y", entity.getY() + 0.02D);
         footprint.putDouble("z", entity.getZ());
-        footprint.putLong("expire", gameTime + 40L);
+        footprint.putLong("expire", gameTime + 100L);
         trail.add(footprint);
 
-        while (trail.size() > 12) {
+        while (trail.size() > 24) {
             trail.remove(0);
         }
 

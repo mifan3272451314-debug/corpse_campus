@@ -32,6 +32,10 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
+import io.redspace.ironsspellbooks.api.magic.MagicData;
+import io.redspace.ironsspellbooks.api.registry.SpellRegistry;
+import io.redspace.ironsspellbooks.api.spells.AbstractSpell;
+import io.redspace.ironsspellbooks.api.spells.CastSource;
 import org.joml.Vector3f;
 
 import java.util.ArrayList;
@@ -370,89 +374,50 @@ public final class AbilityRuntime {
     public static void triggerElementalistBurst(ServerLevel level, Player caster, LivingEntity target, int spellLevel) {
         int element = level.random.nextInt(3);
         switch (element) {
-            case 0 -> strikeElementalistFire(level, caster, target, spellLevel);
-            case 1 -> strikeElementalistWater(level, caster, target, spellLevel);
-            default -> strikeElementalistLightning(level, caster, target, spellLevel);
+            case 0 -> castRegisteredElementalSpell(level, caster, target, spellLevel,
+                    SpellRegistry.FIREBOLT_SPELL.get(), ElementalSpellType.FIRE);
+            case 1 -> castRegisteredElementalSpell(level, caster, target, spellLevel,
+                    SpellRegistry.ICICLE_SPELL.get(), ElementalSpellType.WATER);
+            default -> castRegisteredElementalSpell(level, caster, target, spellLevel,
+                    SpellRegistry.LIGHTNING_BOLT_SPELL.get(), ElementalSpellType.LIGHTNING);
         }
     }
 
-    private static void strikeElementalistFire(ServerLevel level, LivingEntity caster, LivingEntity target, int spellLevel) {
-        float damage = 3.0F + spellLevel * 1.1F;
-        target.invulnerableTime = 0;
-        target.setSecondsOnFire(2 + spellLevel);
-        target.hurt(level.damageSources().indirectMagic(caster, caster), damage);
-        level.sendParticles(ParticleTypes.FLAME,
-                target.getX(),
-                target.getY() + target.getBbHeight() * 0.5D,
-                target.getZ(),
-                18,
-                0.35D,
-                0.45D,
-                0.35D,
-                0.02D);
-        level.sendParticles(ParticleTypes.SMALL_FLAME,
-                target.getX(),
-                target.getY() + 0.2D,
-                target.getZ(),
-                8,
-                0.2D,
-                0.2D,
-                0.2D,
-                0.01D);
-        level.playSound(null, target.blockPosition(), SoundEvents.BLAZE_SHOOT, SoundSource.PLAYERS, 0.2F, 1.15F);
+    private static void castRegisteredElementalSpell(ServerLevel level, Player caster, LivingEntity target, int spellLevel,
+            AbstractSpell spell, ElementalSpellType type) {
+        MagicData magicData = MagicData.getPlayerMagicData(caster);
+        Vec3 originalPos = caster.position();
+        float originalYRot = caster.getYRot();
+        float originalXRot = caster.getXRot();
+
+        Vec3 castOrigin = getElementalCastOrigin(target, type);
+        Vec3 direction = target.getEyePosition().subtract(castOrigin).normalize();
+
+        caster.teleportTo(castOrigin.x, castOrigin.y, castOrigin.z);
+        float yaw = (float) Mth.wrapDegrees(Math.toDegrees(Math.atan2(-direction.x, direction.z)));
+        float pitch = (float) Mth.wrapDegrees(-Math.toDegrees(Math.atan2(direction.y,
+                Math.sqrt(direction.x * direction.x + direction.z * direction.z))));
+        caster.setYRot(yaw);
+        caster.setYHeadRot(yaw);
+        caster.setYBodyRot(yaw);
+        caster.setXRot(pitch);
+
+        spell.onCast(level, Math.max(1, Math.min(3, spellLevel)), caster, CastSource.NONE, magicData);
+
+        caster.teleportTo(originalPos.x, originalPos.y, originalPos.z);
+        caster.setYRot(originalYRot);
+        caster.setYHeadRot(originalYRot);
+        caster.setYBodyRot(originalYRot);
+        caster.setXRot(originalXRot);
     }
 
-    private static void strikeElementalistWater(ServerLevel level, LivingEntity caster, LivingEntity target, int spellLevel) {
-        float damage = 2.5F + spellLevel;
-        target.invulnerableTime = 0;
-        target.hurt(level.damageSources().indirectMagic(caster, caster), damage);
-        target.setDeltaMovement(target.getDeltaMovement().scale(0.5D).add(0.0D, 0.12D, 0.0D));
-        target.hurtMarked = true;
-        level.sendParticles(ParticleTypes.SPLASH,
-                target.getX(),
-                target.getY() + target.getBbHeight() * 0.45D,
-                target.getZ(),
-                18,
-                0.35D,
-                0.28D,
-                0.35D,
-                0.08D);
-        level.sendParticles(new DustParticleOptions(new Vector3f(0.45F, 0.76F, 1.0F), 0.9F),
-                target.getX(),
-                target.getY() + target.getBbHeight() * 0.5D,
-                target.getZ(),
-                12,
-                0.3D,
-                0.3D,
-                0.3D,
-                0.0D);
-        level.playSound(null, target.blockPosition(), SoundEvents.GENERIC_SPLASH, SoundSource.PLAYERS, 0.22F, 1.0F);
-    }
-
-    private static void strikeElementalistLightning(ServerLevel level, LivingEntity caster, LivingEntity target, int spellLevel) {
-        float damage = 3.5F + spellLevel * 1.25F;
-        target.invulnerableTime = 0;
-        target.hurt(level.damageSources().lightningBolt(), damage);
-        level.sendParticles(ParticleTypes.ELECTRIC_SPARK,
-                target.getX(),
-                target.getY() + target.getBbHeight() * 0.6D,
-                target.getZ(),
-                22,
-                0.28D,
-                0.5D,
-                0.28D,
-                0.02D);
-        level.sendParticles(new DustParticleOptions(new Vector3f(0.82F, 0.9F, 1.0F), 1.0F),
-                target.getX(),
-                target.getY() + target.getBbHeight() * 0.5D,
-                target.getZ(),
-                10,
-                0.2D,
-                0.35D,
-                0.2D,
-                0.0D);
-        level.playSound(null, target.blockPosition(), SoundEvents.LIGHTNING_BOLT_IMPACT, SoundSource.PLAYERS, 0.22F,
-                1.45F);
+    private static Vec3 getElementalCastOrigin(LivingEntity target, ElementalSpellType type) {
+        Vec3 base = target.getEyePosition();
+        return switch (type) {
+            case FIRE -> base.add(0.0D, 0.15D, -1.4D);
+            case WATER -> base.add(0.0D, 0.1D, -1.6D);
+            case LIGHTNING -> base.add(0.0D, 6.0D, 0.0D);
+        };
     }
 
     public static boolean isElementalistValidTarget(Player caster, LivingEntity target) {
@@ -492,6 +457,12 @@ public final class AbilityRuntime {
 
     public static boolean isElementalDomainVisualBlock(BlockState state) {
         return isElementalDomainBlock(state);
+    }
+
+    private enum ElementalSpellType {
+        FIRE,
+        WATER,
+        LIGHTNING
     }
 
     private static final class ElementalDomainState {

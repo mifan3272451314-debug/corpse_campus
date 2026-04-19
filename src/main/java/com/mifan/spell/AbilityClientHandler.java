@@ -87,7 +87,10 @@ public final class AbilityClientHandler {
                 packet.getSpellLevel(),
                 packet.getDefaultSeconds(),
                 packet.getMinSeconds(),
-                packet.getMaxSeconds()));
+                packet.getMaxSeconds(),
+                packet.getDefaultPowerLevel(),
+                packet.getMinPowerLevel(),
+                packet.getMaxPowerLevel()));
     }
 
     public static void handleDangerPing(DangerSensePingPacket packet) {
@@ -255,9 +258,9 @@ public final class AbilityClientHandler {
             return;
         }
 
-        event.setRed(event.getRed() * 0.18F);
-        event.setGreen(event.getGreen() * 0.18F);
-        event.setBlue(event.getBlue() * 0.2F);
+        event.setRed(event.getRed() * 0.95F);
+        event.setGreen(event.getGreen() * 0.95F);
+        event.setBlue(event.getBlue() * 0.95F);
     }
 
     @SubscribeEvent
@@ -276,8 +279,8 @@ public final class AbilityClientHandler {
             return;
         }
 
-        event.scaleFarPlaneDistance(0.84F);
-        event.scaleNearPlaneDistance(1.05F);
+        event.scaleFarPlaneDistance(0.98F);
+        event.scaleNearPlaneDistance(1.0F);
     }
 
     @SubscribeEvent
@@ -444,10 +447,10 @@ public final class AbilityClientHandler {
     }
 
     private static void drawDarkSonicOverlay(GuiGraphics guiGraphics, int width, int height, long gameTime) {
-        int veilAlpha = 54 + (int) (Math.sin(gameTime * 0.05D) * 4.0D + 4.0D);
+        int veilAlpha = 4 + (int) (Math.sin(gameTime * 0.05D) * 1.0D);
         guiGraphics.fill(0, 0, width, height, (veilAlpha << 24) | 0x050608);
 
-        int vignetteAlpha = 22 + (int) (Math.sin(gameTime * 0.08D) * 3.0D + 3.0D);
+        int vignetteAlpha = 1 + (int) (Math.sin(gameTime * 0.08D) * 1.0D);
         guiGraphics.fill(0, 0, width, 20, (vignetteAlpha << 24) | 0x0D1318);
         guiGraphics.fill(0, height - 20, width, height, (vignetteAlpha << 24) | 0x0D1318);
         guiGraphics.fill(0, 0, 14, height, (vignetteAlpha << 24) | 0x0D1318);
