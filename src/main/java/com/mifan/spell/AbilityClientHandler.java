@@ -758,22 +758,7 @@ public final class AbilityClientHandler {
     }
 
     private static boolean shouldCreateSonicPingFromEntitySound(Entity soundEntity, SoundEvent sound) {
-        ResourceLocation soundId = sound.getLocation();
-        String path = soundId.getPath();
-
-        if (path.contains("step") || path.contains("swim") || path.contains("splash") || path.contains("breath")
-                || path.contains("breathe") || path.contains("idle") || path.contains("ambient")
-                || path.contains("hurt_freeze") || path.contains("freeze") || path.contains("flap")
-                || path.contains("small_fall")) {
-            return false;
-        }
-
-        Vec3 motionDelta = soundEntity.position().subtract(new Vec3(soundEntity.xo, soundEntity.yo, soundEntity.zo));
-        if (motionDelta.lengthSqr() < 0.0025D && (path.contains("ambient") || path.contains("breath") || path.contains("step"))) {
-            return false;
-        }
-
-        return true;
+        return soundEntity != null && sound != null;
     }
 
     private static void spawnOlfactionTrails(Player player, ClientLevel level, long gameTime) {
@@ -829,36 +814,6 @@ public final class AbilityClientHandler {
 
     private static double getSonicRevealRange(int spellLevel) {
         return 18.0D + spellLevel * 4.0D;
-    }
-
-    private static Vector3f worldToScreen(double worldX, double worldY, double worldZ) {
-        Minecraft minecraft = Minecraft.getInstance();
-        Camera camera = minecraft.gameRenderer.getMainCamera();
-        Vec3 cameraPos = camera.getPosition();
-
-        float x = (float) (worldX - cameraPos.x);
-        float y = (float) (worldY - cameraPos.y);
-        float z = (float) (worldZ - cameraPos.z);
-
-        Quaternionf rotation = camera.rotation().conjugate(new Quaternionf());
-        Vector3f local = new Vector3f(x, y, z);
-        rotation.transform(local);
-
-        Matrix4f projection = minecraft.gameRenderer.getProjectionMatrix(minecraft.options.fov().get());
-        Vector4f clip = new Vector4f(local.x(), local.y(), local.z(), 1.0F);
-        clip.mul(projection);
-
-        if (clip.w <= 0.0F) {
-            return new Vector3f(Float.NaN, Float.NaN, -1.0F);
-        }
-
-        clip.div(clip.w);
-
-        int screenWidth = minecraft.getWindow().getGuiScaledWidth();
-        int screenHeight = minecraft.getWindow().getGuiScaledHeight();
-        float screenX = (clip.x * 0.5F + 0.5F) * screenWidth;
-        float screenY = (clip.y * -0.5F + 0.5F) * screenHeight;
-        return new Vector3f(screenX, screenY, clip.z);
     }
 
     private record SoundPing(Vec3 position, long expireAt, long durationTicks) {
