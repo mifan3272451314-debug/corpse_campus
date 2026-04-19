@@ -78,6 +78,8 @@ public final class AbilityRuntime {
     public static final String TAG_NECROTIC_REVIVE_USED = "corpse_campus_necrotic_revive_used";
     public static final String TAG_NECROTIC_ORIGINAL_MAX_HEALTH = "corpse_campus_necrotic_original_max_health";
     public static final String TAG_NECROTIC_MAX_HEALTH_APPLIED = "corpse_campus_necrotic_max_health_applied";
+    public static final String TAG_NECROTIC_PROVOKED_BY = "corpse_campus_necrotic_provoked_by";
+    public static final String TAG_NECROTIC_PROVOKED_UNTIL = "corpse_campus_necrotic_provoked_until";
 
     public static final String TAG_MARK_ACTIVE = "corpse_campus_mark_active";
     public static final String TAG_MARK_X = "corpse_campus_mark_x";
@@ -113,6 +115,8 @@ public final class AbilityRuntime {
     private static final float DOMINANCE_MAX_HEALTH_LIMIT = 35.0F;
     private static final int NECROTIC_KILL_HEAL_BASE = 4;
     private static final double NECROTIC_UNDEAD_MAX_HEALTH = 40.0D;
+    private static final float NECROTIC_NON_PLAYER_KILL_HEAL = 4.0F;
+    private static final int NECROTIC_PROVOKE_DURATION_TICKS = 20 * 20;
     private static final int MARK_ROOT_DURATION_TICKS = 200;
     private static final int ELEMENTAL_DOMAIN_RADIUS = 30;
     private static final int ELEMENTAL_DOMAIN_CLOSED_RADIUS = 15;
@@ -261,6 +265,33 @@ public final class AbilityRuntime {
 
     public static double getNecroticUndeadMaxHealth() {
         return NECROTIC_UNDEAD_MAX_HEALTH;
+    }
+
+    public static float getNecroticNonPlayerKillHeal() {
+        return NECROTIC_NON_PLAYER_KILL_HEAL;
+    }
+
+    public static int getNecroticProvokeDurationTicks() {
+        return NECROTIC_PROVOKE_DURATION_TICKS;
+    }
+
+    public static void markNecroticProvoked(Mob mob, Player player) {
+        CompoundTag data = mob.getPersistentData();
+        data.putUUID(TAG_NECROTIC_PROVOKED_BY, player.getUUID());
+        data.putLong(TAG_NECROTIC_PROVOKED_UNTIL, mob.level().getGameTime() + NECROTIC_PROVOKE_DURATION_TICKS);
+    }
+
+    public static boolean canMobTargetNecroticPlayer(Mob mob, Player player) {
+        CompoundTag data = mob.getPersistentData();
+        return data.hasUUID(TAG_NECROTIC_PROVOKED_BY)
+                && player.getUUID().equals(data.getUUID(TAG_NECROTIC_PROVOKED_BY))
+                && data.getLong(TAG_NECROTIC_PROVOKED_UNTIL) > mob.level().getGameTime();
+    }
+
+    public static void clearNecroticProvoked(Mob mob) {
+        CompoundTag data = mob.getPersistentData();
+        data.remove(TAG_NECROTIC_PROVOKED_BY);
+        data.remove(TAG_NECROTIC_PROVOKED_UNTIL);
     }
 
     public static int getMarkRadius(int spellLevel) {

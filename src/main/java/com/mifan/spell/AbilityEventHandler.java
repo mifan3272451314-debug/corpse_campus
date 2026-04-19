@@ -235,6 +235,12 @@ public final class AbilityEventHandler {
             return;
         }
 
+        if (livingAttacker instanceof Player player
+                && player.hasEffect(ModMobEffects.NECROTIC_UNDEAD.get())
+                && event.getEntity() instanceof Mob mobTarget) {
+            AbilityRuntime.markNecroticProvoked(mobTarget, player);
+        }
+
         MobEffectInstance maniaEffect = livingAttacker.getEffect(ModMobEffects.MANIA.get());
         if (maniaEffect == null) {
             return;
@@ -269,6 +275,10 @@ public final class AbilityEventHandler {
         Player player = event.getEntity();
         if (player.level().isClientSide || !(event.getTarget() instanceof LivingEntity livingTarget) || livingTarget == player) {
             return;
+        }
+
+        if (player.hasEffect(ModMobEffects.NECROTIC_UNDEAD.get()) && livingTarget instanceof Mob mobTarget) {
+            AbilityRuntime.markNecroticProvoked(mobTarget, player);
         }
 
         AbilityRuntime.retargetDominatedMobs(player, livingTarget);
@@ -621,6 +631,19 @@ public final class AbilityEventHandler {
 
         applyNecroticMaxHealth(player, data);
 
+        MobEffectInstance maniaEffect = player.getEffect(ModMobEffects.MANIA.get());
+        if (maniaEffect == null || maniaEffect.getDuration() < 40) {
+            player.addEffect(new MobEffectInstance(ModMobEffects.MANIA.get(), 100, 0, false, false, false));
+        }
+
+        for (Mob mob : player.level().getEntitiesOfClass(Mob.class, player.getBoundingBox().inflate(24.0D),
+                mob -> mob.isAlive() && mob.getTarget() == player)) {
+            if (!AbilityRuntime.canMobTargetNecroticPlayer(mob, player)) {
+                mob.setTarget(null);
+                AbilityRuntime.clearNecroticProvoked(mob);
+            }
+        }
+
         if (gameTime % 20L == 0L) {
             player.addEffect(new MobEffectInstance(MobEffects.HUNGER, 40, 0, false, false, false));
         }
@@ -761,8 +784,34 @@ public final class AbilityEventHandler {
         }
 
         int spellLevel = AbilityRuntime.getEffectLevel(undeadEffect);
-        float healAmount = AbilityRuntime.getNecroticHealAmount(spellLevel);
         CompoundTag data = player.getPersistentData();
+
+        if (event.getEntity() instanceof Player) {
+            player.removeEffect(ModMobEffects.NECROTIC_UNDEAD.get());
+            player.removeEffect(ModMobEffects.MANIA.get());
+            restoreNecroticMaxHealth(player, data);
+            AbilityRuntime.clear(data,
+                    AbilityRuntime.TAG_NECROTIC_ALLOW_HEAL_UNTIL,
+                    AbilityRuntime.TAG_NECROTIC_LAST_KILL_HEAL,
+                    AbilityRuntime.TAG_NECROTIC_REVIVE_USED,
+                    AbilityRuntime.TAG_NECROTIC_ORIGINAL_MAX_HEALTH,
+                    AbilityRuntime.TAG_NECROTIC_MAX_HEALTH_APPLIED,
+                    AbilityRuntime.TAG_MANIA_LAST_PROC,
+                    AbilityRuntime.TAG_MANIA_LAST_SWING);
+            player.setHealth((float) player.getMaxHealth());
+            player.level().playSound(null, player.blockPosition(), SoundEvents.ZOMBIE_VILLAGER_CURE, SoundSource.PLAYERS,
+                    0.5F, 1.1F);
+            player.displayClientMessage(net.minecraft.network.chat.Component.translatable(
+                    "message.corpse_campus.necrotic_rebirth_restored"), true);
+            return;
+        }
+
+        float healAmount = Math.min(AbilityRuntime.getNecroticNonPlayerKillHeal(),
+                Math.max(0.0F, (float) player.getMaxHealth() - player.getHealth()));
+        if (healAmount <= 0.0F) {
+            return;
+        }
+
         data.putLong(AbilityRuntime.TAG_NECROTIC_ALLOW_HEAL_UNTIL, player.level().getGameTime() + 2L);
         data.putFloat(AbilityRuntime.TAG_NECROTIC_LAST_KILL_HEAL, healAmount);
         player.heal(healAmount);
