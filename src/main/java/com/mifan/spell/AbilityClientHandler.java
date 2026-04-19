@@ -43,7 +43,9 @@ import net.minecraftforge.fml.common.Mod;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvents;
 import org.joml.Matrix4f;
+import org.joml.Quaternionf;
 import org.joml.Vector3f;
+import org.joml.Vector4f;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -280,20 +282,6 @@ public final class AbilityClientHandler {
     }
 
     @SubscribeEvent
-    public static void onRenderLevelStage(RenderLevelStageEvent event) {
-        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_TRANSLUCENT_BLOCKS) {
-            return;
-        }
-
-        Player player = localPlayer();
-        if (player == null || !hasSonicSense(player)) {
-            return;
-        }
-
-        renderSonicEntitiesInWorld(event.getPoseStack(), player, event.getPartialTick());
-    }
-
-    @SubscribeEvent
     public static void onRenderOverlay(RenderGuiOverlayEvent.Post event) {
         Player player = localPlayer();
         if (player == null) {
@@ -310,6 +298,7 @@ public final class AbilityClientHandler {
 
         if (hasSonicSense(player)) {
             drawDarkSonicOverlay(event.getGuiGraphics(), width, height, gameTime);
+            drawSonicEntitiesOnScreen(event.getGuiGraphics(), player, gameTime);
         }
 
         if (instinctOverlayUntil > gameTime) {
@@ -466,17 +455,14 @@ public final class AbilityClientHandler {
         guiGraphics.fill(width - 14, 0, width, height, (vignetteAlpha << 24) | 0x0D1318);
     }
 
-    private static void renderSonicEntitiesInWorld(PoseStack poseStack, Player player, float partialTick) {
+    private static void drawSonicEntitiesOnScreen(GuiGraphics guiGraphics, Player player, long gameTime) {
         Minecraft minecraft = Minecraft.getInstance();
         ClientLevel level = minecraft.level;
         if (level == null) {
             return;
         }
 
-        Camera camera = minecraft.gameRenderer.getMainCamera();
-        Vec3 cameraPos = camera.getPosition();
-        Vec3 playerPos = player.getPosition(partialTick);
-        long gameTime = player.level().getGameTime();
+        Vec3 playerPos = player.getPosition(1.0F);
         int frameIndex = (sonicHudTick / SONIC_ECHO_FRAME_DURATION) % SONIC_ECHO_FRAME_COUNT;
         int spellLevel = getEffectLevel(player.getEffect(ModMobEffects.SONIC_ATTUNEMENT.get()));
         double revealRange = getSonicRevealRange(spellLevel);
@@ -491,52 +477,75 @@ public final class AbilityClientHandler {
 
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
-        RenderSystem.disableDepthTest();
-        RenderSystem.depthMask(false);
-        RenderSystem.setShader(GameRenderer::getPositionTexColorShader);
-        RenderSystem.setShaderTexture(0, SONIC_ECHO_TEXTURE);
+        PoseStack poseStack = guiGraphics.pose();
 
         for (LivingEntity target : nearbyEntities) {
-            poseStack.pushPose();
-
             Vec3 markerPos = target.getBoundingBox().getCenter().add(0.0D, target.getBbHeight() * 0.15D, 0.0D);
+            Vector3f screenPos = worldToScreen(markerPos.x, markerPos.y, markerPos.z);
+            if (Float.isNaN(screenPos.x()) || screenPos.z() < -1.0F || screenPos.z() > 1.0F) {
+                continue;
+            }
+
             double distance = playerPos.distanceTo(markerPos);
             float distanceScale = distance <= 0.1D
                     ? 1.35F
                     : 0.55F + 0.9F * (float) Math.pow(Math.max(0.0D, 1.0D - distance / 28.0D), 1.2D);
             float pulse = 0.9F + 0.2F * (float) Math.sin((gameTime + target.getId() * 7L) * 0.18D);
             float pulseScale = 1.0F + pulse * 0.35F;
-            float renderScale = SONIC_WORLD_ICON_BASE_SCALE * distanceScale * pulseScale;
+            float renderScale = distanceScale * pulseScale;
             int alpha = Mth.clamp((int) ((0.78F + pulse * 0.22F) * 255.0F), 180, 255);
+            int drawX = Mth.floor(screenPos.x());
+            int drawY = Mth.floor(screenPos.y());
 
-            poseStack.translate(
-                    markerPos.x - cameraPos.x,
-                    markerPos.y - cameraPos.y,
-                    markerPos.z - cameraPos.z);
-            poseStack.mulPose(camera.rotation());
-            poseStack.scale(-renderScale, -renderScale, renderScale);
-
-            Matrix4f matrix = poseStack.last().pose();
-            float minU = (frameIndex * SONIC_ECHO_FRAME_WIDTH) / (float) (SONIC_ECHO_FRAME_WIDTH * SONIC_ECHO_FRAME_COUNT);
-            float maxU = ((frameIndex + 1) * SONIC_ECHO_FRAME_WIDTH)
-                    / (float) (SONIC_ECHO_FRAME_WIDTH * SONIC_ECHO_FRAME_COUNT);
-            float halfSize = SONIC_ECHO_FRAME_WIDTH / 2.0F;
-
-            BufferBuilder bufferBuilder = Tesselator.getInstance().getBuilder();
-            bufferBuilder.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR);
-            bufferBuilder.vertex(matrix, -halfSize, -halfSize, 0.0F).uv(minU, 1.0F).color(255, 255, 255, alpha).endVertex();
-            bufferBuilder.vertex(matrix, halfSize, -halfSize, 0.0F).uv(maxU, 1.0F).color(255, 255, 255, alpha).endVertex();
-            bufferBuilder.vertex(matrix, halfSize, halfSize, 0.0F).uv(maxU, 0.0F).color(255, 255, 255, alpha).endVertex();
-            bufferBuilder.vertex(matrix, -halfSize, halfSize, 0.0F).uv(minU, 0.0F).color(255, 255, 255, alpha).endVertex();
-            BufferUploader.drawWithShader(bufferBuilder.end());
-
+            poseStack.pushPose();
+            poseStack.translate(drawX, drawY, 0.0F);
+            poseStack.scale(renderScale, renderScale, 1.0F);
+            RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, alpha / 255.0F);
+            guiGraphics.blit(
+                    SONIC_ECHO_TEXTURE,
+                    -SONIC_ECHO_FRAME_WIDTH / 2,
+                    -SONIC_ECHO_FRAME_HEIGHT / 2,
+                    frameIndex * SONIC_ECHO_FRAME_WIDTH,
+                    0,
+                    SONIC_ECHO_FRAME_WIDTH,
+                    SONIC_ECHO_FRAME_HEIGHT,
+                    SONIC_ECHO_FRAME_WIDTH * SONIC_ECHO_FRAME_COUNT,
+                    SONIC_ECHO_FRAME_HEIGHT);
             poseStack.popPose();
         }
 
-        RenderSystem.enableDepthTest();
-        RenderSystem.depthMask(true);
         RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
         RenderSystem.disableBlend();
+    }
+
+    private static Vector3f worldToScreen(double worldX, double worldY, double worldZ) {
+        Minecraft minecraft = Minecraft.getInstance();
+        Camera camera = minecraft.gameRenderer.getMainCamera();
+        Vec3 cameraPos = camera.getPosition();
+
+        float x = (float) (worldX - cameraPos.x);
+        float y = (float) (worldY - cameraPos.y);
+        float z = (float) (worldZ - cameraPos.z);
+
+        Quaternionf rotation = camera.rotation().conjugate(new Quaternionf());
+        Vector3f local = new Vector3f(x, y, z);
+        rotation.transform(local);
+
+        Matrix4f projection = minecraft.gameRenderer.getProjectionMatrix(minecraft.options.fov().get());
+        Vector4f clip = new Vector4f(local.x(), local.y(), local.z(), 1.0F);
+        clip.mul(projection);
+
+        if (clip.w <= 0.0F) {
+            return new Vector3f(Float.NaN, Float.NaN, -1.0F);
+        }
+
+        clip.div(clip.w);
+
+        int screenWidth = minecraft.getWindow().getGuiScaledWidth();
+        int screenHeight = minecraft.getWindow().getGuiScaledHeight();
+        float screenX = (clip.x * 0.5F + 0.5F) * screenWidth;
+        float screenY = (clip.y * -0.5F + 0.5F) * screenHeight;
+        return new Vector3f(screenX, screenY, clip.z);
     }
 
     private static void drawDangerOverlay(GuiGraphics guiGraphics, Player player, int width, int height,
@@ -686,7 +695,9 @@ public final class AbilityClientHandler {
         if (activeNow) {
             elementalDomainActive = true;
             elementalDomainTick = Math.min(elementalDomainTick + 1,
-                    ELEMENTAL_DOMAIN_OVERLAY_FADE_IN_TICKS + ELEMENTAL_DOMAIN_OVERLAY_HOLD_TICKS);
+                    ELEMENTAL_DOMAIN_OVERLAY_FADE_IN_TICKS
+                            + ELEMENTAL_DOMAIN_OVERLAY_HOLD_TICKS
+                            + ELEMENTAL_DOMAIN_OVERLAY_FADE_OUT_TICKS);
             elementalDomainReleaseTick = 0;
         } else if (elementalDomainActive) {
             elementalDomainActive = false;

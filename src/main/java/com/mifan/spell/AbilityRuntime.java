@@ -49,6 +49,8 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import net.minecraft.util.RandomSource;
+
 import java.util.Random;
 import java.util.UUID;
 
@@ -560,15 +562,33 @@ public final class AbilityRuntime {
     public static void triggerElementalistBurst(ServerLevel level, Player caster, LivingEntity target, int spellLevel) {
         boolean closedDomain = caster.getPersistentData().getBoolean(TAG_ELEMENTAL_DOMAIN_CLOSED);
         int rapidCastCount = closedDomain ? 2 : 1;
-        int element = level.random.nextInt(3);
-        switch (element) {
-            case 0 -> castRegisteredElementalSpell(level, caster, target, spellLevel,
-                    SpellRegistry.FIREBOLT_SPELL.get(), ElementalSpellType.FIRE, rapidCastCount);
-            case 1 -> castRegisteredElementalSpell(level, caster, target, spellLevel,
-                    SpellRegistry.ICICLE_SPELL.get(), ElementalSpellType.WATER, rapidCastCount);
-            default -> castRegisteredElementalSpell(level, caster, target, spellLevel,
-                    SpellRegistry.LIGHTNING_BOLT_SPELL.get(), ElementalSpellType.LIGHTNING, rapidCastCount);
-        }
+        ElementalBurstOption burst = switch (level.random.nextInt(3)) {
+            case 0 -> pickRandomFireBurst(level.random);
+            case 1 -> pickRandomIceBurst(level.random);
+            default -> new ElementalBurstOption(SpellRegistry.LIGHTNING_BOLT_SPELL.get(), ElementalSpellType.LIGHTNING, 1);
+        };
+
+        castRegisteredElementalSpell(level, caster, target, spellLevel,
+                burst.spell(), burst.type(), rapidCastCount * burst.castMultiplier());
+    }
+
+    private static ElementalBurstOption pickRandomFireBurst(RandomSource random) {
+        return switch (random.nextInt(6)) {
+            case 0 -> new ElementalBurstOption(SpellRegistry.FIREBOLT_SPELL.get(), ElementalSpellType.FIRE, 1);
+            case 1 -> new ElementalBurstOption(SpellRegistry.FIREBALL_SPELL.get(), ElementalSpellType.FIRE, 1);
+            case 2 -> new ElementalBurstOption(SpellRegistry.FIRE_BREATH_SPELL.get(), ElementalSpellType.FIRE, 1);
+            case 3 -> new ElementalBurstOption(SpellRegistry.BLAZE_STORM_SPELL.get(), ElementalSpellType.FIRE, 1);
+            case 4 -> new ElementalBurstOption(SpellRegistry.MAGMA_BOMB_SPELL.get(), ElementalSpellType.FIRE, 1);
+            default -> new ElementalBurstOption(SpellRegistry.FIREFLY_SWARM_SPELL.get(), ElementalSpellType.FIRE, 2);
+        };
+    }
+
+    private static ElementalBurstOption pickRandomIceBurst(RandomSource random) {
+        return switch (random.nextInt(3)) {
+            case 0 -> new ElementalBurstOption(SpellRegistry.ICICLE_SPELL.get(), ElementalSpellType.WATER, 1);
+            case 1 -> new ElementalBurstOption(SpellRegistry.ICE_BLOCK_SPELL.get(), ElementalSpellType.WATER, 1);
+            default -> new ElementalBurstOption(SpellRegistry.CONE_OF_COLD_SPELL.get(), ElementalSpellType.WATER, 1);
+        };
     }
 
     private static void castRegisteredElementalSpell(ServerLevel level, Player caster, LivingEntity target, int spellLevel,
@@ -666,6 +686,9 @@ public final class AbilityRuntime {
         FIRE,
         WATER,
         LIGHTNING
+    }
+
+    private record ElementalBurstOption(AbstractSpell spell, ElementalSpellType type, int castMultiplier) {
     }
 
     private static final class ElementalDomainState {
