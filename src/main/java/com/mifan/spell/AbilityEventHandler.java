@@ -786,27 +786,10 @@ public final class AbilityEventHandler {
         int spellLevel = AbilityRuntime.getEffectLevel(undeadEffect);
         CompoundTag data = player.getPersistentData();
 
-        if (event.getEntity() instanceof Player) {
-            player.removeEffect(ModMobEffects.NECROTIC_UNDEAD.get());
-            player.removeEffect(ModMobEffects.MANIA.get());
-            restoreNecroticMaxHealth(player, data);
-            AbilityRuntime.clear(data,
-                    AbilityRuntime.TAG_NECROTIC_ALLOW_HEAL_UNTIL,
-                    AbilityRuntime.TAG_NECROTIC_LAST_KILL_HEAL,
-                    AbilityRuntime.TAG_NECROTIC_REVIVE_USED,
-                    AbilityRuntime.TAG_NECROTIC_ORIGINAL_MAX_HEALTH,
-                    AbilityRuntime.TAG_NECROTIC_MAX_HEALTH_APPLIED,
-                    AbilityRuntime.TAG_MANIA_LAST_PROC,
-                    AbilityRuntime.TAG_MANIA_LAST_SWING);
-            player.setHealth((float) player.getMaxHealth());
-            player.level().playSound(null, player.blockPosition(), SoundEvents.ZOMBIE_VILLAGER_CURE, SoundSource.PLAYERS,
-                    0.5F, 1.1F);
-            player.displayClientMessage(net.minecraft.network.chat.Component.translatable(
-                    "message.corpse_campus.necrotic_rebirth_restored"), true);
-            return;
-        }
-
-        float healAmount = Math.min(AbilityRuntime.getNecroticNonPlayerKillHeal(),
+        float baseHealAmount = event.getEntity() instanceof Player
+                ? AbilityRuntime.getNecroticHealAmount(spellLevel)
+                : AbilityRuntime.getNecroticNonPlayerKillHeal();
+        float healAmount = Math.min(baseHealAmount,
                 Math.max(0.0F, (float) player.getMaxHealth() - player.getHealth()));
         if (healAmount <= 0.0F) {
             return;
