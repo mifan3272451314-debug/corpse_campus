@@ -250,6 +250,7 @@ public final class AbilityClientHandler {
             return;
         }
 
+        SonicSenseClientHandler.renderLevel(event.getPoseStack(), event.getCamera(), player, level.getGameTime());
         OlfactionClientHandler.renderLevel(event.getPoseStack(), event.getCamera(), level.getGameTime());
     }
 

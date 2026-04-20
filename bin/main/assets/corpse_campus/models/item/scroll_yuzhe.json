@@ -1,6 +1,6 @@
 {
   "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "corpse_campus:item/shengqi_scroll"
+    "layer0": "corpse_campus:item/scroll_yuzhe"
   }
 }

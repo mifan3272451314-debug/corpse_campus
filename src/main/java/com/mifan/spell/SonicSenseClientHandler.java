@@ -3,7 +3,12 @@ package com.mifan.spell;
 import com.mifan.corpsecampus;
 import com.mifan.registry.ModMobEffects;
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.BufferBuilder;
+import com.mojang.blaze3d.vertex.BufferUploader;
+import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.Tesselator;
+import com.mojang.blaze3d.vertex.VertexFormat;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -17,9 +22,6 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4f;
-import org.joml.Quaternionf;
-import org.joml.Vector3f;
-import org.joml.Vector4f;
 
 import java.util.List;
 
@@ -101,7 +103,6 @@ public final class SonicSenseClientHandler {
         }
 
         drawDarkOverlay(guiGraphics, width, height, gameTime);
-        drawEntitiesOnScreen(guiGraphics, player, gameTime);
     }
 
     private static void drawDarkOverlay(GuiGraphics guiGraphics, int width, int height, long gameTime) {
@@ -115,7 +116,7 @@ public final class SonicSenseClientHandler {
         guiGraphics.fill(width - 14, 0, width, height, (vignetteAlpha << 24) | 0x0D1318);
     }
 
-    private static void drawEntitiesOnScreen(GuiGraphics guiGraphics, Player player, long gameTime) {
+    public static void renderLevel(PoseStack poseStack, Camera camera, Player player, long gameTime) {
         Minecraft minecraft = Minecraft.getInstance();
         ClientLevel level = minecraft.level;
         if (level == null) {
@@ -137,12 +138,22 @@ public final class SonicSenseClientHandler {
 
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
-        PoseStack poseStack = guiGraphics.pose();
+        RenderSystem.disableCull();
+        RenderSystem.setShader(GameRenderer::getPositionTexColorShader);
+        RenderSystem.setShaderTexture(0, SONIC_ECHO_TEXTURE);
+
+        Vec3 cameraPos = camera.getPosition();
+        poseStack.pushPose();
+        poseStack.translate(-cameraPos.x, -cameraPos.y, -cameraPos.z);
+        Matrix4f matrix = poseStack.last().pose();
+
+        Tesselator tesselator = Tesselator.getInstance();
+        BufferBuilder bufferBuilder = tesselator.getBuilder();
+        bufferBuilder.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR);
 
         for (LivingEntity target : nearbyEntities) {
             Vec3 markerPos = target.getBoundingBox().getCenter().add(0.0D, target.getBbHeight() * 0.15D, 0.0D);
-            Vector3f screenPos = worldToScreen(markerPos.x, markerPos.y, markerPos.z);
-            if (Float.isNaN(screenPos.x()) || screenPos.z() < -1.0F || screenPos.z() > 1.0F) {
+            if (markerPos.distanceToSqr(cameraPos) > revealRangeSqr * 1.5D) {
                 continue;
             }
 
@@ -154,59 +165,53 @@ public final class SonicSenseClientHandler {
             float pulseScale = 1.0F + pulse * 0.35F;
             float renderScale = distanceScale * pulseScale;
             int alpha = Mth.clamp((int) ((0.78F + pulse * 0.22F) * 255.0F), 180, 255);
-            int drawX = Mth.floor(screenPos.x());
-            int drawY = Mth.floor(screenPos.y());
 
-            poseStack.pushPose();
-            poseStack.translate(drawX, drawY, 0.0F);
-            poseStack.scale(renderScale, renderScale, 1.0F);
-            RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, alpha / 255.0F);
-            guiGraphics.blit(
-                    SONIC_ECHO_TEXTURE,
-                    -SONIC_ECHO_FRAME_WIDTH / 2,
-                    -SONIC_ECHO_FRAME_HEIGHT / 2,
-                    frameIndex * SONIC_ECHO_FRAME_WIDTH,
-                    0,
-                    SONIC_ECHO_FRAME_WIDTH,
-                    SONIC_ECHO_FRAME_HEIGHT,
-                    SONIC_ECHO_FRAME_WIDTH * SONIC_ECHO_FRAME_COUNT,
-                    SONIC_ECHO_FRAME_HEIGHT);
-            poseStack.popPose();
+            addBillboardQuad(bufferBuilder, matrix, camera,
+                    markerPos.x,
+                    markerPos.y,
+                    markerPos.z,
+                    0.26F * renderScale,
+                    frameIndex,
+                    alpha);
         }
 
-        RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
+        BufferUploader.drawWithShader(bufferBuilder.end());
+        poseStack.popPose();
+
+        RenderSystem.enableCull();
         RenderSystem.disableBlend();
     }
 
-    private static Vector3f worldToScreen(double worldX, double worldY, double worldZ) {
-        Minecraft minecraft = Minecraft.getInstance();
-        Camera camera = minecraft.gameRenderer.getMainCamera();
-        Vec3 cameraPos = camera.getPosition();
+    private static void addBillboardQuad(BufferBuilder bufferBuilder, Matrix4f matrix, Camera camera,
+            double centerX, double centerY, double centerZ, float scale, int frameIndex, int alpha) {
+        org.joml.Vector3f leftVector = camera.getLeftVector();
+        org.joml.Vector3f upVector = camera.getUpVector();
+        Vec3 left = new Vec3(leftVector.x() * scale, leftVector.y() * scale, leftVector.z() * scale);
+        Vec3 up = new Vec3(upVector.x() * scale, upVector.y() * scale, upVector.z() * scale);
 
-        float x = (float) (worldX - cameraPos.x);
-        float y = (float) (worldY - cameraPos.y);
-        float z = (float) (worldZ - cameraPos.z);
+        float minU = (frameIndex * SONIC_ECHO_FRAME_WIDTH) / (float) (SONIC_ECHO_FRAME_WIDTH * SONIC_ECHO_FRAME_COUNT);
+        float maxU = ((frameIndex + 1) * SONIC_ECHO_FRAME_WIDTH)
+                / (float) (SONIC_ECHO_FRAME_WIDTH * SONIC_ECHO_FRAME_COUNT);
+        float minV = 0.0F;
+        float maxV = 1.0F;
 
-        Quaternionf rotation = camera.rotation().conjugate(new Quaternionf());
-        Vector3f local = new Vector3f(x, y, z);
-        rotation.transform(local);
+        float x1 = (float) (centerX - left.x - up.x);
+        float y1 = (float) (centerY - left.y - up.y);
+        float z1 = (float) (centerZ - left.z - up.z);
+        float x2 = (float) (centerX - left.x + up.x);
+        float y2 = (float) (centerY - left.y + up.y);
+        float z2 = (float) (centerZ - left.z + up.z);
+        float x3 = (float) (centerX + left.x + up.x);
+        float y3 = (float) (centerY + left.y + up.y);
+        float z3 = (float) (centerZ + left.z + up.z);
+        float x4 = (float) (centerX + left.x - up.x);
+        float y4 = (float) (centerY + left.y - up.y);
+        float z4 = (float) (centerZ + left.z - up.z);
 
-        Matrix4f projection = minecraft.gameRenderer.getProjectionMatrix(minecraft.options.fov().get());
-        Vector4f clip = new Vector4f(local.x(), local.y(), local.z(), 1.0F);
-        clip.mul(projection);
-
-        if (clip.w <= 0.0F) {
-            return new Vector3f(Float.NaN, Float.NaN, -1.0F);
-        }
-
-        clip.div(clip.w);
-
-        int windowWidth = minecraft.getWindow().getWidth();
-        int windowHeight = minecraft.getWindow().getHeight();
-        float guiScale = (float) minecraft.getWindow().getGuiScale();
-        float screenX = ((clip.x * 0.5F + 0.5F) * windowWidth) / guiScale;
-        float screenY = ((clip.y * -0.5F + 0.5F) * windowHeight) / guiScale;
-        return new Vector3f(screenX, screenY, clip.z);
+        bufferBuilder.vertex(matrix, x1, y1, z1).uv(minU, maxV).color(255, 255, 255, alpha).endVertex();
+        bufferBuilder.vertex(matrix, x2, y2, z2).uv(minU, minV).color(255, 255, 255, alpha).endVertex();
+        bufferBuilder.vertex(matrix, x3, y3, z3).uv(maxU, minV).color(255, 255, 255, alpha).endVertex();
+        bufferBuilder.vertex(matrix, x4, y4, z4).uv(maxU, maxV).color(255, 255, 255, alpha).endVertex();
     }
 
     private static boolean hasSonicSense(Player player) {
