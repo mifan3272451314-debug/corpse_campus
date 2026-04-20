@@ -29,6 +29,7 @@ public final class OlfactionClientHandler {
     private static final float FOOTPRINT_TOE_SIZE = 0.045F;
     private static final long FOOTPRINT_DURATION_TICKS = 300L;
     private static final long FOOTPRINT_SPAWN_INTERVAL_TICKS = 6L;
+    private static final double FOOTPRINT_MIN_MOVEMENT_SQR = 0.0004D;
 
     private static final List<OlfactionFootprintParticle> FOOTPRINTS = new ArrayList<>();
 
@@ -85,6 +86,7 @@ public final class OlfactionClientHandler {
         Vec3 cameraPos = camera.getPosition();
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
+        RenderSystem.depthMask(false);
         RenderSystem.disableCull();
         RenderSystem.setShader(GameRenderer::getPositionColorShader);
 
@@ -105,26 +107,27 @@ public final class OlfactionClientHandler {
             }
 
             float lifeRatio = (float) (footprint.expireAt - gameTime) / (float) FOOTPRINT_DURATION_TICKS;
-            float alpha = Mth.clamp(0.18F + lifeRatio * 0.5F, 0.18F, 0.68F);
+            float alpha = Mth.clamp(0.38F + lifeRatio * 0.45F, 0.38F, 0.9F);
             float yaw = ((footprint.entityId + footprint.createdAt) & 1L) == 0L ? 35.0F : -35.0F;
             float lateralOffset = ((footprint.createdAt / 3L) & 1L) == 0L ? 0.09F : -0.09F;
 
             addFootprintQuad(bufferBuilder, matrix, footprint.x, footprint.y, footprint.z, yaw, lateralOffset,
-                    0.94F, 0.18F, 0.22F, alpha);
+                    1.0F, 0.22F, 0.28F, alpha);
             addFootprintQuad(bufferBuilder, matrix, footprint.x, footprint.y + 0.002D, footprint.z, yaw, lateralOffset,
-                    1.0F, 0.58F, 0.62F, alpha * 0.35F);
+                    1.0F, 0.72F, 0.76F, alpha * 0.42F);
         }
 
         BufferUploader.drawWithShader(bufferBuilder.end());
         poseStack.popPose();
 
+        RenderSystem.depthMask(true);
         RenderSystem.enableCull();
         RenderSystem.disableBlend();
     }
 
     private static void captureFootprint(LivingEntity entity, long gameTime) {
         double motion = entity.position().distanceToSqr(new Vec3(entity.xo, entity.yo, entity.zo));
-        if (motion < 0.0025D && gameTime % 9L != 0L) {
+        if (motion < FOOTPRINT_MIN_MOVEMENT_SQR) {
             return;
         }
 
@@ -141,10 +144,10 @@ public final class OlfactionClientHandler {
             return;
         }
 
-        double progress = ((gameTime / 3L) % 2L == 0L) ? 0.35D : 0.7D;
+        double progress = ((gameTime / 3L) % 2L == 0L) ? 0.25D : 0.75D;
         double x = Mth.lerp(progress, entity.xo, entity.getX());
         double z = Mth.lerp(progress, entity.zo, entity.getZ());
-        double y = entity.getY() + 0.03D;
+        double y = entity.getY() + 0.06D;
 
         FOOTPRINTS.add(new OlfactionFootprintParticle(entity.getId(), x, y, z,
                 gameTime + FOOTPRINT_DURATION_TICKS, gameTime));
@@ -159,7 +162,7 @@ public final class OlfactionClientHandler {
 
         double centerX = x + cos * lateralOffset;
         double centerZ = z + sin * lateralOffset;
-        double renderY = y + 0.01D;
+        double renderY = y + 0.02D;
 
         addRotatedQuad(bufferBuilder, matrix, centerX, renderY, centerZ,
                 FOOTPRINT_HALF_WIDTH, FOOTPRINT_SOLE_LENGTH, cos, sin,
