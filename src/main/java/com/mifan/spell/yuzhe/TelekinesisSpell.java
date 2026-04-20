@@ -2,6 +2,7 @@ package com.mifan.spell.yuzhe;
 
 import com.mifan.registry.ModSchools;
 import com.mifan.spell.AbilityRuntime;
+import com.mifan.spell.runtime.TelekinesisRuntime;
 import io.redspace.ironsspellbooks.api.config.DefaultConfig;
 import io.redspace.ironsspellbooks.api.magic.MagicData;
 import io.redspace.ironsspellbooks.api.spells.AbstractSpell;
@@ -91,22 +92,7 @@ public class TelekinesisSpell extends AbstractSpell {
             }
 
             if (target != null) {
-                Vec3 look = entity.getLookAngle().normalize();
-                entity.getPersistentData().putInt(AbilityRuntime.TAG_TELEKINESIS_TARGET_ID, target.getId());
-                entity.getPersistentData().putLong(AbilityRuntime.TAG_TELEKINESIS_HOLD_UNTIL, level.getGameTime() + 8L);
-                entity.getPersistentData().putInt(AbilityRuntime.TAG_TELEKINESIS_LEVEL, spellLevel);
-                AbilityRuntime.storeLookVector(entity.getPersistentData(), look);
-
-                target.setNoGravity(true);
-                target.fallDistance = 0.0F;
-                target.setDeltaMovement(Vec3.ZERO);
-                target.hasImpulse = true;
-                target.hurtMarked = true;
-
-                if (level.getGameTime() % 12L == 0L) {
-                    level.playSound(null, entity.blockPosition(), SoundEvents.ENDERMAN_TELEPORT,
-                            net.minecraft.sounds.SoundSource.PLAYERS, 0.12F, 1.5F);
-                }
+                TelekinesisRuntime.beginCast(level, spellLevel, entity, target);
             }
         }
         super.onCast(level, spellLevel, entity, castSource, playerMagicData);
@@ -116,7 +102,7 @@ public class TelekinesisSpell extends AbstractSpell {
     public void onServerCastComplete(Level level, int spellLevel, LivingEntity entity, MagicData playerMagicData,
             boolean canceled) {
         if (!level.isClientSide && entity.getPersistentData().contains(AbilityRuntime.TAG_TELEKINESIS_TARGET_ID)) {
-            entity.getPersistentData().putLong(AbilityRuntime.TAG_TELEKINESIS_HOLD_UNTIL, level.getGameTime() - 1L);
+            TelekinesisRuntime.releaseOnCastComplete(level, entity);
         }
         super.onServerCastComplete(level, spellLevel, entity, playerMagicData, canceled);
     }

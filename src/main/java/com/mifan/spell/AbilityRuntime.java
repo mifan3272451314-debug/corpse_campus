@@ -40,15 +40,20 @@ import io.redspace.ironsspellbooks.api.magic.MagicData;
 import io.redspace.ironsspellbooks.api.registry.SpellRegistry;
 import io.redspace.ironsspellbooks.api.spells.AbstractSpell;
 import io.redspace.ironsspellbooks.api.spells.CastSource;
+import com.mifan.spell.runtime.DominanceRuntime;
+import com.mifan.spell.runtime.RecorderOfficerRuntime;
+import com.mifan.spell.runtime.TelekinesisRuntime;
 import org.joml.Vector3f;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import net.minecraft.util.RandomSource;
 
 import java.util.Random;
@@ -134,8 +139,8 @@ public final class AbilityRuntime {
     public static final int RECORDER_OFFICER_MIN_SECONDS = 5;
     public static final int RECORDER_OFFICER_MAX_SECONDS = 120;
     private static final float EXECUTIONER_DAMAGE_RATIO = 0.25F;
-    private static final float DOMINANCE_MIN_SURVIVAL_HEALTH = 1.0F;
-    private static final float DOMINANCE_MAX_HEALTH_LIMIT = 35.0F;
+    public static final float DOMINANCE_MIN_SURVIVAL_HEALTH = 1.0F;
+    public static final float DOMINANCE_MAX_HEALTH_LIMIT = 35.0F;
     private static final int NECROTIC_KILL_HEAL_BASE = 4;
     private static final double NECROTIC_UNDEAD_MAX_HEALTH = 40.0D;
     private static final float NECROTIC_NON_PLAYER_KILL_HEAL = 4.0F;
@@ -220,16 +225,11 @@ public final class AbilityRuntime {
     }
 
     public static void storeLookVector(CompoundTag data, Vec3 look) {
-        data.putDouble(TAG_TELEKINESIS_LOOK_X, look.x);
-        data.putDouble(TAG_TELEKINESIS_LOOK_Y, look.y);
-        data.putDouble(TAG_TELEKINESIS_LOOK_Z, look.z);
+        TelekinesisRuntime.storeLookVector(data, look);
     }
 
     public static Vec3 readStoredLookVector(CompoundTag data) {
-        return new Vec3(
-                data.getDouble(TAG_TELEKINESIS_LOOK_X),
-                data.getDouble(TAG_TELEKINESIS_LOOK_Y),
-                data.getDouble(TAG_TELEKINESIS_LOOK_Z));
+        return TelekinesisRuntime.readStoredLookVector(data);
     }
 
     public static void pushNearbyEntities(LivingEntity source, double radius, double horizontalStrength,
@@ -338,116 +338,29 @@ public final class AbilityRuntime {
     }
 
     public static int clampRecorderOfficerSeconds(int seconds) {
-        return Mth.clamp(seconds, RECORDER_OFFICER_MIN_SECONDS, RECORDER_OFFICER_MAX_SECONDS);
+        return RecorderOfficerRuntime.clampSeconds(seconds);
     }
 
     public static boolean hasRecorderOfficerRecord(ItemStack stack) {
-        return stack.is(Items.PAPER)
-                && stack.hasTag()
-                && stack.getTag().contains(ITEM_TAG_RECORDER_OFFICER_NOTE, Tag.TAG_COMPOUND);
+        return RecorderOfficerRuntime.hasRecord(stack);
     }
 
     public static void recordRecorderOfficerPaper(ItemStack stack, LivingEntity caster, BlockPos blockPos,
             Direction face) {
-        CompoundTag note = new CompoundTag();
-        Vec3 center = Vec3.atCenterOf(blockPos).add(Vec3.atLowerCornerOf(face.getNormal()).scale(0.501D));
-        note.putDouble(ITEM_TAG_RECORDER_OFFICER_X, center.x);
-        note.putDouble(ITEM_TAG_RECORDER_OFFICER_Y, center.y);
-        note.putDouble(ITEM_TAG_RECORDER_OFFICER_Z, center.z);
-        note.putString(ITEM_TAG_RECORDER_OFFICER_DIMENSION, caster.level().dimension().location().toString());
-        stack.getOrCreateTag().put(ITEM_TAG_RECORDER_OFFICER_NOTE, note);
+        RecorderOfficerRuntime.recordPaper(stack, caster, blockPos, face);
     }
 
     public static void armRecorderOfficerTarget(ServerPlayer caster, int spellLevel, int targetEntityId,
             int timerSeconds) {
-        ItemStack stack = caster.getMainHandItem();
-        if (!hasRecorderOfficerRecord(stack)) {
-            caster.displayClientMessage(net.minecraft.network.chat.Component.translatable(
-                    "message.corpse_campus.recorder_officer_no_record"), true);
-            return;
-        }
-
-        LivingEntity target = findLivingEntityById(caster.level(), targetEntityId);
-        if (target == null || target == caster) {
-            caster.displayClientMessage(net.minecraft.network.chat.Component.translatable(
-                    "message.corpse_campus.recorder_officer_no_target"), true);
-            return;
-        }
-
-        CompoundTag note = stack.getTag().getCompound(ITEM_TAG_RECORDER_OFFICER_NOTE);
-        CompoundTag data = target.getPersistentData();
-        data.putBoolean(TAG_RECORDER_OFFICER_ARMED, true);
-        data.putLong(TAG_RECORDER_OFFICER_END,
-                caster.level().getGameTime() + clampRecorderOfficerSeconds(timerSeconds) * 20L);
-        data.putDouble(TAG_RECORDER_OFFICER_X, note.getDouble(ITEM_TAG_RECORDER_OFFICER_X));
-        data.putDouble(TAG_RECORDER_OFFICER_Y, note.getDouble(ITEM_TAG_RECORDER_OFFICER_Y));
-        data.putDouble(TAG_RECORDER_OFFICER_Z, note.getDouble(ITEM_TAG_RECORDER_OFFICER_Z));
-        data.putString(TAG_RECORDER_OFFICER_DIMENSION, note.getString(ITEM_TAG_RECORDER_OFFICER_DIMENSION));
-        data.putUUID(TAG_RECORDER_OFFICER_CASTER, caster.getUUID());
-
-        stack.shrink(1);
-        caster.displayClientMessage(net.minecraft.network.chat.Component.translatable(
-                "message.corpse_campus.recorder_officer_armed", target.getDisplayName(),
-                clampRecorderOfficerSeconds(timerSeconds)), true);
-        caster.level().playSound(null, target.blockPosition(), SoundEvents.AMETHYST_BLOCK_CHIME, SoundSource.PLAYERS,
-                0.5F, 1.15F);
+        RecorderOfficerRuntime.armTarget(caster, spellLevel, targetEntityId, timerSeconds);
     }
 
     public static void tickRecorderOfficer(LivingEntity entity, long gameTime) {
-        CompoundTag data = entity.getPersistentData();
-        if (!data.getBoolean(TAG_RECORDER_OFFICER_ARMED)) {
-            return;
-        }
-
-        long endTime = data.getLong(TAG_RECORDER_OFFICER_END);
-        double x = data.getDouble(TAG_RECORDER_OFFICER_X);
-        double y = data.getDouble(TAG_RECORDER_OFFICER_Y);
-        double z = data.getDouble(TAG_RECORDER_OFFICER_Z);
-        String dimensionKey = data.getString(TAG_RECORDER_OFFICER_DIMENSION);
-
-        if (endTime > gameTime) {
-            return;
-        }
-
-        clearRecorderOfficer(data);
-
-        if (!(entity.level() instanceof ServerLevel currentLevel)) {
-            return;
-        }
-
-        ServerLevel destinationLevel = currentLevel;
-        ResourceLocation dimensionId = ResourceLocation.tryParse(dimensionKey);
-        if (dimensionId != null && currentLevel.getServer() != null) {
-            ServerLevel resolved = currentLevel.getServer()
-                    .getLevel(ResourceKey.create(Registries.DIMENSION, dimensionId));
-            if (resolved != null) {
-                destinationLevel = resolved;
-            }
-        }
-
-        if (entity instanceof ServerPlayer serverPlayer) {
-            serverPlayer.teleportTo(destinationLevel, x, y, z, serverPlayer.getYRot(), serverPlayer.getXRot());
-        } else if (entity.level() == destinationLevel) {
-            entity.teleportTo(x, y, z);
-        } else {
-            return;
-        }
-
-        entity.fallDistance = 0.0F;
-        destinationLevel.playSound(null, BlockPos.containing(x, y, z), SoundEvents.CHORUS_FRUIT_TELEPORT,
-                SoundSource.PLAYERS, 0.65F, 1.1F);
-        destinationLevel.sendParticles(ParticleTypes.PORTAL, x, y + 0.6D, z, 30, 0.35D, 0.5D, 0.35D, 0.05D);
+        RecorderOfficerRuntime.tick(entity, gameTime);
     }
 
     public static void clearRecorderOfficer(CompoundTag data) {
-        clear(data,
-                TAG_RECORDER_OFFICER_ARMED,
-                TAG_RECORDER_OFFICER_END,
-                TAG_RECORDER_OFFICER_X,
-                TAG_RECORDER_OFFICER_Y,
-                TAG_RECORDER_OFFICER_Z,
-                TAG_RECORDER_OFFICER_DIMENSION,
-                TAG_RECORDER_OFFICER_CASTER);
+        RecorderOfficerRuntime.clear(data);
     }
 
     public static int getElementalistRadius() {
@@ -949,138 +862,31 @@ public final class AbilityRuntime {
     }
 
     public static Mob findDominanceMobTarget(LivingEntity caster, double range, double minDot) {
-        LivingEntity target = findTargetInSight(caster, range, minDot);
-        return target instanceof Mob mob ? mob : null;
+        return DominanceRuntime.findMobTarget(caster, range, minDot);
     }
 
     public static boolean addDominatedMob(LivingEntity caster, Mob mob, int spellLevel, int maxControlled) {
-        if (mob.getMaxHealth() > DOMINANCE_MAX_HEALTH_LIMIT) {
-            return false;
-        }
-
-        CompoundTag data = caster.getPersistentData();
-        ListTag list = getDominatedMobList(data);
-        String uuid = mob.getUUID().toString();
-        for (int i = 0; i < list.size(); i++) {
-            if (uuid.equals(list.getString(i))) {
-                data.putBoolean(TAG_DOMINANCE_LINK_ACTIVE, true);
-                tagDominatedMob(mob, caster.getUUID(), spellLevel);
-                return true;
-            }
-        }
-
-        if (list.size() >= maxControlled) {
-            return false;
-        }
-
-        list.add(StringTag.valueOf(uuid));
-        data.put(TAG_DOMINANCE_MOBS, list);
-        data.putBoolean(TAG_DOMINANCE_LINK_ACTIVE, true);
-        tagDominatedMob(mob, caster.getUUID(), spellLevel);
-        return true;
+        return DominanceRuntime.addDominatedMob(caster, mob, spellLevel, maxControlled);
     }
 
     public static void setDominanceTargetPlayer(ServerPlayer caster, UUID targetPlayerId) {
-        if (targetPlayerId.equals(caster.getUUID())) {
-            return;
-        }
-
-        Player target = caster.serverLevel().getPlayerByUUID(targetPlayerId);
-        if (target == null) {
-            return;
-        }
-
-        caster.getPersistentData().putUUID(TAG_DOMINANCE_TARGET_PLAYER, targetPlayerId);
-        retargetDominatedMobs(caster, target);
-        caster.displayClientMessage(net.minecraft.network.chat.Component.translatable(
-                "message.corpse_campus.dominance_target_set", target.getDisplayName()), true);
+        DominanceRuntime.setTargetPlayer(caster, targetPlayerId);
     }
 
     public static void tickDominance(Player player) {
-        CompoundTag data = player.getPersistentData();
-        List<Mob> dominatedMobs = getDominatedMobs(player);
-
-        if (dominatedMobs.isEmpty()) {
-            clear(data, TAG_DOMINANCE_MOBS, TAG_DOMINANCE_TARGET_PLAYER);
-            if (data.getBoolean(TAG_DOMINANCE_LINK_ACTIVE) && player.isAlive()) {
-                data.remove(TAG_DOMINANCE_LINK_ACTIVE);
-                float damage = Math.max(0.0F, player.getHealth() - DOMINANCE_MIN_SURVIVAL_HEALTH);
-                if (damage > 0.0F) {
-                    player.hurt(player.damageSources().magic(), damage);
-                }
-            }
-            return;
-        }
-
-        data.putBoolean(TAG_DOMINANCE_LINK_ACTIVE, true);
-        LivingEntity forcedTarget = null;
-        if (data.hasUUID(TAG_DOMINANCE_TARGET_PLAYER) && player.level() instanceof ServerLevel serverLevel) {
-            forcedTarget = serverLevel.getPlayerByUUID(data.getUUID(TAG_DOMINANCE_TARGET_PLAYER));
-            if (forcedTarget == null || !forcedTarget.isAlive()) {
-                data.remove(TAG_DOMINANCE_TARGET_PLAYER);
-            }
-        }
-
-        for (Mob mob : dominatedMobs) {
-            tagDominatedMob(mob, player.getUUID(), 1);
-            if (mob.getTarget() == player) {
-                mob.setTarget(null);
-            }
-            if (forcedTarget != null && mob.getTarget() != forcedTarget) {
-                mob.setTarget(forcedTarget);
-            }
-        }
+        DominanceRuntime.tick(player);
     }
 
     public static void retargetDominatedMobs(Player player, LivingEntity target) {
-        for (Mob mob : getDominatedMobs(player)) {
-            if (target != player) {
-                mob.setTarget(target);
-            }
-        }
+        DominanceRuntime.retargetDominatedMobs(player, target);
     }
 
     public static boolean isDominatedBy(Mob mob, Player owner) {
-        CompoundTag tag = mob.getPersistentData();
-        return tag.hasUUID(TAG_DOMINANCE_OWNER) && owner.getUUID().equals(tag.getUUID(TAG_DOMINANCE_OWNER));
+        return DominanceRuntime.isDominatedBy(mob, owner);
     }
 
     public static List<Mob> getDominatedMobs(Player player) {
-        CompoundTag data = player.getPersistentData();
-        ListTag list = getDominatedMobList(data);
-        ListTag cleaned = new ListTag();
-        java.util.List<Mob> mobs = new java.util.ArrayList<>();
-
-        if (!(player.level() instanceof ServerLevel serverLevel)) {
-            return java.util.List.of();
-        }
-
-        for (int i = 0; i < list.size(); i++) {
-            String uuidString = list.getString(i);
-            try {
-                Entity entity = serverLevel.getEntity(UUID.fromString(uuidString));
-                if (entity instanceof Mob mob && mob.isAlive()) {
-                    mobs.add(mob);
-                    cleaned.add(StringTag.valueOf(uuidString));
-                }
-            } catch (IllegalArgumentException ignored) {
-            }
-        }
-
-        data.put(TAG_DOMINANCE_MOBS, cleaned);
-        return mobs;
-    }
-
-    private static ListTag getDominatedMobList(CompoundTag data) {
-        return data.contains(TAG_DOMINANCE_MOBS, Tag.TAG_LIST)
-                ? data.getList(TAG_DOMINANCE_MOBS, Tag.TAG_STRING)
-                : new ListTag();
-    }
-
-    private static void tagDominatedMob(Mob mob, UUID casterId, int spellLevel) {
-        CompoundTag tag = mob.getPersistentData();
-        tag.putUUID(TAG_DOMINANCE_OWNER, casterId);
-        tag.putInt(TAG_DOMINANCE_LEVEL, spellLevel);
+        return DominanceRuntime.getDominatedMobs(player);
     }
 
     public static boolean canExecutionerUse(ItemStack stack) {
@@ -1219,7 +1025,7 @@ public final class AbilityRuntime {
 
         int steps = Math.max(6, Mth.ceil(distance * 4.0D));
         double hitRadius = Math.max(0.75D, getDaiyueHitWidth(spellLevel) * 0.4D);
-        java.util.List<Integer> hitEntityIds = new java.util.ArrayList<>();
+        Set<Integer> hitEntityIds = new HashSet<>();
 
         for (int i = 1; i <= steps; i++) {
             double t = i / (double) steps;
