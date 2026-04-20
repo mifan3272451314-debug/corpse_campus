@@ -5,6 +5,8 @@ import com.mifan.network.ModNetwork;
 import com.mifan.network.clientbound.DangerSensePingPacket;
 import com.mifan.network.clientbound.InstinctProcPacket;
 import com.mifan.registry.ModMobEffects;
+import com.mifan.spell.runtime.MarkRuntime;
+import com.mifan.spell.runtime.NecroticRuntime;
 import com.mifan.spell.runtime.TelekinesisRuntime;
 import io.redspace.ironsspellbooks.api.magic.MagicData;
 import net.minecraft.core.BlockPos;
@@ -73,8 +75,8 @@ public final class AbilityEventHandler {
         MidasBombRuntime.tickPlayerInventory(player);
         tickMagneticCling(player, data, gameTime);
         tickMania(player, data, gameTime);
-        tickNecroticUndead(player, data, gameTime);
-        tickMark(player, data, gameTime);
+        NecroticRuntime.tickUndead(player, data, gameTime);
+        MarkRuntime.tick(player, data, gameTime);
         clearExpiredInstinct(player, data, gameTime);
     }
 
@@ -204,8 +206,8 @@ public final class AbilityEventHandler {
             cleanupElementalDomain(player);
         }
 
-        reviveNecroticCaster(event, entity);
-        rewardNecroticKill(event);
+        NecroticRuntime.reviveCaster(event, entity);
+        NecroticRuntime.rewardKill(event);
     }
 
     @SubscribeEvent
@@ -619,247 +621,12 @@ public final class AbilityEventHandler {
         player.attack(target);
     }
 
-    private static void tickNecroticUndead(Player player, CompoundTag data, long gameTime) {
-        if (!player.hasEffect(ModMobEffects.NECROTIC_UNDEAD.get())) {
-            restoreNecroticMaxHealth(player, data);
-            AbilityRuntime.clear(data,
-                    AbilityRuntime.TAG_NECROTIC_ALLOW_HEAL_UNTIL,
-                    AbilityRuntime.TAG_NECROTIC_LAST_KILL_HEAL,
-                    AbilityRuntime.TAG_NECROTIC_REVIVE_USED,
-                    AbilityRuntime.TAG_NECROTIC_ORIGINAL_MAX_HEALTH,
-                    AbilityRuntime.TAG_NECROTIC_MAX_HEALTH_APPLIED);
-            return;
-        }
-
-        applyNecroticMaxHealth(player, data);
-
-        MobEffectInstance maniaEffect = player.getEffect(ModMobEffects.MANIA.get());
-        if (maniaEffect == null || maniaEffect.getDuration() < 40) {
-            player.addEffect(new MobEffectInstance(ModMobEffects.MANIA.get(), 100, 0, false, false, false));
-        }
-
-        for (Mob mob : player.level().getEntitiesOfClass(Mob.class, player.getBoundingBox().inflate(24.0D),
-                mob -> mob.isAlive() && mob.getTarget() == player)) {
-            if (!AbilityRuntime.canMobTargetNecroticPlayer(mob, player)) {
-                mob.setTarget(null);
-                AbilityRuntime.clearNecroticProvoked(mob);
-            }
-        }
-
-        if (gameTime % 20L == 0L) {
-            player.addEffect(new MobEffectInstance(MobEffects.HUNGER, 40, 0, false, false, false));
-        }
-
-        if (player.level() instanceof ServerLevel serverLevel && gameTime % 10L == 0L) {
-            serverLevel.sendParticles(ParticleTypes.SOUL,
-                    player.getX(),
-                    player.getEyeY() - 0.1D,
-                    player.getZ(),
-                    2,
-                    0.2D,
-                    0.15D,
-                    0.2D,
-                    0.0D);
-        }
-
-    }
-
-    private static void tickMark(Player player, CompoundTag data, long gameTime) {
-        if (!data.getBoolean(AbilityRuntime.TAG_MARK_ACTIVE)) {
-            return;
-        }
-
-        if (data.getLong(AbilityRuntime.TAG_MARK_END) <= gameTime) {
-            AbilityRuntime.clearMark(data);
-            return;
-        }
-
-        int spellLevel = Math.max(1, data.getInt(AbilityRuntime.TAG_MARK_LEVEL));
-        Vec3 center = AbilityRuntime.getMarkCenter(data);
-        double radius = AbilityRuntime.getMarkRadius(spellLevel);
-
-        if (player.level() instanceof ServerLevel serverLevel && gameTime % 8L == 0L) {
-            spawnMarkRing(serverLevel, center, radius);
-        }
-
-        ListTag triggered = AbilityRuntime.getStringList(data, AbilityRuntime.TAG_MARK_TRIGGERED);
-        boolean changed = false;
-        AABB box = new AABB(center, center).inflate(radius, 1.5D, radius);
-        for (LivingEntity target : player.level().getEntitiesOfClass(LivingEntity.class, box,
-                target -> target.isAlive() && target != player)) {
-            Vec3 feet = target.position();
-            double dx = feet.x - center.x;
-            double dz = feet.z - center.z;
-            if (dx * dx + dz * dz > radius * radius || AbilityRuntime.containsUuid(triggered, target.getUUID())) {
-                continue;
-            }
-
-            AbilityRuntime.appendUuid(triggered, target.getUUID());
-            changed = true;
-            target.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN,
-                    AbilityRuntime.getMarkRootSeconds() * 20,
-                    10,
-                    false,
-                    true,
-                    true));
-            target.addEffect(new MobEffectInstance(MobEffects.JUMP,
-                    AbilityRuntime.getMarkRootSeconds() * 20,
-                    128,
-                    false,
-                    false,
-                    true));
-            target.setDeltaMovement(Vec3.ZERO);
-            target.hurtMarked = true;
-
-            player.displayClientMessage(net.minecraft.network.chat.Component.translatable(
-                    "message.corpse_campus.mark_triggered", target.getDisplayName()), true);
-            player.level().playSound(null, target.blockPosition(), SoundEvents.AMETHYST_BLOCK_RESONATE, SoundSource.PLAYERS,
-                    0.45F, 1.6F);
-        }
-
-        if (changed) {
-            data.put(AbilityRuntime.TAG_MARK_TRIGGERED, triggered);
-        }
-    }
-
-    private static void reviveNecroticCaster(LivingDeathEvent event, LivingEntity entity) {
-        if (!(entity instanceof ServerPlayer player)) {
-            return;
-        }
-
-        if (!player.hasEffect(ModMobEffects.NECROTIC_REBIRTH_ARMED.get())) {
-            return;
-        }
-
-        CompoundTag data = player.getPersistentData();
-        if (data.getBoolean(AbilityRuntime.TAG_NECROTIC_REVIVE_USED)) {
-            return;
-        }
-
-        event.setCanceled(true);
-        data.putBoolean(AbilityRuntime.TAG_NECROTIC_REVIVE_USED, true);
-        MobEffectInstance armedEffect = player.getEffect(ModMobEffects.NECROTIC_REBIRTH_ARMED.get());
-        int spellLevel = AbilityRuntime.getEffectLevel(armedEffect);
-        player.removeEffect(ModMobEffects.NECROTIC_REBIRTH_ARMED.get());
-        player.setHealth(1.0F);
-        player.removeAllEffects();
-        player.addEffect(new MobEffectInstance(ModMobEffects.NECROTIC_UNDEAD.get(),
-                AbilityRuntime.TOGGLE_DURATION_TICKS,
-                spellLevel - 1,
-                false,
-                false,
-                false));
-        applyNecroticMaxHealth(player, data);
-        player.setHealth((float) player.getMaxHealth());
-        player.addEffect(new MobEffectInstance(MobEffects.DAMAGE_BOOST, 20 * 30, 0, false, false, true));
-        player.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 20 * 30, 0, false, false, true));
-        player.addEffect(new MobEffectInstance(MobEffects.HUNGER, 20 * 30, 0, false, false, true));
-        player.clearFire();
-        player.invulnerableTime = 20;
-        player.level().playSound(null, player.blockPosition(), SoundEvents.ZOMBIE_INFECT, SoundSource.PLAYERS,
-                0.8F, 0.85F);
-        if (player.level() instanceof ServerLevel serverLevel) {
-            serverLevel.sendParticles(ParticleTypes.SOUL,
-                    player.getX(),
-                    player.getY() + 1.0D,
-                    player.getZ(),
-                    16,
-                    0.45D,
-                    0.55D,
-                    0.45D,
-                    0.02D);
-        }
-        player.displayClientMessage(net.minecraft.network.chat.Component.translatable(
-                "message.corpse_campus.necrotic_rebirth_revived"), false);
-    }
-
-    private static void rewardNecroticKill(LivingDeathEvent event) {
-        DamageSource source = event.getSource();
-        Entity attacker = source.getEntity();
-        if (!(attacker instanceof ServerPlayer player) || attacker == event.getEntity()) {
-            return;
-        }
-
-        MobEffectInstance undeadEffect = player.getEffect(ModMobEffects.NECROTIC_UNDEAD.get());
-        if (undeadEffect == null) {
-            return;
-        }
-
-        int spellLevel = AbilityRuntime.getEffectLevel(undeadEffect);
-        CompoundTag data = player.getPersistentData();
-
-        float baseHealAmount = event.getEntity() instanceof Player
-                ? AbilityRuntime.getNecroticHealAmount(spellLevel)
-                : AbilityRuntime.getNecroticNonPlayerKillHeal();
-        float healAmount = Math.min(baseHealAmount,
-                Math.max(0.0F, (float) player.getMaxHealth() - player.getHealth()));
-        if (healAmount <= 0.0F) {
-            return;
-        }
-
-        data.putLong(AbilityRuntime.TAG_NECROTIC_ALLOW_HEAL_UNTIL, player.level().getGameTime() + 2L);
-        data.putFloat(AbilityRuntime.TAG_NECROTIC_LAST_KILL_HEAL, healAmount);
-        player.heal(healAmount);
-        player.level().playSound(null, player.blockPosition(), SoundEvents.ZOMBIE_BREAK_WOODEN_DOOR, SoundSource.PLAYERS,
-                0.35F, 1.15F);
-        player.displayClientMessage(net.minecraft.network.chat.Component.translatable(
-                "message.corpse_campus.necrotic_rebirth_kill_heal", Math.round(healAmount)), true);
-    }
-
-    private static void applyNecroticMaxHealth(Player player, CompoundTag data) {
-        AttributeInstance maxHealth = player.getAttribute(Attributes.MAX_HEALTH);
-        if (maxHealth == null) {
-            return;
-        }
-
-        if (!data.getBoolean(AbilityRuntime.TAG_NECROTIC_MAX_HEALTH_APPLIED)) {
-            data.putDouble(AbilityRuntime.TAG_NECROTIC_ORIGINAL_MAX_HEALTH, maxHealth.getBaseValue());
-            data.putBoolean(AbilityRuntime.TAG_NECROTIC_MAX_HEALTH_APPLIED, true);
-        }
-
-        if (Math.abs(maxHealth.getBaseValue() - AbilityRuntime.getNecroticUndeadMaxHealth()) > 0.01D) {
-            maxHealth.setBaseValue(AbilityRuntime.getNecroticUndeadMaxHealth());
-        }
-    }
-
-    private static void restoreNecroticMaxHealth(Player player, CompoundTag data) {
-        if (!data.getBoolean(AbilityRuntime.TAG_NECROTIC_MAX_HEALTH_APPLIED)) {
-            return;
-        }
-
-        AttributeInstance maxHealth = player.getAttribute(Attributes.MAX_HEALTH);
-        if (maxHealth != null && data.contains(AbilityRuntime.TAG_NECROTIC_ORIGINAL_MAX_HEALTH)) {
-            maxHealth.setBaseValue(data.getDouble(AbilityRuntime.TAG_NECROTIC_ORIGINAL_MAX_HEALTH));
-            if (player.getHealth() > player.getMaxHealth()) {
-                player.setHealth((float) player.getMaxHealth());
-            }
-        }
-    }
-
     private static void cleanupElementalDomain(ServerPlayer player) {
         if (player.hasEffect(ModMobEffects.ELEMENTAL_DOMAIN.get())) {
             player.removeEffect(ModMobEffects.ELEMENTAL_DOMAIN.get());
         }
         AbilityRuntime.endElementalDomain(player.serverLevel(), player);
         AbilityRuntime.clearElementalDomain(player.getPersistentData());
-    }
-
-    private static void spawnMarkRing(ServerLevel serverLevel, Vec3 center, double radius) {
-        int points = 24;
-        for (int i = 0; i < points; i++) {
-            double angle = Math.PI * 2.0D * i / points;
-            double x = center.x + Math.cos(angle) * radius;
-            double z = center.z + Math.sin(angle) * radius;
-            serverLevel.sendParticles(new DustParticleOptions(new Vector3f(0.52F, 0.18F, 0.76F), 1.0F),
-                    x,
-                    center.y + 0.02D,
-                    z,
-                    1,
-                    0.03D,
-                    0.0D,
-                    0.03D,
-                    0.0D);
-        }
     }
 
     private static void tickMagneticCling(Player player, CompoundTag data, long gameTime) {

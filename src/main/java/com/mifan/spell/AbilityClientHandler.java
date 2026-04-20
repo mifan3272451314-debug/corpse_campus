@@ -55,9 +55,6 @@ import java.util.Map;
 
 @Mod.EventBusSubscriber(modid = corpsecampus.MODID, value = Dist.CLIENT)
 public final class AbilityClientHandler {
-    private static final int ELEMENTAL_DOMAIN_OVERLAY_FADE_IN_TICKS = 10;
-    private static final int ELEMENTAL_DOMAIN_OVERLAY_HOLD_TICKS = 30;
-    private static final int ELEMENTAL_DOMAIN_OVERLAY_FADE_OUT_TICKS = 10;
     private static final ResourceLocation SONIC_ECHO_TEXTURE = ResourceLocation.fromNamespaceAndPath(corpsecampus.MODID,
             "textures/gui/sound_gui.png");
     private static final int SONIC_ECHO_FRAME_WIDTH = 32;
@@ -66,6 +63,9 @@ public final class AbilityClientHandler {
     private static final int SONIC_ECHO_FRAME_DURATION = 10;
     private static final float SONIC_WORLD_ICON_BASE_SCALE = 0.045F;
     private static final double SONIC_NEAR_SOUND_MUTE_RADIUS = 1.5D;
+    private static final float OLFACTION_FOOTPRINT_HALF_WIDTH = 0.075F;
+    private static final float OLFACTION_FOOTPRINT_SOLE_LENGTH = 0.18F;
+    private static final float OLFACTION_FOOTPRINT_TOE_SIZE = 0.045F;
     private static final long OLFACTION_FOOTPRINT_DURATION_TICKS = 300L;
     private static final long OLFACTION_FOOTPRINT_SPAWN_INTERVAL_TICKS = 6L;
     private static final Map<Integer, Long> DANGER_ENTITY_MARKS = new HashMap<>();
@@ -76,9 +76,6 @@ public final class AbilityClientHandler {
     private static int sonicHudTick;
     private static long instinctOverlayUntil;
     private static boolean instinctLastStand;
-    private static boolean elementalDomainActive;
-    private static int elementalDomainTick;
-    private static int elementalDomainReleaseTick;
     private static final double SONIC_MIN_ENTITY_SOUND_DISTANCE_SQR = 1.0D;
 
     private AbilityClientHandler() {
@@ -196,7 +193,7 @@ public final class AbilityClientHandler {
         long gameTime = level.getGameTime();
         updateSonicListeningState(player, gameTime);
         spawnOlfactionTrails(player, level, gameTime);
-        updateElementalDomainState(player);
+        ElementalDomainClientHandler.tick(player);
         cleanupExpired(gameTime);
         sonicHudTick++;
     }
@@ -209,7 +206,8 @@ public final class AbilityClientHandler {
         }
 
         if (hasSonicSense(player) && event.getEntity() != null
-                && player.distanceToSqr(event.getEntity()) <= SONIC_NEAR_SOUND_MUTE_RADIUS * SONIC_NEAR_SOUND_MUTE_RADIUS) {
+                && player.distanceToSqr(event.getEntity()) <= SONIC_NEAR_SOUND_MUTE_RADIUS
+                        * SONIC_NEAR_SOUND_MUTE_RADIUS) {
             event.setNewVolume(0.0F);
         }
 
@@ -229,7 +227,8 @@ public final class AbilityClientHandler {
         }
 
         if (hasSonicSense(player)
-                && player.position().distanceToSqr(event.getPosition()) <= SONIC_NEAR_SOUND_MUTE_RADIUS * SONIC_NEAR_SOUND_MUTE_RADIUS) {
+                && player.position().distanceToSqr(event.getPosition()) <= SONIC_NEAR_SOUND_MUTE_RADIUS
+                        * SONIC_NEAR_SOUND_MUTE_RADIUS) {
             event.setNewVolume(0.0F);
         }
 
@@ -248,12 +247,7 @@ public final class AbilityClientHandler {
             return;
         }
 
-        if (shouldRenderElementalDomainForPlayer(player)) {
-            float pulse = 0.78F + (float) (Math.sin(player.level().getGameTime() * 0.08D) * 0.05D);
-            event.setRed(event.getRed() * 0.36F * pulse);
-            event.setGreen(event.getGreen() * 0.42F * pulse);
-            event.setBlue(event.getBlue() * 0.58F);
-        }
+        ElementalDomainClientHandler.onComputeFogColor(event, player);
 
         if (!hasSonicSense(player)) {
             return;
@@ -271,10 +265,7 @@ public final class AbilityClientHandler {
             return;
         }
 
-        if (shouldRenderElementalDomainForPlayer(player)) {
-            event.scaleFarPlaneDistance(0.78F);
-            event.scaleNearPlaneDistance(1.1F);
-        }
+        ElementalDomainClientHandler.onRenderFog(event, player);
 
         if (!hasSonicSense(player)) {
             return;
@@ -295,9 +286,7 @@ public final class AbilityClientHandler {
         int height = event.getWindow().getGuiScaledHeight();
         long gameTime = player.level().getGameTime();
 
-        if (shouldRenderElementalDomainForPlayer(player) && isElementalDomainVisualActive()) {
-            drawElementalDomainOverlay(event.getGuiGraphics(), player, width, height, gameTime);
-        }
+        ElementalDomainClientHandler.renderOverlay(event.getGuiGraphics(), player, width, height, gameTime);
 
         if (hasSonicSense(player)) {
             drawDarkSonicOverlay(event.getGuiGraphics(), width, height, gameTime);
@@ -313,6 +302,22 @@ public final class AbilityClientHandler {
         }
     }
 
+    @SubscribeEvent
+    public static void onRenderLevelStage(RenderLevelStageEvent event) {
+        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_TRANSLUCENT_BLOCKS) {
+            return;
+        }
+
+        Minecraft minecraft = Minecraft.getInstance();
+        Player player = minecraft.player;
+        ClientLevel level = minecraft.level;
+        if (player == null || level == null || !hasOlfaction(player) || OLFACTION_FOOTPRINTS.isEmpty()) {
+            return;
+        }
+
+        renderOlfactionFootprints(event.getPoseStack(), event.getCamera(), level.getGameTime());
+    }
+
     private static void drawInstinctOverlay(GuiGraphics guiGraphics, int width, int height, long gameTime) {
         int alpha = instinctLastStand ? 28 : 18;
         int color = instinctLastStand ? 0xA9FF8E : 0x8AF3AE;
@@ -324,127 +329,6 @@ public final class AbilityClientHandler {
         int pulseAlpha = 24 + (int) (Math.sin(gameTime * 0.45D) * 5.0D + 5.0D);
         guiGraphics.fill(centerX - 26, centerY - 1, centerX + 26, centerY + 1, (pulseAlpha << 24) | color);
         guiGraphics.fill(centerX - 1, centerY - 26, centerX + 1, centerY + 26, (pulseAlpha << 24) | color);
-    }
-
-    private static void drawElementalDomainOverlay(GuiGraphics guiGraphics, Player player, int width, int height,
-            long gameTime) {
-        float alphaScale = getElementalDomainOverlayStrength();
-        if (alphaScale <= 0.01F) {
-            return;
-        }
-
-        int veilAlpha = Mth.clamp((int) (42.0F * alphaScale), 0, 72);
-        int accentAlpha = Mth.clamp((int) ((22.0F + Math.sin(gameTime * 0.09D) * 7.0D) * alphaScale), 0, 52);
-        int edgeAlpha = Mth.clamp((int) ((32.0F + Math.sin(gameTime * 0.12D) * 10.0D) * alphaScale), 0, 70);
-
-        guiGraphics.fill(0, 0, width, height, (veilAlpha << 24) | 0x0C1320);
-        drawElementalVignette(guiGraphics, width, height, edgeAlpha);
-
-        int centerX = width / 2;
-        int centerY = height / 2;
-        float appearProgress = Mth.clamp(elementalDomainTick / (float) ELEMENTAL_DOMAIN_OVERLAY_FADE_IN_TICKS, 0.0F, 1.0F);
-        int pulseRadius = (int) ((Math.min(width, height) / 4.5F) + (Math.min(width, height) / 9.0F) * appearProgress);
-        int pulseThickness = 1 + (int) appearProgress;
-        int ringAlpha = Mth.clamp((int) (accentAlpha * 0.9F), 0, 60);
-
-        drawElementalRing(guiGraphics, centerX, centerY, pulseRadius, pulseThickness, ringAlpha, gameTime);
-        drawElementalText(guiGraphics, Minecraft.getInstance().font, width, height, alphaScale, gameTime);
-        drawElementalCrosshair(guiGraphics, centerX, centerY, alphaScale, gameTime);
-
-        if (elementalDomainTick >= 12 && elementalDomainTick <= 32 && elementalDomainActive) {
-            int lineAlpha = Math.min(28, ringAlpha);
-            guiGraphics.fill(0, 0, width, 1, (lineAlpha << 24) | 0x78D7FF);
-            guiGraphics.fill(0, height - 1, width, height, (lineAlpha << 24) | 0x4E7BFF);
-        }
-
-        spawnElementalAuraParticles(player, gameTime, alphaScale);
-    }
-
-    private static void drawElementalVignette(GuiGraphics guiGraphics, int width, int height, int alpha) {
-        int topColor = (alpha << 24) | 0x18304A;
-        int bottomColor = ((int) (alpha * 0.72F) << 24) | 0x16283F;
-        int sideColor = ((int) (alpha * 0.8F) << 24) | 0x1A3550;
-        int clear = 0x00000000;
-        int band = Math.max(18, Math.min(width, height) / 7);
-
-        guiGraphics.fillGradient(0, 0, width, band, topColor, clear);
-        guiGraphics.fillGradient(0, height - band, width, height, clear, bottomColor);
-        guiGraphics.fillGradient(0, 0, band, height, sideColor, clear);
-        guiGraphics.fillGradient(width - band, 0, width, height, clear, sideColor);
-    }
-
-    private static void drawElementalRing(GuiGraphics guiGraphics, int centerX, int centerY, int radius, int thickness,
-            int alpha, long gameTime) {
-        int cyan = (alpha << 24) | 0x69D8FF;
-        int blue = ((int) (alpha * 0.8F) << 24) | 0x6A8DFF;
-        int orange = ((int) (alpha * 0.75F) << 24) | 0xFFAE6B;
-
-        for (int i = 0; i < 36; i++) {
-            float angle = Mth.TWO_PI * i / 36.0F + (float) (gameTime * 0.03D);
-            int x = centerX + Mth.floor(Mth.cos(angle) * radius);
-            int y = centerY + Mth.floor(Mth.sin(angle) * radius * 0.55F);
-            int color = i % 3 == 0 ? orange : i % 2 == 0 ? blue : cyan;
-            guiGraphics.fill(x - thickness, y - 1, x + thickness, y + 1, color);
-        }
-    }
-
-    private static void drawElementalText(GuiGraphics guiGraphics, Font font, int width, int height, float alphaScale,
-            long gameTime) {
-        String line1 = "领域展开";
-        String line2 = "元素使";
-        int alphaMain = Mth.clamp((int) (148.0F * alphaScale), 0, 148);
-        int alphaShadow = Mth.clamp((int) (92.0F * alphaScale), 0, 92);
-        int centerX = width / 2;
-        int line1Y = height / 2 - 42;
-        int line2Y = line1Y + 28;
-        int wobble = (int) (Math.sin(gameTime * 0.15D) * 1.0D);
-
-        int width1 = font.width(line1) * 2;
-        int width2 = font.width(line2) * 2;
-
-        guiGraphics.drawString(font, line1, centerX - width1 / 2 + 1, line1Y + 1, (alphaShadow << 24) | 0x48D6FF, false);
-        guiGraphics.pose().pushPose();
-        guiGraphics.pose().scale(2.0F, 2.0F, 1.0F);
-        guiGraphics.drawString(font, line1, (centerX - width1 / 2) / 2, (line1Y + wobble) / 2,
-                (alphaMain << 24) | 0xF4FDFF, false);
-        guiGraphics.pose().popPose();
-
-        guiGraphics.drawString(font, line2, centerX - width2 / 2 + 1, line2Y + 1, (alphaShadow << 24) | 0x7DA6FF, false);
-        guiGraphics.pose().pushPose();
-        guiGraphics.pose().scale(2.0F, 2.0F, 1.0F);
-        guiGraphics.drawString(font, line2, (centerX - width2 / 2) / 2, line2Y / 2,
-                (alphaMain << 24) | 0xFFFFFF, false);
-        guiGraphics.pose().popPose();
-    }
-
-    private static void drawElementalCrosshair(GuiGraphics guiGraphics, int centerX, int centerY, float alphaScale,
-            long gameTime) {
-        int alpha = Mth.clamp((int) (54.0F * alphaScale), 0, 54);
-        int warm = (alpha << 24) | 0xFF9D5C;
-        int cold = (alpha << 24) | 0x71E7FF;
-        int shift = (int) (Math.sin(gameTime * 0.2D) * 2.0D);
-        guiGraphics.fill(centerX - 24, centerY - 1, centerX - 7 + shift, centerY + 1, cold);
-        guiGraphics.fill(centerX + 7 - shift, centerY - 1, centerX + 24, centerY + 1, warm);
-        guiGraphics.fill(centerX - 1, centerY - 18, centerX + 1, centerY - 7, cold);
-        guiGraphics.fill(centerX - 1, centerY + 7, centerX + 1, centerY + 18, warm);
-    }
-
-    private static void spawnElementalAuraParticles(Player player, long gameTime, float alphaScale) {
-        ClientLevel level = Minecraft.getInstance().level;
-        if (level == null || gameTime % 2L != 0L) {
-            return;
-        }
-
-        double radius = 1.2D + Math.min(1.1D, elementalDomainTick / 28.0D);
-        for (int i = 0; i < 3; i++) {
-            double angle = gameTime * 0.16D + i * (Math.PI * 2.0D / 3.0D);
-            double x = player.getX() + Math.cos(angle) * radius;
-            double y = player.getY() + 0.35D + (i * 0.22D);
-            double z = player.getZ() + Math.sin(angle) * radius;
-            Vector3f color = i == 0 ? new Vector3f(1.0F, 0.55F, 0.24F) : i == 1 ? new Vector3f(0.42F, 0.92F, 1.0F) : new Vector3f(0.58F, 0.66F, 1.0F);
-            level.addParticle(new DustParticleOptions(color, 0.72F + alphaScale * 0.3F), x, y, z, 0.0D, 0.01D, 0.0D);
-            level.addParticle(ParticleTypes.END_ROD, x, y + 0.1D, z, 0.0D, 0.0D, 0.0D);
-        }
     }
 
     private static void drawDarkSonicOverlay(GuiGraphics guiGraphics, int width, int height, long gameTime) {
@@ -544,10 +428,11 @@ public final class AbilityClientHandler {
 
         clip.div(clip.w);
 
-        int screenWidth = minecraft.getWindow().getGuiScaledWidth();
-        int screenHeight = minecraft.getWindow().getGuiScaledHeight();
-        float screenX = (clip.x * 0.5F + 0.5F) * screenWidth;
-        float screenY = (clip.y * -0.5F + 0.5F) * screenHeight;
+        int windowWidth = minecraft.getWindow().getWidth();
+        int windowHeight = minecraft.getWindow().getHeight();
+        float guiScale = (float) minecraft.getWindow().getGuiScale();
+        float screenX = ((clip.x * 0.5F + 0.5F) * windowWidth) / guiScale;
+        float screenY = ((clip.y * -0.5F + 0.5F) * windowHeight) / guiScale;
         return new Vector3f(screenX, screenY, clip.z);
     }
 
@@ -619,6 +504,7 @@ public final class AbilityClientHandler {
 
     private static void cleanupExpired(long gameTime) {
         DANGER_ENTITY_MARKS.entrySet().removeIf(entry -> entry.getValue() <= gameTime);
+        OLFACTION_FOOTPRINTS.removeIf(footprint -> footprint.expireAt <= gameTime);
     }
 
     private static void updateSonicListeningState(Player player, long gameTime) {
@@ -642,9 +528,7 @@ public final class AbilityClientHandler {
         sonicListeningActive = false;
         sonicListenStartTime = 0L;
         sonicHudTick = 0;
-        elementalDomainActive = false;
-        elementalDomainTick = 0;
-        elementalDomainReleaseTick = 0;
+        ElementalDomainClientHandler.clear();
     }
 
     private static Player localPlayer() {
@@ -659,94 +543,12 @@ public final class AbilityClientHandler {
         return player.hasEffect(ModMobEffects.OLFACTION.get());
     }
 
-    private static boolean hasElementalDomain(Player player) {
-        return player.hasEffect(ModMobEffects.ELEMENTAL_DOMAIN.get());
-    }
-
-    private static boolean shouldRenderElementalDomainForPlayer(Player player) {
-        if (hasElementalDomain(player)) {
-            return true;
-        }
-
-        if (!AbilityRuntime.hasElementalistCenter(player.getPersistentData())) {
-            return isInsideElementalDomainBlocks(player);
-        }
-
-        Vec3 center = AbilityRuntime.getElementalistCenter(player);
-        double radius = AbilityRuntime.getElementalistRadius();
-        return player.position().distanceToSqr(center) <= radius * radius || isInsideElementalDomainBlocks(player);
-    }
-
-    private static boolean isInsideElementalDomainBlocks(Player player) {
-        ClientLevel level = Minecraft.getInstance().level;
-        if (level == null) {
-            return false;
-        }
-
-        net.minecraft.core.BlockPos feet = player.blockPosition();
-        net.minecraft.core.BlockPos eye = net.minecraft.core.BlockPos.containing(player.getEyePosition());
-        return AbilityRuntime.isElementalDomainVisualBlock(level.getBlockState(feet))
-                || AbilityRuntime.isElementalDomainVisualBlock(level.getBlockState(eye));
-    }
-
-    private static boolean isElementalDomainVisualActive() {
-        return elementalDomainActive || elementalDomainReleaseTick > 0;
-    }
-
-    private static void updateElementalDomainState(Player player) {
-        boolean activeNow = hasElementalDomain(player);
-        if (activeNow) {
-            elementalDomainActive = true;
-            elementalDomainTick = Math.min(elementalDomainTick + 1,
-                    ELEMENTAL_DOMAIN_OVERLAY_FADE_IN_TICKS
-                            + ELEMENTAL_DOMAIN_OVERLAY_HOLD_TICKS
-                            + ELEMENTAL_DOMAIN_OVERLAY_FADE_OUT_TICKS);
-            elementalDomainReleaseTick = 0;
-        } else if (elementalDomainActive) {
-            elementalDomainActive = false;
-            elementalDomainReleaseTick = 1;
-        } else if (elementalDomainReleaseTick > 0) {
-            elementalDomainReleaseTick++;
-            if (elementalDomainReleaseTick > ELEMENTAL_DOMAIN_OVERLAY_FADE_OUT_TICKS) {
-                elementalDomainReleaseTick = 0;
-                elementalDomainTick = 0;
-            }
-        } else {
-            elementalDomainTick = 0;
-        }
-    }
-
-    private static float getElementalDomainOverlayStrength() {
-        if (elementalDomainActive) {
-            if (elementalDomainTick <= ELEMENTAL_DOMAIN_OVERLAY_FADE_IN_TICKS) {
-                return Mth.clamp(elementalDomainTick / (float) ELEMENTAL_DOMAIN_OVERLAY_FADE_IN_TICKS, 0.0F, 1.0F);
-            }
-
-            int holdTicks = elementalDomainTick - ELEMENTAL_DOMAIN_OVERLAY_FADE_IN_TICKS;
-            if (holdTicks <= ELEMENTAL_DOMAIN_OVERLAY_HOLD_TICKS) {
-                return 1.0F;
-            }
-
-            float fade = 1.0F - (holdTicks - ELEMENTAL_DOMAIN_OVERLAY_HOLD_TICKS)
-                    / (float) ELEMENTAL_DOMAIN_OVERLAY_FADE_OUT_TICKS;
-            return Mth.clamp(fade, 0.0F, 1.0F);
-        }
-
-        if (elementalDomainReleaseTick > 0) {
-            return Mth.clamp(1.0F - elementalDomainReleaseTick / (float) ELEMENTAL_DOMAIN_OVERLAY_FADE_OUT_TICKS,
-                    0.0F, 1.0F);
-        }
-
-        return 0.0F;
-    }
-
     private static void spawnOlfactionTrails(Player player, ClientLevel level, long gameTime) {
         if (!hasOlfaction(player)) {
             OLFACTION_FOOTPRINTS.clear();
             return;
         }
 
-        renderOlfactionFootprints(level, gameTime);
         if (gameTime % 3L != 0L) {
             return;
         }
@@ -790,7 +592,21 @@ public final class AbilityClientHandler {
                 gameTime + OLFACTION_FOOTPRINT_DURATION_TICKS, gameTime));
     }
 
-    private static void renderOlfactionFootprints(ClientLevel level, long gameTime) {
+    private static void renderOlfactionFootprints(PoseStack poseStack, Camera camera, long gameTime) {
+        Vec3 cameraPos = camera.getPosition();
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
+        RenderSystem.disableCull();
+        RenderSystem.setShader(GameRenderer::getPositionColorShader);
+
+        poseStack.pushPose();
+        poseStack.translate(-cameraPos.x, -cameraPos.y, -cameraPos.z);
+        Matrix4f matrix = poseStack.last().pose();
+
+        Tesselator tesselator = Tesselator.getInstance();
+        BufferBuilder bufferBuilder = tesselator.getBuilder();
+        bufferBuilder.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
+
         Iterator<OlfactionFootprintParticle> iterator = OLFACTION_FOOTPRINTS.iterator();
         while (iterator.hasNext()) {
             OlfactionFootprintParticle footprint = iterator.next();
@@ -799,24 +615,79 @@ public final class AbilityClientHandler {
                 continue;
             }
 
-            double ageRatio = 1.0D - (double) (footprint.expireAt - gameTime) / (double) OLFACTION_FOOTPRINT_DURATION_TICKS;
-            double alphaScale = Mth.clamp(1.0D - ageRatio * 0.75D, 0.2D, 1.0D);
+            float lifeRatio = (float) (footprint.expireAt - gameTime) / (float) OLFACTION_FOOTPRINT_DURATION_TICKS;
+            float alpha = Mth.clamp(0.18F + lifeRatio * 0.5F, 0.18F, 0.68F);
+            float yaw = ((footprint.entityId + footprint.createdAt) & 1L) == 0L ? 35.0F : -35.0F;
+            float lateralOffset = ((footprint.createdAt / 3L) & 1L) == 0L ? 0.09F : -0.09F;
 
-            level.addParticle(new DustParticleOptions(new Vector3f(0.92F, 0.12F, 0.16F), (float) (0.55F + alphaScale * 0.35F)),
-                    footprint.x,
-                    footprint.y,
-                    footprint.z,
-                    0.0D,
-                    0.002D,
-                    0.0D);
-            level.addParticle(new DustParticleOptions(new Vector3f(0.72F, 0.05F, 0.08F), (float) (0.3F + alphaScale * 0.25F)),
-                    footprint.x + 0.08D,
-                    footprint.y,
-                    footprint.z - 0.08D,
-                    0.0D,
-                    0.001D,
-                    0.0D);
+            addFootprintQuad(bufferBuilder, matrix, footprint.x, footprint.y, footprint.z, yaw, lateralOffset,
+                    0.94F, 0.18F, 0.22F, alpha);
+            addFootprintQuad(bufferBuilder, matrix, footprint.x, footprint.y + 0.002D, footprint.z, yaw, lateralOffset,
+                    1.0F, 0.58F, 0.62F, alpha * 0.35F);
         }
+
+        BufferUploader.drawWithShader(bufferBuilder.end());
+        poseStack.popPose();
+
+        RenderSystem.enableCull();
+        RenderSystem.disableBlend();
+    }
+
+    private static void addFootprintQuad(BufferBuilder bufferBuilder, Matrix4f matrix,
+            double x, double y, double z, float yawDegrees, float lateralOffset,
+            float red, float green, float blue, float alpha) {
+        float radians = yawDegrees * Mth.DEG_TO_RAD;
+        float cos = Mth.cos(radians);
+        float sin = Mth.sin(radians);
+
+        double centerX = x + cos * lateralOffset;
+        double centerZ = z + sin * lateralOffset;
+        double renderY = y + 0.01D;
+
+        addRotatedQuad(bufferBuilder, matrix, centerX, renderY, centerZ,
+                OLFACTION_FOOTPRINT_HALF_WIDTH, OLFACTION_FOOTPRINT_SOLE_LENGTH, cos, sin,
+                red, green, blue, alpha);
+
+        addRotatedQuad(bufferBuilder, matrix,
+                centerX + cos * 0.035D - sin * 0.045D,
+                renderY + 0.001D,
+                centerZ + sin * 0.035D + cos * 0.045D,
+                OLFACTION_FOOTPRINT_TOE_SIZE, OLFACTION_FOOTPRINT_TOE_SIZE, cos, sin,
+                red, green, blue, alpha * 0.95F);
+        addRotatedQuad(bufferBuilder, matrix,
+                centerX + cos * 0.065D,
+                renderY + 0.001D,
+                centerZ + sin * 0.065D,
+                OLFACTION_FOOTPRINT_TOE_SIZE, OLFACTION_FOOTPRINT_TOE_SIZE, cos, sin,
+                red, green, blue, alpha);
+        addRotatedQuad(bufferBuilder, matrix,
+                centerX + cos * 0.035D + sin * 0.045D,
+                renderY + 0.001D,
+                centerZ + sin * 0.035D - cos * 0.045D,
+                OLFACTION_FOOTPRINT_TOE_SIZE, OLFACTION_FOOTPRINT_TOE_SIZE, cos, sin,
+                red, green, blue, alpha * 0.95F);
+    }
+
+    private static void addRotatedQuad(BufferBuilder bufferBuilder, Matrix4f matrix,
+            double centerX, double y, double centerZ, float halfWidth, float halfLength,
+            float forwardX, float forwardZ, float red, float green, float blue, float alpha) {
+        float sideX = -forwardZ;
+        float sideZ = forwardX;
+
+        float x1 = (float) (centerX - sideX * halfWidth - forwardX * halfLength);
+        float z1 = (float) (centerZ - sideZ * halfWidth - forwardZ * halfLength);
+        float x2 = (float) (centerX - sideX * halfWidth + forwardX * halfLength);
+        float z2 = (float) (centerZ - sideZ * halfWidth + forwardZ * halfLength);
+        float x3 = (float) (centerX + sideX * halfWidth + forwardX * halfLength);
+        float z3 = (float) (centerZ + sideZ * halfWidth + forwardZ * halfLength);
+        float x4 = (float) (centerX + sideX * halfWidth - forwardX * halfLength);
+        float z4 = (float) (centerZ + sideZ * halfWidth - forwardZ * halfLength);
+        float renderY = (float) y;
+
+        bufferBuilder.vertex(matrix, x1, renderY, z1).color(red, green, blue, alpha).endVertex();
+        bufferBuilder.vertex(matrix, x2, renderY, z2).color(red, green, blue, alpha).endVertex();
+        bufferBuilder.vertex(matrix, x3, renderY, z3).color(red, green, blue, alpha).endVertex();
+        bufferBuilder.vertex(matrix, x4, renderY, z4).color(red, green, blue, alpha).endVertex();
     }
 
     private static boolean isOlfactionTrackable(LivingEntity entity) {

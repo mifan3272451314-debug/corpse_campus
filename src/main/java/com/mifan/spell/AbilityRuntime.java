@@ -41,6 +41,11 @@ import io.redspace.ironsspellbooks.api.registry.SpellRegistry;
 import io.redspace.ironsspellbooks.api.spells.AbstractSpell;
 import io.redspace.ironsspellbooks.api.spells.CastSource;
 import com.mifan.spell.runtime.DominanceRuntime;
+import com.mifan.spell.runtime.DaiyueRuntime;
+import com.mifan.spell.runtime.ElementalDomainRuntime;
+import com.mifan.spell.runtime.ExecutionerRuntime;
+import com.mifan.spell.runtime.MarkRuntime;
+import com.mifan.spell.runtime.NecroticRuntime;
 import com.mifan.spell.runtime.RecorderOfficerRuntime;
 import com.mifan.spell.runtime.TelekinesisRuntime;
 import org.joml.Vector3f;
@@ -149,26 +154,6 @@ public final class AbilityRuntime {
     private static final int ELEMENTAL_DOMAIN_RADIUS = 30;
     private static final int ELEMENTAL_DOMAIN_CLOSED_RADIUS = 15;
     private static final int ELEMENTAL_DOMAIN_INTERVAL = 20;
-    private static final float ELEMENTAL_DOMAIN_EXPAND_RATE = 2.5F;
-    private static final int ELEMENTAL_DOMAIN_RESTORE_PER_TICK = 384;
-    private static final BlockState[] ELEMENTAL_DOMAIN_INNER_BLOCKS = {
-            Blocks.PRISMARINE.defaultBlockState(),
-            Blocks.DARK_PRISMARINE.defaultBlockState(),
-            Blocks.BLUE_ICE.defaultBlockState(),
-            Blocks.SEA_LANTERN.defaultBlockState(),
-            Blocks.MAGMA_BLOCK.defaultBlockState(),
-            Blocks.CRYING_OBSIDIAN.defaultBlockState()
-    };
-    private static final BlockState[] ELEMENTAL_DOMAIN_SHELL_BLOCKS = {
-            Blocks.CRYING_OBSIDIAN.defaultBlockState(),
-            Blocks.BLUE_STAINED_GLASS.defaultBlockState(),
-            Blocks.LIGHT_BLUE_STAINED_GLASS.defaultBlockState(),
-            Blocks.RESPAWN_ANCHOR.defaultBlockState(),
-            Blocks.OBSIDIAN.defaultBlockState()
-    };
-    private static final Map<UUID, ElementalDomainState> ACTIVE_ELEMENTAL_DOMAINS = new HashMap<>();
-    private static final Map<ResourceKey<Level>, Long> ELEMENTAL_DOMAIN_RESTORE_TICKS = new HashMap<>();
-    private static final Random DOMAIN_RANDOM = new Random();
 
     private AbilityRuntime() {
     }
@@ -279,62 +264,55 @@ public final class AbilityRuntime {
     }
 
     public static int getExecutionerDamagePercent() {
-        return Math.round(EXECUTIONER_DAMAGE_RATIO * 100.0F);
+        return ExecutionerRuntime.getDamagePercent();
     }
 
     public static int getNecroticHealAmount(int spellLevel) {
-        return NECROTIC_KILL_HEAL_BASE + Math.max(0, spellLevel - 1) * 2;
+        return NecroticRuntime.getHealAmount(spellLevel);
     }
 
     public static double getNecroticUndeadMaxHealth() {
-        return NECROTIC_UNDEAD_MAX_HEALTH;
+        return NecroticRuntime.getUndeadMaxHealth();
     }
 
     public static float getNecroticNonPlayerKillHeal() {
-        return NECROTIC_NON_PLAYER_KILL_HEAL;
+        return NecroticRuntime.getNonPlayerKillHeal();
     }
 
     public static int getDaiyueDashRange(int spellLevel) {
-        return 6 + Math.max(0, spellLevel - 1);
+        return DaiyueRuntime.getDashRange(spellLevel);
     }
 
     public static double getDaiyueHitWidth(int spellLevel) {
-        return 2.5D + Math.max(0, spellLevel - 1) * 0.3D;
+        return DaiyueRuntime.getHitWidth(spellLevel);
     }
 
     public static int getNecroticProvokeDurationTicks() {
-        return NECROTIC_PROVOKE_DURATION_TICKS;
+        return NecroticRuntime.getProvokeDurationTicks();
     }
 
     public static void markNecroticProvoked(Mob mob, Player player) {
-        CompoundTag data = mob.getPersistentData();
-        data.putUUID(TAG_NECROTIC_PROVOKED_BY, player.getUUID());
-        data.putLong(TAG_NECROTIC_PROVOKED_UNTIL, mob.level().getGameTime() + NECROTIC_PROVOKE_DURATION_TICKS);
+        NecroticRuntime.markProvoked(mob, player);
     }
 
     public static boolean canMobTargetNecroticPlayer(Mob mob, Player player) {
-        CompoundTag data = mob.getPersistentData();
-        return data.hasUUID(TAG_NECROTIC_PROVOKED_BY)
-                && player.getUUID().equals(data.getUUID(TAG_NECROTIC_PROVOKED_BY))
-                && data.getLong(TAG_NECROTIC_PROVOKED_UNTIL) > mob.level().getGameTime();
+        return NecroticRuntime.canMobTargetPlayer(mob, player);
     }
 
     public static void clearNecroticProvoked(Mob mob) {
-        CompoundTag data = mob.getPersistentData();
-        data.remove(TAG_NECROTIC_PROVOKED_BY);
-        data.remove(TAG_NECROTIC_PROVOKED_UNTIL);
+        NecroticRuntime.clearProvoked(mob);
     }
 
     public static int getMarkRadius(int spellLevel) {
-        return 3 + Math.max(0, spellLevel - 1);
+        return MarkRuntime.getRadius(spellLevel);
     }
 
     public static int getMarkDurationSeconds(int spellLevel) {
-        return 20 + spellLevel * 5;
+        return MarkRuntime.getDurationSeconds(spellLevel);
     }
 
     public static int getMarkRootSeconds() {
-        return MARK_ROOT_DURATION_TICKS / 20;
+        return MarkRuntime.getRootSeconds();
     }
 
     public static int clampRecorderOfficerSeconds(int seconds) {
@@ -396,199 +374,35 @@ public final class AbilityRuntime {
     }
 
     public static void clearElementalDomain(CompoundTag data) {
-        clear(data,
-                TAG_ELEMENTAL_DOMAIN_LAST_TICK,
-                TAG_ELEMENTAL_DOMAIN_START_TICK,
-                TAG_ELEMENTAL_DOMAIN_CENTER_X,
-                TAG_ELEMENTAL_DOMAIN_CENTER_Y,
-                TAG_ELEMENTAL_DOMAIN_CENTER_Z,
-                TAG_ELEMENTAL_DOMAIN_CLOSED);
+        ElementalDomainRuntime.clear(data);
     }
 
     public static void beginElementalDomain(ServerLevel level, Player caster, boolean closedDomain) {
-        CompoundTag data = caster.getPersistentData();
-        data.putLong(TAG_ELEMENTAL_DOMAIN_START_TICK, level.getGameTime());
-        data.putLong(TAG_ELEMENTAL_DOMAIN_LAST_TICK, 0L);
-        data.putDouble(TAG_ELEMENTAL_DOMAIN_CENTER_X, caster.getX());
-        data.putDouble(TAG_ELEMENTAL_DOMAIN_CENTER_Y, caster.getY());
-        data.putDouble(TAG_ELEMENTAL_DOMAIN_CENTER_Z, caster.getZ());
-        data.putBoolean(TAG_ELEMENTAL_DOMAIN_CLOSED, closedDomain);
-
-        ACTIVE_ELEMENTAL_DOMAINS.compute(caster.getUUID(), (uuid, existing) -> {
-            if (existing != null) {
-                existing.forceDiscard(level);
-            }
-            return new ElementalDomainState(level.dimension(), new BlockPos(
-                    Mth.floor(caster.getX()),
-                    Mth.floor(caster.getY()),
-                    Mth.floor(caster.getZ())), closedDomain);
-        });
+        ElementalDomainRuntime.begin(level, caster, closedDomain);
     }
 
     public static void endElementalDomain(ServerLevel level, Player caster) {
-        ElementalDomainState state = ACTIVE_ELEMENTAL_DOMAINS.get(caster.getUUID());
-        if (state != null) {
-            state.beginRestore(level, caster.blockPosition());
-        }
+        ElementalDomainRuntime.end(level, caster);
     }
 
     public static Vec3 getElementalistCenter(Player caster) {
-        CompoundTag data = caster.getPersistentData();
-        return new Vec3(
-                data.getDouble(TAG_ELEMENTAL_DOMAIN_CENTER_X),
-                data.getDouble(TAG_ELEMENTAL_DOMAIN_CENTER_Y),
-                data.getDouble(TAG_ELEMENTAL_DOMAIN_CENTER_Z));
+        return ElementalDomainRuntime.getCenter(caster);
     }
 
     public static boolean hasElementalistCenter(CompoundTag data) {
-        return data.contains(TAG_ELEMENTAL_DOMAIN_CENTER_X)
-                && data.contains(TAG_ELEMENTAL_DOMAIN_CENTER_Y)
-                && data.contains(TAG_ELEMENTAL_DOMAIN_CENTER_Z);
+        return ElementalDomainRuntime.hasCenter(data);
     }
 
     public static void tickElementalDomainTerrain(ServerLevel level, Player caster, long gameTime) {
-        ElementalDomainState state = ACTIVE_ELEMENTAL_DOMAINS.get(caster.getUUID());
-        if (state == null || state.restoring || state.dimension != level.dimension()) {
-            return;
-        }
-
-        long startTick = caster.getPersistentData().getLong(TAG_ELEMENTAL_DOMAIN_START_TICK);
-        int maxRadius = getElementalistActiveRadius(caster.getPersistentData());
-        float radius = Math.min(maxRadius, Math.max(0.0F, (gameTime - startTick) * ELEMENTAL_DOMAIN_EXPAND_RATE));
-        state.replaceSphere(level, state.center, state.lastRadius, radius);
-        state.lastRadius = radius;
-        if (state.closedDomain && radius >= maxRadius && !state.shellBuilt) {
-            state.buildShell(level, caster.blockPosition());
-        }
+        ElementalDomainRuntime.tickTerrain(level, caster, gameTime);
     }
 
     public static void tickElementalDomainRestoration(ServerLevel level) {
-        long gameTime = level.getGameTime();
-        Long lastTick = ELEMENTAL_DOMAIN_RESTORE_TICKS.get(level.dimension());
-        if (lastTick != null && lastTick == gameTime) {
-            return;
-        }
-        ELEMENTAL_DOMAIN_RESTORE_TICKS.put(level.dimension(), gameTime);
-
-        ACTIVE_ELEMENTAL_DOMAINS.entrySet().removeIf(entry -> {
-            ElementalDomainState state = entry.getValue();
-            if (state.dimension != level.dimension() || !state.restoring) {
-                return false;
-            }
-            return state.tickRestore(level);
-        });
+        ElementalDomainRuntime.tickRestoration(level);
     }
 
     public static void triggerElementalistBurst(ServerLevel level, Player caster, LivingEntity target, int spellLevel) {
-        boolean closedDomain = caster.getPersistentData().getBoolean(TAG_ELEMENTAL_DOMAIN_CLOSED);
-        int rapidCastCount = closedDomain ? 2 : 1;
-        ElementalBurstOption burst = switch (level.random.nextInt(3)) {
-            case 0 -> pickRandomFireBurst(level.random);
-            case 1 -> pickRandomIceBurst(level.random);
-            default ->
-                new ElementalBurstOption(SpellRegistry.LIGHTNING_BOLT_SPELL.get(), ElementalSpellType.LIGHTNING, 1);
-        };
-
-        castRegisteredElementalSpell(level, caster, target, spellLevel,
-                burst.spell(), burst.type(), rapidCastCount * burst.castMultiplier());
-    }
-
-    private static ElementalBurstOption pickRandomFireBurst(RandomSource random) {
-        return switch (random.nextInt(5)) {
-            case 0 -> new ElementalBurstOption(SpellRegistry.FIREBOLT_SPELL.get(), ElementalSpellType.FIRE, 1);
-            case 1 -> new ElementalBurstOption(SpellRegistry.FIREBALL_SPELL.get(), ElementalSpellType.FIRE, 1);
-            case 2 -> new ElementalBurstOption(SpellRegistry.BLAZE_STORM_SPELL.get(), ElementalSpellType.FIRE, 1);
-            case 3 -> new ElementalBurstOption(SpellRegistry.MAGMA_BOMB_SPELL.get(), ElementalSpellType.FIRE, 1);
-            default -> new ElementalBurstOption(SpellRegistry.FIREFLY_SWARM_SPELL.get(), ElementalSpellType.FIRE, 2);
-        };
-    }
-
-    private static ElementalBurstOption pickRandomIceBurst(RandomSource random) {
-        return switch (random.nextInt(2)) {
-            case 0 -> new ElementalBurstOption(SpellRegistry.ICICLE_SPELL.get(), ElementalSpellType.WATER, 1);
-            default -> new ElementalBurstOption(SpellRegistry.ICE_BLOCK_SPELL.get(), ElementalSpellType.WATER, 1);
-        };
-    }
-
-    private static void castRegisteredElementalSpell(ServerLevel level, Player caster, LivingEntity target,
-            int spellLevel,
-            AbstractSpell spell, ElementalSpellType type, int casts) {
-        MagicData magicData = MagicData.getPlayerMagicData(caster);
-        Vec3 originalPos = caster.position();
-        float originalYRot = caster.getYRot();
-        float originalXRot = caster.getXRot();
-
-        int actualCasts = 0;
-        for (int i = 0; i < casts; i++) {
-            // 50%概率跳过这次施法
-            if (level.random.nextBoolean()) {
-                continue;
-            }
-
-            actualCasts++;
-            Vec3 castOrigin = getElementalCastOrigin(caster, target, type, i);
-            Vec3 aimTarget = target.getBoundingBox().getCenter().add(0.0D, target.getBbHeight() * 0.15D, 0.0D);
-            Vec3 direction = aimTarget.subtract(castOrigin);
-            if (direction.lengthSqr() < 1.0E-4D) {
-                continue;
-            }
-
-            direction = direction.normalize();
-            caster.teleportTo(castOrigin.x, castOrigin.y, castOrigin.z);
-            float yaw = (float) Mth.wrapDegrees(Math.toDegrees(Math.atan2(-direction.x, direction.z)));
-            float pitch = (float) Mth.wrapDegrees(-Math.toDegrees(Math.atan2(direction.y,
-                    Math.sqrt(direction.x * direction.x + direction.z * direction.z))));
-            caster.setYRot(yaw);
-            caster.setYHeadRot(yaw);
-            caster.setYBodyRot(yaw);
-            caster.setXRot(pitch);
-
-            spell.onCast(level, spellLevel, caster, CastSource.NONE, magicData);
-        }
-
-        // 如果一次都没施法（运气极差），至少施法一次作为保底
-        if (actualCasts == 0 && casts > 0) {
-            // 使用第一个位置施法一次
-            Vec3 castOrigin = getElementalCastOrigin(caster, target, type, 0);
-            Vec3 aimTarget = target.getBoundingBox().getCenter().add(0.0D, target.getBbHeight() * 0.15D, 0.0D);
-            Vec3 direction = aimTarget.subtract(castOrigin);
-            if (direction.lengthSqr() >= 1.0E-4D) {
-                direction = direction.normalize();
-                caster.teleportTo(castOrigin.x, castOrigin.y, castOrigin.z);
-                float yaw = (float) Mth.wrapDegrees(Math.toDegrees(Math.atan2(-direction.x, direction.z)));
-                float pitch = (float) Mth.wrapDegrees(-Math.toDegrees(Math.atan2(direction.y,
-                        Math.sqrt(direction.x * direction.x + direction.z * direction.z))));
-                caster.setYRot(yaw);
-                caster.setYHeadRot(yaw);
-                caster.setYBodyRot(yaw);
-                caster.setXRot(pitch);
-                spell.onCast(level, spellLevel, caster, CastSource.NONE, magicData);
-            }
-        }
-
-        caster.teleportTo(originalPos.x, originalPos.y, originalPos.z);
-        caster.setYRot(originalYRot);
-        caster.setYHeadRot(originalYRot);
-        caster.setYBodyRot(originalYRot);
-        caster.setXRot(originalXRot);
-    }
-
-    private static Vec3 getElementalCastOrigin(LivingEntity caster, LivingEntity target, ElementalSpellType type,
-            int castIndex) {
-        Vec3 base = target.getBoundingBox().getCenter();
-        Vec3 fromCaster = base.subtract(caster.getEyePosition());
-        Vec3 horizontal = new Vec3(fromCaster.x, 0.0D, fromCaster.z);
-        if (horizontal.lengthSqr() < 1.0E-4D) {
-            horizontal = new Vec3(0.0D, 0.0D, 1.0D);
-        }
-        horizontal = horizontal.normalize();
-        Vec3 side = new Vec3(-horizontal.z, 0.0D, horizontal.x);
-        double lateral = castIndex == 0 ? -0.45D : 0.45D;
-        return switch (type) {
-            case FIRE -> base.subtract(horizontal.scale(3.0D)).add(side.scale(lateral)).add(0.0D, 0.4D, 0.0D);
-            case WATER -> base.subtract(horizontal.scale(3.3D)).add(side.scale(lateral * 0.85D)).add(0.0D, 0.55D, 0.0D);
-            case LIGHTNING -> base.add(0.0D, 6.0D, 0.0D);
-        };
+        ElementalDomainRuntime.triggerBurst(level, caster, target, spellLevel);
     }
 
     public static boolean isElementalistValidTarget(Player caster, LivingEntity target) {
@@ -604,237 +418,21 @@ public final class AbilityRuntime {
                 || !target.isInvulnerableTo(caster.damageSources().magic());
     }
 
-    private static BlockState pickElementalReplaceBlock() {
-        return ELEMENTAL_DOMAIN_INNER_BLOCKS[DOMAIN_RANDOM.nextInt(ELEMENTAL_DOMAIN_INNER_BLOCKS.length)];
-    }
-
-    private static BlockState pickElementalShellBlock() {
-        return ELEMENTAL_DOMAIN_SHELL_BLOCKS[DOMAIN_RANDOM.nextInt(ELEMENTAL_DOMAIN_SHELL_BLOCKS.length)];
-    }
-
-    private static boolean isElementalDomainBlock(BlockState state) {
-        for (BlockState blockState : ELEMENTAL_DOMAIN_INNER_BLOCKS) {
-            if (blockState.getBlock() == state.getBlock()) {
-                return true;
-            }
-        }
-        for (BlockState blockState : ELEMENTAL_DOMAIN_SHELL_BLOCKS) {
-            if (blockState.getBlock() == state.getBlock()) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     public static boolean isElementalDomainVisualBlock(BlockState state) {
-        return isElementalDomainBlock(state);
-    }
-
-    private enum ElementalSpellType {
-        FIRE,
-        WATER,
-        LIGHTNING
-    }
-
-    private record ElementalBurstOption(AbstractSpell spell, ElementalSpellType type, int castMultiplier) {
-    }
-
-    private static final class ElementalDomainState {
-        private final ResourceKey<Level> dimension;
-        private final BlockPos center;
-        private final boolean closedDomain;
-        private final Map<BlockPos, BlockState> savedStates = new LinkedHashMap<>();
-        private final Map<BlockPos, CompoundTag> savedNbt = new HashMap<>();
-        private List<BlockPos> restoreQueue;
-        private int restoreIndex;
-        private float lastRadius;
-        private boolean shellBuilt;
-        private boolean restoring;
-
-        private ElementalDomainState(ResourceKey<Level> dimension, BlockPos center, boolean closedDomain) {
-            this.dimension = dimension;
-            this.center = center.immutable();
-            this.closedDomain = closedDomain;
-        }
-
-        private void replaceSphere(ServerLevel level, BlockPos centerPos, float innerR, float outerR) {
-            if (outerR <= 0.0F) {
-                return;
-            }
-
-            float innerSq = innerR * innerR;
-            float outerSq = outerR * outerR;
-            int outerInt = Mth.ceil(outerR);
-            List<BlockPos> positions = new ArrayList<>();
-            for (int dx = -outerInt; dx <= outerInt; dx++) {
-                for (int dy = -outerInt; dy <= outerInt; dy++) {
-                    for (int dz = -outerInt; dz <= outerInt; dz++) {
-                        float d2 = dx * dx + dy * dy + dz * dz;
-                        if (d2 > outerSq || d2 <= innerSq) {
-                            continue;
-                        }
-
-                        BlockPos pos = centerPos.offset(dx, dy, dz);
-                        if (savedStates.containsKey(pos)) {
-                            continue;
-                        }
-
-                        positions.add(pos.immutable());
-                    }
-                }
-            }
-
-            positions.sort(Comparator.comparingInt((BlockPos blockPos) -> blockPos.getY()).reversed());
-            for (BlockPos pos : positions) {
-                BlockState state = level.getBlockState(pos);
-                if (state.isAir()
-                        || state.getDestroySpeed(level, pos) < 0.0F
-                        || isElementalDomainBlock(state)
-                        || shouldSkipElementalReplacement(level, pos, state)) {
-                    continue;
-                }
-
-                savedStates.put(pos.immutable(), state);
-                BlockEntity blockEntity = level.getBlockEntity(pos);
-                if (blockEntity != null) {
-                    savedNbt.put(pos.immutable(), blockEntity.saveWithFullMetadata());
-                    level.removeBlockEntity(pos);
-                }
-                level.setBlock(pos, pickElementalReplaceBlock(), 18);
-            }
-        }
-
-        private void buildShell(ServerLevel level, BlockPos soundPos) {
-            int domainRadius = closedDomain ? ELEMENTAL_DOMAIN_CLOSED_RADIUS : ELEMENTAL_DOMAIN_RADIUS;
-            int outerRadius = domainRadius + 1;
-            float innerSq = (domainRadius - 2.0F) * (domainRadius - 2.0F);
-            float outerSq = outerRadius * outerRadius;
-            List<BlockPos> positions = new ArrayList<>();
-            for (int dx = -outerRadius; dx <= outerRadius; dx++) {
-                for (int dy = -outerRadius; dy <= outerRadius; dy++) {
-                    for (int dz = -outerRadius; dz <= outerRadius; dz++) {
-                        float d2 = dx * dx + dy * dy + dz * dz;
-                        if (d2 < innerSq || d2 > outerSq) {
-                            continue;
-                        }
-
-                        BlockPos pos = center.offset(dx, dy, dz);
-                        if (savedStates.containsKey(pos)) {
-                            continue;
-                        }
-
-                        positions.add(pos.immutable());
-                    }
-                }
-            }
-
-            positions.sort(Comparator.comparingInt((BlockPos blockPos) -> blockPos.getY()).reversed());
-            for (BlockPos pos : positions) {
-                BlockState state = level.getBlockState(pos);
-                if (state.getDestroySpeed(level, pos) < 0.0F
-                        || isElementalDomainBlock(state)
-                        || shouldSkipElementalReplacement(level, pos, state)) {
-                    continue;
-                }
-
-                savedStates.put(pos.immutable(), state);
-                BlockEntity blockEntity = level.getBlockEntity(pos);
-                if (blockEntity != null) {
-                    savedNbt.put(pos.immutable(), blockEntity.saveWithFullMetadata());
-                    level.removeBlockEntity(pos);
-                }
-                level.setBlock(pos, pickElementalShellBlock(), 18);
-            }
-
-            shellBuilt = true;
-            level.playSound(null, soundPos, SoundEvents.SCULK_BLOCK_SPREAD, SoundSource.BLOCKS, 2.2F, 0.55F);
-        }
-
-        private void beginRestore(ServerLevel level, BlockPos soundPos) {
-            if (restoring || savedStates.isEmpty()) {
-                return;
-            }
-
-            restoreQueue = new ArrayList<>(savedStates.keySet());
-            restoreQueue.sort(Comparator.comparingInt((BlockPos blockPos) -> blockPos.getY()));
-            restoreIndex = 0;
-            restoring = true;
-            level.playSound(null, soundPos, SoundEvents.SCULK_BLOCK_SPREAD, SoundSource.BLOCKS, 1.5F, 1.15F);
-        }
-
-        private boolean tickRestore(ServerLevel level) {
-            if (restoreQueue == null) {
-                return true;
-            }
-
-            int end = Math.min(restoreIndex + ELEMENTAL_DOMAIN_RESTORE_PER_TICK, restoreQueue.size());
-            for (int i = restoreIndex; i < end; i++) {
-                BlockPos pos = restoreQueue.get(i);
-                BlockState original = savedStates.get(pos);
-                if (original == null) {
-                    continue;
-                }
-
-                level.setBlock(pos, original, 18);
-                CompoundTag nbt = savedNbt.get(pos);
-                if (nbt != null) {
-                    BlockEntity blockEntity = level.getBlockEntity(pos);
-                    if (blockEntity != null) {
-                        blockEntity.load(nbt);
-                        blockEntity.setChanged();
-                    }
-                }
-            }
-
-            restoreIndex = end;
-            if (restoreIndex >= restoreQueue.size()) {
-                savedStates.clear();
-                savedNbt.clear();
-                restoreQueue = null;
-                return true;
-            }
-            return false;
-        }
-
-        private void forceDiscard(ServerLevel level) {
-            restoreQueue = new ArrayList<>(savedStates.keySet());
-            restoreIndex = 0;
-            restoring = true;
-            tickRestore(level);
-            while (restoreQueue != null) {
-                tickRestore(level);
-            }
-        }
-
-        private boolean shouldSkipElementalReplacement(ServerLevel level, BlockPos pos, BlockState state) {
-            if (!state.getFluidState().isEmpty()) {
-                return true;
-            }
-
-            return false;
-        }
+        return ElementalDomainRuntime.isVisualBlock(state);
     }
 
     public static void placeMark(LivingEntity caster, int spellLevel, net.minecraft.core.BlockPos blockPos,
             net.minecraft.core.Direction face) {
-        CompoundTag data = caster.getPersistentData();
-        Vec3 center = Vec3.atCenterOf(blockPos).add(Vec3.atLowerCornerOf(face.getNormal()).scale(0.501D));
-        data.putBoolean(TAG_MARK_ACTIVE, true);
-        data.putDouble(TAG_MARK_X, center.x);
-        data.putDouble(TAG_MARK_Y, center.y);
-        data.putDouble(TAG_MARK_Z, center.z);
-        data.putLong(TAG_MARK_END, caster.level().getGameTime() + getMarkDurationSeconds(spellLevel) * 20L);
-        data.putInt(TAG_MARK_LEVEL, spellLevel);
-        data.put(TAG_MARK_TRIGGERED, new ListTag());
+        MarkRuntime.place(caster, spellLevel, blockPos, face);
     }
 
     public static void clearMark(CompoundTag data) {
-        clear(data, TAG_MARK_ACTIVE, TAG_MARK_X, TAG_MARK_Y, TAG_MARK_Z, TAG_MARK_END, TAG_MARK_LEVEL,
-                TAG_MARK_TRIGGERED);
+        MarkRuntime.clear(data);
     }
 
     public static Vec3 getMarkCenter(CompoundTag data) {
-        return new Vec3(data.getDouble(TAG_MARK_X), data.getDouble(TAG_MARK_Y), data.getDouble(TAG_MARK_Z));
+        return MarkRuntime.getCenter(data);
     }
 
     public static ListTag getStringList(CompoundTag data, String key) {
@@ -858,7 +456,7 @@ public final class AbilityRuntime {
     }
 
     public static boolean isExecutionerWeapon(ItemStack stack) {
-        return !stack.isEmpty() && stack.getItem() instanceof SwordItem;
+        return ExecutionerRuntime.isWeapon(stack);
     }
 
     public static Mob findDominanceMobTarget(LivingEntity caster, double range, double minDot) {
@@ -890,8 +488,7 @@ public final class AbilityRuntime {
     }
 
     public static boolean canExecutionerUse(ItemStack stack) {
-        return isExecutionerWeapon(stack) && (!stack.isDamageableItem()
-                || stack.getDamageValue() + EXECUTIONER_DURABILITY_COST < stack.getMaxDamage());
+        return ExecutionerRuntime.canUse(stack);
     }
 
     public static boolean isDangerSenseWeapon(ItemStack stack) {
@@ -915,346 +512,19 @@ public final class AbilityRuntime {
     }
 
     public static void incrementExecutionerShieldPressure(LivingEntity target) {
-        if (!(target instanceof Player player) || !player.isUsingItem()) {
-            resetExecutionerShieldPressure(target);
-            return;
-        }
-
-        ItemStack usingItem = player.getUseItem();
-        if (!(usingItem.getItem() instanceof ShieldItem)) {
-            resetExecutionerShieldPressure(target);
-            return;
-        }
-
-        CompoundTag data = target.getPersistentData();
-        long gameTime = target.level().getGameTime();
-        long lastTick = data.getLong(TAG_EXECUTIONER_BLOCK_LAST_TICK);
-        int hits = gameTime - lastTick <= 100L ? data.getInt(TAG_EXECUTIONER_BLOCK_HITS) + 1 : 1;
-        data.putLong(TAG_EXECUTIONER_BLOCK_LAST_TICK, gameTime);
-        data.putInt(TAG_EXECUTIONER_BLOCK_HITS, hits);
-
-        if (hits >= 15) {
-            player.stopUsingItem();
-            player.getCooldowns().addCooldown(usingItem.getItem(), 100);
-            resetExecutionerShieldPressure(target);
-        }
+        ExecutionerRuntime.incrementShieldPressure(target);
     }
 
     public static void resetExecutionerShieldPressure(LivingEntity target) {
-        CompoundTag data = target.getPersistentData();
-        data.remove(TAG_EXECUTIONER_BLOCK_HITS);
-        data.remove(TAG_EXECUTIONER_BLOCK_LAST_TICK);
+        ExecutionerRuntime.resetShieldPressure(target);
     }
 
     public static void tickExecutionerCast(Level level, LivingEntity caster, int spellLevel) {
-        CompoundTag data = caster.getPersistentData();
-        long gameTime = level.getGameTime();
-        long interval = Math.max(4L, 8L - spellLevel);
-        if (gameTime - data.getLong(TAG_EXECUTIONER_LAST_TICK) < interval) {
-            return;
-        }
-
-        ItemStack weapon = caster.getMainHandItem();
-        if (!canExecutionerUse(weapon)) {
-            return;
-        }
-
-        data.putLong(TAG_EXECUTIONER_LAST_TICK, gameTime);
-        float damage = getExecutionerDamage(caster, weapon);
-        if (caster.isCrouching()) {
-            performExecutionerGroundSlash(level, caster, spellLevel, damage);
-        } else {
-            performExecutionerWaveSlash(level, caster, spellLevel, damage);
-        }
-
-        if (caster instanceof Player player) {
-            player.swing(player.getUsedItemHand(), true);
-        }
-
-        if (weapon.isDamageableItem()) {
-            weapon.hurtAndBreak(EXECUTIONER_DURABILITY_COST, caster,
-                    broken -> broken.broadcastBreakEvent(caster.getUsedItemHand()));
-        }
+        ExecutionerRuntime.tickCast(level, caster, spellLevel);
     }
 
     public static void castDaiyue(Level level, LivingEntity caster, int spellLevel, float spellPower) {
-        Vec3 start = caster.position();
-        Vec3 eyeStart = caster.getEyePosition();
-        Vec3 direction = caster.getLookAngle();
-        Vec3 horizontalDirection = new Vec3(direction.x, 0.0D, direction.z);
-        if (horizontalDirection.lengthSqr() < 1.0E-4D) {
-            horizontalDirection = new Vec3(0.0D, 0.0D, 1.0D);
-        }
-        horizontalDirection = horizontalDirection.normalize();
-
-        double range = getDaiyueDashRange(spellLevel);
-        BlockHitResult blockHitResult = level.clip(new net.minecraft.world.level.ClipContext(
-                eyeStart,
-                eyeStart.add(horizontalDirection.scale(range)),
-                net.minecraft.world.level.ClipContext.Block.COLLIDER,
-                net.minecraft.world.level.ClipContext.Fluid.NONE,
-                caster));
-        double actualRange = blockHitResult.getType() == HitResult.Type.BLOCK
-                ? Math.max(1.2D, eyeStart.distanceTo(blockHitResult.getLocation()) - 0.6D)
-                : range;
-
-        Vec3 end = start.add(horizontalDirection.scale(actualRange));
-        float damage = Math.max(4.0F, spellPower + 3.0F + spellLevel * 0.8F);
-        performDaiyueDash(level, caster, start, end, horizontalDirection, spellLevel, damage);
-
-        caster.setDeltaMovement(horizontalDirection.x * 2.35D,
-                caster.onGround() ? 0.12D : Math.max(caster.getDeltaMovement().y, 0.03D),
-                horizontalDirection.z * 2.35D);
-        caster.hurtMarked = true;
-        caster.fallDistance = 0.0F;
-
-        spawnDaiyueTrail(level, start, end, spellLevel);
-        level.playSound(null, caster.blockPosition(), SoundEvents.PLAYER_ATTACK_SWEEP, SoundSource.PLAYERS,
-                0.55F, 0.75F + spellLevel * 0.04F);
-        level.playSound(null, caster.blockPosition(), SoundEvents.ZOMBIE_ATTACK_IRON_DOOR, SoundSource.PLAYERS,
-                0.22F, 1.45F);
+        DaiyueRuntime.cast(level, caster, spellLevel, spellPower);
     }
 
-    private static void performDaiyueDash(Level level, LivingEntity caster, Vec3 start, Vec3 end, Vec3 direction,
-            int spellLevel, float damage) {
-        Vec3 delta = end.subtract(start);
-        double distance = delta.length();
-        if (distance < 1.0E-4D) {
-            return;
-        }
-
-        int steps = Math.max(6, Mth.ceil(distance * 4.0D));
-        double hitRadius = Math.max(0.75D, getDaiyueHitWidth(spellLevel) * 0.4D);
-        Set<Integer> hitEntityIds = new HashSet<>();
-
-        for (int i = 1; i <= steps; i++) {
-            double t = i / (double) steps;
-            Vec3 point = start.add(delta.scale(t));
-            caster.setPos(point.x, point.y, point.z);
-
-            AABB stepBox = caster.getBoundingBox().inflate(hitRadius, 0.45D, hitRadius);
-            for (LivingEntity target : level.getEntitiesOfClass(LivingEntity.class, stepBox,
-                    target -> target != caster && target.isAlive() && !hitEntityIds.contains(target.getId()))) {
-                target.invulnerableTime = 0;
-                if (target.hurt(level.damageSources().mobAttack(caster), damage)) {
-                    hitEntityIds.add(target.getId());
-                    target.knockback(0.2D + spellLevel * 0.03D, -direction.x, -direction.z);
-                    spawnDaiyueTargetSlash(level, target, direction);
-                }
-            }
-        }
-    }
-
-    private static float getExecutionerDamage(LivingEntity caster, ItemStack weapon) {
-        float base = 4.0F;
-        if (weapon.getItem() instanceof SwordItem swordItem) {
-            base = swordItem.getDamage();
-        }
-        return Math.max(1.0F, base * EXECUTIONER_DAMAGE_RATIO
-                + (float) caster.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.ATTACK_DAMAGE)
-                        * 0.1F);
-    }
-
-    private static void performExecutionerWaveSlash(Level level, LivingEntity caster, int spellLevel, float damage) {
-        Vec3 start = caster.getEyePosition().add(caster.getLookAngle().scale(0.7D));
-        Vec3 direction = caster.getLookAngle().normalize();
-        double range = 6.0D + spellLevel * 1.25D;
-        BlockHitResult blockHitResult = level.clip(new net.minecraft.world.level.ClipContext(start,
-                start.add(direction.scale(range)),
-                net.minecraft.world.level.ClipContext.Block.COLLIDER,
-                net.minecraft.world.level.ClipContext.Fluid.NONE,
-                caster));
-        double actualRange = blockHitResult.getType() == HitResult.Type.BLOCK
-                ? Math.max(1.0D, start.distanceTo(blockHitResult.getLocation()))
-                : range;
-        Vec3 end = start.add(direction.scale(actualRange));
-        AABB hitBox = new AABB(start, end).inflate(1.0D + spellLevel * 0.08D);
-
-        hitEntitiesInSlash(level, caster, hitBox, start, direction, actualRange, 0.58D, damage);
-        spawnExecutionerTrail(level, start, end, false);
-        level.playSound(null, caster.blockPosition(), SoundEvents.PLAYER_ATTACK_SWEEP, SoundSource.PLAYERS,
-                0.35F, 0.85F + spellLevel * 0.03F);
-    }
-
-    private static void performExecutionerGroundSlash(Level level, LivingEntity caster, int spellLevel, float damage) {
-        Vec3 start = caster.getEyePosition();
-        Vec3 direction = caster.getLookAngle().normalize();
-        double range = 5.0D + spellLevel;
-        BlockHitResult blockHitResult = level.clip(new net.minecraft.world.level.ClipContext(start,
-                start.add(direction.scale(range)),
-                net.minecraft.world.level.ClipContext.Block.COLLIDER,
-                net.minecraft.world.level.ClipContext.Fluid.NONE,
-                caster));
-        Vec3 center = blockHitResult.getType() == HitResult.Type.BLOCK
-                ? blockHitResult.getLocation().subtract(direction.scale(0.25D))
-                : start.add(direction.scale(range));
-        double radius = 1.8D + spellLevel * 0.22D;
-        AABB hitBox = new AABB(center, center).inflate(radius, 1.5D, radius);
-
-        for (LivingEntity target : level.getEntitiesOfClass(LivingEntity.class, hitBox,
-                target -> target != caster && target.isAlive())) {
-            target.invulnerableTime = 0;
-            target.hurt(level.damageSources().mobAttack(caster), damage);
-            incrementExecutionerShieldPressure(target);
-        }
-
-        spawnExecutionerBurst(level, center, radius);
-        level.playSound(null, caster.blockPosition(), SoundEvents.GENERIC_EXPLODE, SoundSource.PLAYERS,
-                0.18F, 1.5F);
-    }
-
-    private static void hitEntitiesInSlash(Level level, LivingEntity caster, AABB hitBox, Vec3 start, Vec3 direction,
-            double range, double minDot, float damage) {
-        for (LivingEntity target : level.getEntitiesOfClass(LivingEntity.class, hitBox,
-                target -> target != caster && target.isAlive())) {
-            Vec3 delta = target.getBoundingBox().getCenter().subtract(start);
-            double along = delta.dot(direction);
-            if (along < 0.0D || along > range) {
-                continue;
-            }
-
-            double dot = delta.lengthSqr() <= 1.0E-4D ? 1.0D : delta.normalize().dot(direction);
-            if (dot < minDot) {
-                continue;
-            }
-
-            target.invulnerableTime = 0;
-            target.hurt(level.damageSources().mobAttack(caster), damage);
-            incrementExecutionerShieldPressure(target);
-        }
-    }
-
-    private static void spawnExecutionerTrail(Level level, Vec3 start, Vec3 end, boolean dense) {
-        if (!(level instanceof ServerLevel serverLevel)) {
-            return;
-        }
-
-        Vec3 delta = end.subtract(start);
-        int steps = dense ? 18 : 12;
-        for (int i = 0; i <= steps; i++) {
-            double t = i / (double) steps;
-            Vec3 point = start.add(delta.scale(t));
-            serverLevel.sendParticles(ParticleTypes.SWEEP_ATTACK,
-                    point.x,
-                    point.y,
-                    point.z,
-                    1,
-                    0.0D,
-                    0.0D,
-                    0.0D,
-                    0.0D);
-            serverLevel.sendParticles(new DustParticleOptions(new Vector3f(0.78F, 0.08F, 0.08F), 0.8F),
-                    point.x,
-                    point.y,
-                    point.z,
-                    1,
-                    0.04D,
-                    0.04D,
-                    0.04D,
-                    0.0D);
-        }
-    }
-
-    private static void spawnDaiyueTrail(Level level, Vec3 start, Vec3 end, int spellLevel) {
-        if (!(level instanceof ServerLevel serverLevel)) {
-            return;
-        }
-
-        Vec3 delta = end.subtract(start);
-        int steps = Math.max(4, 6 + spellLevel);
-        for (int i = 0; i <= steps; i++) {
-            double t = i / (double) steps;
-            Vec3 point = start.add(delta.scale(t)).add(0.0D, 0.65D, 0.0D);
-            serverLevel.sendParticles(ParticleTypes.CLOUD,
-                    point.x,
-                    point.y,
-                    point.z,
-                    1,
-                    0.03D,
-                    0.02D,
-                    0.03D,
-                    0.0D);
-        }
-    }
-
-    private static void spawnDaiyueTargetSlash(Level level, LivingEntity target, Vec3 direction) {
-        if (!(level instanceof ServerLevel serverLevel)) {
-            return;
-        }
-
-        Vec3 center = target.getBoundingBox().getCenter();
-        Vec3 forward = new Vec3(direction.x, 0.0D, direction.z);
-        if (forward.lengthSqr() < 1.0E-4D) {
-            forward = new Vec3(0.0D, 0.0D, 1.0D);
-        }
-        forward = forward.normalize();
-        Vec3 side = new Vec3(-forward.z, 0.0D, forward.x).normalize();
-        Vec3 slashStart = center.add(side.scale(0.6D)).add(0.0D, 0.35D, 0.0D);
-        Vec3 slashEnd = center.subtract(side.scale(0.6D)).add(0.0D, -0.2D, 0.0D);
-        Vec3 slashDelta = slashEnd.subtract(slashStart);
-
-        for (int i = 0; i <= 4; i++) {
-            double t = i / 4.0D;
-            Vec3 point = slashStart.add(slashDelta.scale(t));
-            serverLevel.sendParticles(ParticleTypes.SWEEP_ATTACK,
-                    point.x,
-                    point.y,
-                    point.z,
-                    1,
-                    0.0D,
-                    0.0D,
-                    0.0D,
-                    0.0D);
-        }
-
-        serverLevel.sendParticles(new DustParticleOptions(new Vector3f(0.9F, 0.92F, 1.0F), 1.0F),
-                center.x,
-                center.y,
-                center.z,
-                6,
-                0.15D,
-                0.35D,
-                0.15D,
-                0.0D);
-        serverLevel.sendParticles(ParticleTypes.CRIT,
-                center.x,
-                center.y,
-                center.z,
-                4,
-                0.12D,
-                0.25D,
-                0.12D,
-                0.0D);
-    }
-
-    private static void spawnExecutionerBurst(Level level, Vec3 center, double radius) {
-        if (!(level instanceof ServerLevel serverLevel)) {
-            return;
-        }
-
-        int points = 18;
-        for (int i = 0; i < points; i++) {
-            float angle = (float) (Math.PI * 2.0D * i / points);
-            double x = center.x + Mth.cos(angle) * radius;
-            double z = center.z + Mth.sin(angle) * radius;
-            serverLevel.sendParticles(ParticleTypes.SWEEP_ATTACK,
-                    x,
-                    center.y + 0.1D,
-                    z,
-                    1,
-                    0.0D,
-                    0.0D,
-                    0.0D,
-                    0.0D);
-        }
-        serverLevel.sendParticles(new DustParticleOptions(new Vector3f(0.85F, 0.1F, 0.1F), 1.15F),
-                center.x,
-                center.y + 0.1D,
-                center.z,
-                20,
-                radius * 0.35D,
-                0.15D,
-                radius * 0.35D,
-                0.0D);
-    }
 }
