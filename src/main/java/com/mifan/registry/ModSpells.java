@@ -20,6 +20,7 @@ import com.mifan.spell.xujing.SonicSenseSpell;
 import com.mifan.spell.yuzhe.DominanceSpell;
 import com.mifan.spell.yuzhe.MagneticClingSpell;
 import com.mifan.spell.yuzhe.TelekinesisSpell;
+import com.mifan.spell.yuzhe.WanxiangSpell;
 import io.redspace.ironsspellbooks.api.spells.AbstractSpell;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.eventbus.api.IEventBus;
@@ -27,44 +28,47 @@ import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.RegistryObject;
 
 public final class ModSpells {
-    private static final DeferredRegister<AbstractSpell> SPELLS = DeferredRegister.create(
-            ResourceLocation.fromNamespaceAndPath("irons_spellbooks", "spells"),
-            corpsecampus.MODID);
+        private static final DeferredRegister<AbstractSpell> SPELLS = DeferredRegister.create(
+                        ResourceLocation.fromNamespaceAndPath("irons_spellbooks", "spells"),
+                        corpsecampus.MODID);
 
-    public static final RegistryObject<AbstractSpell> SONIC_SENSE = SPELLS.register("sonic_sense",
-            SonicSenseSpell::new);
-    public static final RegistryObject<AbstractSpell> DANGER_SENSE = SPELLS.register("danger_sense",
-            DangerSenseSpell::new);
-    public static final RegistryObject<AbstractSpell> OLFACTION = SPELLS.register("olfaction",
-            OlfactionSpell::new);
-    public static final RegistryObject<AbstractSpell> ELEMENTALIST = SPELLS.register("elementalist",
-            ElementalistSpell::new);
-    public static final RegistryObject<AbstractSpell> RECORDER_OFFICER = SPELLS.register("recorder_officer",
-            RecorderOfficerSpell::new);
-    public static final RegistryObject<AbstractSpell> MIDAS_TOUCH = SPELLS.register("midas_touch",
-            MidasTouchSpell::new);
-    public static final RegistryObject<AbstractSpell> TELEKINESIS = SPELLS.register("telekinesis",
-            TelekinesisSpell::new);
-    public static final RegistryObject<AbstractSpell> DOMINANCE = SPELLS.register("dominance", DominanceSpell::new);
-    public static final RegistryObject<AbstractSpell> MAGNETIC_CLING = SPELLS.register("magnetic_cling",
-            MagneticClingSpell::new);
-    public static final RegistryObject<AbstractSpell> DAIYUE = SPELLS.register("daiyue", DaiyueSpell::new);
-    public static final RegistryObject<AbstractSpell> INSTINCT = SPELLS.register("instinct", InstinctSpell::new);
-    public static final RegistryObject<AbstractSpell> MANIA = SPELLS.register("mania", ManiaSpell::new);
-    public static final RegistryObject<AbstractSpell> NECROTIC_REBIRTH = SPELLS.register("necrotic_rebirth",
-            NecroticRebirthSpell::new);
-    public static final RegistryObject<AbstractSpell> EXECUTIONER = SPELLS.register("executioner",
-            ExecutionerSpell::new);
-    public static final RegistryObject<AbstractSpell> MARK = SPELLS.register("mark", MarkSpell::new);
-    public static final RegistryObject<AbstractSpell> HEALING = SPELLS.register("healing", HealingSpell::new);
-    public static final RegistryObject<AbstractSpell> STAMINA = SPELLS.register("stamina", StaminaSpell::new);
-    public static final RegistryObject<AbstractSpell> HUIHUN = SPELLS.register("huihun", HuihunSpell::new);
-    public static final RegistryObject<AbstractSpell> APOTHECARY = SPELLS.register("apothecary", ApothecarySpell::new);
+        public static final RegistryObject<AbstractSpell> SONIC_SENSE = SPELLS.register("sonic_sense",
+                        SonicSenseSpell::new);
+        public static final RegistryObject<AbstractSpell> DANGER_SENSE = SPELLS.register("danger_sense",
+                        DangerSenseSpell::new);
+        public static final RegistryObject<AbstractSpell> OLFACTION = SPELLS.register("olfaction",
+                        OlfactionSpell::new);
+        public static final RegistryObject<AbstractSpell> ELEMENTALIST = SPELLS.register("elementalist",
+                        ElementalistSpell::new);
+        public static final RegistryObject<AbstractSpell> RECORDER_OFFICER = SPELLS.register("recorder_officer",
+                        RecorderOfficerSpell::new);
+        public static final RegistryObject<AbstractSpell> MIDAS_TOUCH = SPELLS.register("midas_touch",
+                        MidasTouchSpell::new);
+        public static final RegistryObject<AbstractSpell> TELEKINESIS = SPELLS.register("telekinesis",
+                        TelekinesisSpell::new);
+        public static final RegistryObject<AbstractSpell> DOMINANCE = SPELLS.register("dominance", DominanceSpell::new);
+        public static final RegistryObject<AbstractSpell> MAGNETIC_CLING = SPELLS.register("magnetic_cling",
+                        MagneticClingSpell::new);
+        public static final RegistryObject<AbstractSpell> WANXIANG = SPELLS.register("wanxiang",
+                        WanxiangSpell::new);
+        public static final RegistryObject<AbstractSpell> DAIYUE = SPELLS.register("daiyue", DaiyueSpell::new);
+        public static final RegistryObject<AbstractSpell> INSTINCT = SPELLS.register("instinct", InstinctSpell::new);
+        public static final RegistryObject<AbstractSpell> MANIA = SPELLS.register("mania", ManiaSpell::new);
+        public static final RegistryObject<AbstractSpell> NECROTIC_REBIRTH = SPELLS.register("necrotic_rebirth",
+                        NecroticRebirthSpell::new);
+        public static final RegistryObject<AbstractSpell> EXECUTIONER = SPELLS.register("executioner",
+                        ExecutionerSpell::new);
+        public static final RegistryObject<AbstractSpell> MARK = SPELLS.register("mark", MarkSpell::new);
+        public static final RegistryObject<AbstractSpell> HEALING = SPELLS.register("healing", HealingSpell::new);
+        public static final RegistryObject<AbstractSpell> STAMINA = SPELLS.register("stamina", StaminaSpell::new);
+        public static final RegistryObject<AbstractSpell> HUIHUN = SPELLS.register("huihun", HuihunSpell::new);
+        public static final RegistryObject<AbstractSpell> APOTHECARY = SPELLS.register("apothecary",
+                        ApothecarySpell::new);
 
-    private ModSpells() {
-    }
+        private ModSpells() {
+        }
 
-    public static void register(IEventBus eventBus) {
-        SPELLS.register(eventBus);
-    }
+        public static void register(IEventBus eventBus) {
+                SPELLS.register(eventBus);
+        }
 }

@@ -1,0 +1,28 @@
+{
+  "replace": false,
+  "values": [
+    "minecraft:rotten_flesh",
+    "minecraft:bone",
+    "minecraft:bone_meal",
+    "minecraft:string",
+    "minecraft:spider_eye",
+    "minecraft:fermented_spider_eye",
+    "minecraft:slime_ball",
+    "minecraft:magma_cream",
+    "minecraft:blaze_powder",
+    "minecraft:blaze_rod",
+    "minecraft:fire_charge",
+    "minecraft:ghast_tear",
+    "minecraft:phantom_membrane",
+    "minecraft:rabbit_foot",
+    "minecraft:rabbit_hide",
+    "minecraft:feather",
+    "minecraft:leather",
+    "minecraft:honeycomb",
+    "minecraft:ink_sac",
+    "minecraft:glow_ink_sac",
+    "minecraft:gunpowder",
+    "minecraft:scute",
+    "minecraft:echo_shard"
+  ]
+}

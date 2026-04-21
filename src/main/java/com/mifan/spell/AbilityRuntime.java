@@ -48,6 +48,7 @@ import com.mifan.spell.runtime.MarkRuntime;
 import com.mifan.spell.runtime.NecroticRuntime;
 import com.mifan.spell.runtime.RecorderOfficerRuntime;
 import com.mifan.spell.runtime.TelekinesisRuntime;
+import com.mifan.spell.runtime.WanxiangRuntime;
 import org.joml.Vector3f;
 
 import java.util.ArrayList;
@@ -525,6 +526,18 @@ public final class AbilityRuntime {
 
     public static void castDaiyue(Level level, LivingEntity caster, int spellLevel, float spellPower) {
         DaiyueRuntime.cast(level, caster, spellLevel, spellPower);
+    }
+
+    public static int getWanxiangBlinkRange(int spellLevel) {
+        return WanxiangRuntime.getBlinkRange(spellLevel);
+    }
+
+    public static int getWanxiangSwapRange(int spellLevel) {
+        return WanxiangRuntime.getSwapRange(spellLevel);
+    }
+
+    public static void castWanxiang(ServerLevel level, LivingEntity caster, int spellLevel) {
+        WanxiangRuntime.cast(level, caster, spellLevel);
     }
 
 }
