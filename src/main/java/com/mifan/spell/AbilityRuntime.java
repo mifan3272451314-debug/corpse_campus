@@ -62,7 +62,6 @@ import java.util.Map;
 import java.util.Set;
 import net.minecraft.util.RandomSource;
 
-import java.util.Random;
 import java.util.UUID;
 
 public final class AbilityRuntime {
@@ -130,6 +129,8 @@ public final class AbilityRuntime {
     public static final String TAG_DOMINANCE_OWNER = "corpse_campus_dominance_owner";
     public static final String TAG_DOMINANCE_LEVEL = "corpse_campus_dominance_level";
 
+    public static final String TAG_LIFE_THIEF_LAST_REDIRECT_TICK = "corpse_campus_life_thief_last_redirect_tick";
+
     public static final String TAG_DANGER_RECENT_ATTACKERS = "corpse_campus_danger_recent_attackers";
     public static final String TAG_OLFACTION_TRAIL = "corpse_campus_olfaction_trail";
     public static final String TAG_OLFACTION_LAST_TRAIL_TICK = "corpse_campus_olfaction_last_trail_tick";
@@ -147,6 +148,7 @@ public final class AbilityRuntime {
     private static final float EXECUTIONER_DAMAGE_RATIO = 0.25F;
     public static final float DOMINANCE_MIN_SURVIVAL_HEALTH = 1.0F;
     public static final float DOMINANCE_MAX_HEALTH_LIMIT = 35.0F;
+    public static final float LIFE_THIEF_MIN_SURVIVAL_HEALTH = 1.0F;
     private static final int NECROTIC_KILL_HEAL_BASE = 4;
     private static final double NECROTIC_UNDEAD_MAX_HEALTH = 40.0D;
     private static final float NECROTIC_NON_PLAYER_KILL_HEAL = 4.0F;
@@ -262,6 +264,20 @@ public final class AbilityRuntime {
                 })
                 .min(Comparator.comparingDouble(target -> eyePosition.distanceToSqr(target.getEyePosition())))
                 .orElse(null);
+    }
+
+    public static void clearLifeThief(CompoundTag data) {
+        clear(data, TAG_LIFE_THIEF_LAST_REDIRECT_TICK);
+    }
+
+    public static LivingEntity findRandomNearbyTarget(LivingEntity caster, double radius) {
+        List<LivingEntity> candidates = caster.level().getEntitiesOfClass(LivingEntity.class,
+                caster.getBoundingBox().inflate(radius),
+                target -> target != caster && target.isAlive() && !caster.isAlliedTo(target));
+        if (candidates.isEmpty()) {
+            return null;
+        }
+        return candidates.get(caster.getRandom().nextInt(candidates.size()));
     }
 
     public static int getExecutionerDamagePercent() {

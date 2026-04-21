@@ -42,6 +42,9 @@ public final class ModMobEffects {
     public static final RegistryObject<MobEffect> NECROTIC_UNDEAD = MOB_EFFECTS.register("necrotic_undead",
             () -> new AbilityMarkerEffect(0x6B8A5A));
 
+    public static final RegistryObject<MobEffect> LIFE_THIEF = MOB_EFFECTS.register("life_thief",
+            () -> new AbilityMarkerEffect(0x6C2A8A));
+
     private ModMobEffects() {
     }
 

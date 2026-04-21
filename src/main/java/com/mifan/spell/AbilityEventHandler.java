@@ -9,6 +9,7 @@ import com.mifan.registry.ModMobEffects;
 import com.mifan.spell.runtime.MarkRuntime;
 import com.mifan.spell.runtime.NecroticRuntime;
 import com.mifan.spell.runtime.TelekinesisRuntime;
+import com.mifan.spell.yuzhe.LifeThiefSpell;
 import io.redspace.ironsspellbooks.api.magic.MagicData;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.DustParticleOptions;
@@ -16,6 +17,7 @@ import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
@@ -90,6 +92,7 @@ public final class AbilityEventHandler {
         NecroticRuntime.tickUndead(player, data, gameTime);
         MarkRuntime.tick(player, data, gameTime);
         clearExpiredInstinct(player, data, gameTime);
+        clearLifeThiefTargetIfInvalid(player);
     }
 
     @SubscribeEvent
@@ -152,6 +155,10 @@ public final class AbilityEventHandler {
                 && magneticPlayer.hasEffect(ModMobEffects.MAGNETIC_CLING.get())
                 && event.getSource().is(net.minecraft.tags.DamageTypeTags.IS_FALL)) {
             event.setAmount(Math.min(event.getAmount(), Math.max(0.0F, magneticPlayer.getHealth() - 1.0F)));
+        }
+
+        if (entity instanceof Player lifeThiefPlayer && handleLifeThiefRedirect(event, lifeThiefPlayer)) {
+            return;
         }
 
         CompoundTag data = entity.getPersistentData();
@@ -452,6 +459,68 @@ public final class AbilityEventHandler {
         slotState.putInt(TAG_STAMINA_LAST_DAMAGE, lastDamage);
         slotState.putInt(TAG_STAMINA_CARRY, carry);
         return slotState;
+    }
+
+    private static boolean handleLifeThiefRedirect(LivingHurtEvent event, Player player) {
+        if (!player.hasEffect(ModMobEffects.LIFE_THIEF.get())) {
+            return false;
+        }
+
+        MagicData magicData = MagicData.getPlayerMagicData(player);
+        if (magicData == null || magicData.getMana() + 1.0E-4F < LifeThiefSpell.REDIRECT_MANA_COST) {
+            player.removeEffect(ModMobEffects.LIFE_THIEF.get());
+            AbilityRuntime.clearLifeThief(player.getPersistentData());
+            player.displayClientMessage(Component.translatable("message.corpse_campus.life_thief_no_mana"), true);
+            return false;
+        }
+
+        DamageSource source = event.getSource();
+
+        LivingEntity redirectTarget = AbilityRuntime.findRandomNearbyTarget(player, 12.0D);
+        if (redirectTarget == null) {
+            return false;
+        }
+
+        long gameTime = player.level().getGameTime();
+        CompoundTag data = player.getPersistentData();
+        if (data.getLong(AbilityRuntime.TAG_LIFE_THIEF_LAST_REDIRECT_TICK) == gameTime) {
+            return false;
+        }
+
+        float incoming = event.getAmount();
+        float transferable = Math.max(0.0F, redirectTarget.getHealth() - AbilityRuntime.LIFE_THIEF_MIN_SURVIVAL_HEALTH);
+        if (incoming <= 0.0F || transferable <= 0.0F) {
+            return false;
+        }
+
+        float redirected = Math.min(incoming, transferable);
+        magicData.setMana(Math.max(0.0F, magicData.getMana() - LifeThiefSpell.REDIRECT_MANA_COST));
+        data.putLong(AbilityRuntime.TAG_LIFE_THIEF_LAST_REDIRECT_TICK, gameTime);
+        redirectTarget.invulnerableTime = 0;
+        redirectTarget.hurt(source, redirected);
+        if (redirectTarget.getHealth() < AbilityRuntime.LIFE_THIEF_MIN_SURVIVAL_HEALTH) {
+            redirectTarget.setHealth(AbilityRuntime.LIFE_THIEF_MIN_SURVIVAL_HEALTH);
+        }
+        event.setAmount(Math.max(0.0F, incoming - redirected));
+
+        if (event.getAmount() <= 0.0F) {
+            player.level().playSound(null, player.blockPosition(), SoundEvents.AMETHYST_CLUSTER_BREAK,
+                    SoundSource.PLAYERS, 0.18F, 1.15F);
+        }
+
+        if (magicData.getMana() + 1.0E-4F < LifeThiefSpell.REDIRECT_MANA_COST) {
+            player.removeEffect(ModMobEffects.LIFE_THIEF.get());
+            AbilityRuntime.clearLifeThief(player.getPersistentData());
+            player.displayClientMessage(Component.translatable("message.corpse_campus.life_thief_no_mana"), true);
+        }
+        return event.getAmount() <= 0.0F;
+    }
+
+    private static void clearLifeThiefTargetIfInvalid(Player player) {
+        if (player.hasEffect(ModMobEffects.LIFE_THIEF.get())) {
+            return;
+        }
+        AbilityRuntime.clearLifeThief(player.getPersistentData());
     }
 
     private static void tickDangerSense(Player player, CompoundTag data, long gameTime) {

@@ -6,6 +6,7 @@ import com.mifan.spell.dongyue.ExecutionerSpell;
 import com.mifan.spell.dongyue.InstinctSpell;
 import com.mifan.spell.dongyue.ManiaSpell;
 import com.mifan.spell.dongyue.NecroticRebirthSpell;
+import com.mifan.spell.rizhao.AffinitySpell;
 import com.mifan.spell.rizhao.MidasTouchSpell;
 import com.mifan.spell.shengqi.ApothecarySpell;
 import com.mifan.spell.shengqi.HealingSpell;
@@ -18,6 +19,7 @@ import com.mifan.spell.xujing.DangerSenseSpell;
 import com.mifan.spell.xujing.OlfactionSpell;
 import com.mifan.spell.xujing.SonicSenseSpell;
 import com.mifan.spell.yuzhe.DominanceSpell;
+import com.mifan.spell.yuzhe.LifeThiefSpell;
 import com.mifan.spell.yuzhe.MagneticClingSpell;
 import com.mifan.spell.yuzhe.TelekinesisSpell;
 import com.mifan.spell.yuzhe.WanxiangSpell;
@@ -44,11 +46,15 @@ public final class ModSpells {
                         RecorderOfficerSpell::new);
         public static final RegistryObject<AbstractSpell> MIDAS_TOUCH = SPELLS.register("midas_touch",
                         MidasTouchSpell::new);
+        public static final RegistryObject<AbstractSpell> AFFINITY = SPELLS.register("affinity",
+                        AffinitySpell::new);
         public static final RegistryObject<AbstractSpell> TELEKINESIS = SPELLS.register("telekinesis",
                         TelekinesisSpell::new);
         public static final RegistryObject<AbstractSpell> DOMINANCE = SPELLS.register("dominance", DominanceSpell::new);
         public static final RegistryObject<AbstractSpell> MAGNETIC_CLING = SPELLS.register("magnetic_cling",
                         MagneticClingSpell::new);
+        public static final RegistryObject<AbstractSpell> LIFE_THIEF = SPELLS.register("life_thief",
+                        LifeThiefSpell::new);
         public static final RegistryObject<AbstractSpell> WANXIANG = SPELLS.register("wanxiang",
                         WanxiangSpell::new);
         public static final RegistryObject<AbstractSpell> DAIYUE = SPELLS.register("daiyue", DaiyueSpell::new);
