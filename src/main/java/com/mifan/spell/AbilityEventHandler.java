@@ -342,10 +342,30 @@ public final class AbilityEventHandler {
         int spellLevel = AbilityRuntime.getEffectLevel(effectInstance);
         if (gameTime % 20L == 0L) {
             player.causeFoodExhaustion(0.03F + 0.015F * spellLevel);
+            applySonicSenseDebuffs(player, spellLevel);
         }
         if (gameTime % 40L == 0L) {
             player.addEffect(new MobEffectInstance(MobEffects.DIG_SLOWDOWN, 50, 0, false, false, false));
         }
+    }
+
+    private static void applySonicSenseDebuffs(Player player, int spellLevel) {
+        double revealRange = getSonicSenseRevealRange(spellLevel);
+        double revealRangeSqr = revealRange * revealRange;
+        AABB area = player.getBoundingBox().inflate(revealRange, 6.0D, revealRange);
+
+        for (LivingEntity target : player.level().getEntitiesOfClass(LivingEntity.class, area,
+                entity -> entity != player
+                        && entity.isAlive()
+                        && !player.isAlliedTo(entity)
+                        && player.distanceToSqr(entity) <= revealRangeSqr)) {
+            target.addEffect(new MobEffectInstance(MobEffects.WEAKNESS, 40, 1, false, true, true));
+            target.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, 40, 1, false, true, true));
+        }
+    }
+
+    private static double getSonicSenseRevealRange(int spellLevel) {
+        return 18.0D + spellLevel * 4.0D;
     }
 
     private static void tickStamina(Player player, CompoundTag data, long gameTime) {
