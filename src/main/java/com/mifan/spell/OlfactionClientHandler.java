@@ -1,5 +1,6 @@
 package com.mifan.spell;
 
+import com.mifan.network.clientbound.OlfactionTrailSyncPacket;
 import com.mifan.registry.ModMobEffects;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.BufferBuilder;
@@ -9,13 +10,12 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.Tesselator;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import net.minecraft.client.Camera;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.util.Mth;
-import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4f;
 
@@ -27,9 +27,7 @@ public final class OlfactionClientHandler {
     private static final float FOOTPRINT_HALF_WIDTH = 0.075F;
     private static final float FOOTPRINT_SOLE_LENGTH = 0.18F;
     private static final float FOOTPRINT_TOE_SIZE = 0.045F;
-    private static final long FOOTPRINT_DURATION_TICKS = 300L;
-    private static final long FOOTPRINT_SPAWN_INTERVAL_TICKS = 6L;
-    private static final double FOOTPRINT_MIN_MOVEMENT_SQR = 0.0004D;
+    private static final long FOOTPRINT_DURATION_TICKS = 100L;
 
     private static final List<OlfactionFootprintParticle> FOOTPRINTS = new ArrayList<>();
 
@@ -39,21 +37,6 @@ public final class OlfactionClientHandler {
     public static void tick(Player player, ClientLevel level, long gameTime) {
         if (!hasOlfaction(player)) {
             FOOTPRINTS.clear();
-            return;
-        }
-
-        if (gameTime % 3L != 0L) {
-            return;
-        }
-
-        MobEffectInstance effectInstance = player.getEffect(ModMobEffects.OLFACTION.get());
-        int spellLevel = getEffectLevel(effectInstance);
-        double radius = AbilityRuntime.getOlfactionTrackRange(spellLevel);
-        AABB box = player.getBoundingBox().inflate(radius, 6.0D, radius);
-
-        for (LivingEntity entity : level.getEntitiesOfClass(LivingEntity.class, box,
-                target -> target != player && target.isAlive() && isTrackable(target))) {
-            captureFootprint(entity, gameTime);
         }
     }
 
@@ -63,6 +46,26 @@ public final class OlfactionClientHandler {
 
     public static void clear() {
         FOOTPRINTS.clear();
+    }
+
+    public static void handleTrailSync(OlfactionTrailSyncPacket packet) {
+        Minecraft minecraft = Minecraft.getInstance();
+        ClientLevel level = minecraft.level;
+        if (level == null) {
+            return;
+        }
+
+        long gameTime = level.getGameTime();
+        FOOTPRINTS.clear();
+        for (OlfactionTrailSyncPacket.Entry entry : packet.getEntries()) {
+            FOOTPRINTS.add(new OlfactionFootprintParticle(
+                    entry.getEntityId(),
+                    entry.getStepIndex(),
+                    entry.getX(),
+                    entry.getY(),
+                    entry.getZ(),
+                    gameTime + entry.getRemainingTicks()));
+        }
     }
 
     public static boolean shouldMuteEntitySound(Player player, LivingEntity entity) {
@@ -108,8 +111,8 @@ public final class OlfactionClientHandler {
 
             float lifeRatio = (float) (footprint.expireAt - gameTime) / (float) FOOTPRINT_DURATION_TICKS;
             float alpha = Mth.clamp(0.38F + lifeRatio * 0.45F, 0.38F, 0.9F);
-            float yaw = ((footprint.entityId + footprint.createdAt) & 1L) == 0L ? 35.0F : -35.0F;
-            float lateralOffset = ((footprint.createdAt / 3L) & 1L) == 0L ? 0.09F : -0.09F;
+            float yaw = ((footprint.entityId + footprint.stepIndex) & 1) == 0 ? 35.0F : -35.0F;
+            float lateralOffset = (footprint.stepIndex & 1) == 0 ? 0.09F : -0.09F;
 
             addFootprintQuad(bufferBuilder, matrix, footprint.x, footprint.y, footprint.z, yaw, lateralOffset,
                     1.0F, 0.22F, 0.28F, alpha);
@@ -123,34 +126,6 @@ public final class OlfactionClientHandler {
         RenderSystem.depthMask(true);
         RenderSystem.enableCull();
         RenderSystem.disableBlend();
-    }
-
-    private static void captureFootprint(LivingEntity entity, long gameTime) {
-        double motion = entity.position().distanceToSqr(new Vec3(entity.xo, entity.yo, entity.zo));
-        if (motion < FOOTPRINT_MIN_MOVEMENT_SQR) {
-            return;
-        }
-
-        long lastSpawnTime = Long.MIN_VALUE;
-        for (int i = FOOTPRINTS.size() - 1; i >= 0; i--) {
-            OlfactionFootprintParticle footprint = FOOTPRINTS.get(i);
-            if (footprint.entityId == entity.getId()) {
-                lastSpawnTime = footprint.createdAt;
-                break;
-            }
-        }
-
-        if (gameTime - lastSpawnTime < FOOTPRINT_SPAWN_INTERVAL_TICKS) {
-            return;
-        }
-
-        double progress = ((gameTime / 3L) % 2L == 0L) ? 0.25D : 0.75D;
-        double x = Mth.lerp(progress, entity.xo, entity.getX());
-        double z = Mth.lerp(progress, entity.zo, entity.getZ());
-        double y = entity.getY() + 0.06D;
-
-        FOOTPRINTS.add(new OlfactionFootprintParticle(entity.getId(), x, y, z,
-                gameTime + FOOTPRINT_DURATION_TICKS, gameTime));
     }
 
     private static void addFootprintQuad(BufferBuilder bufferBuilder, Matrix4f matrix,
@@ -214,29 +189,21 @@ public final class OlfactionClientHandler {
         return player.hasEffect(ModMobEffects.OLFACTION.get());
     }
 
-    private static boolean isTrackable(LivingEntity entity) {
-        return entity.getMaxHealth() > 0.0F && entity.getHealth() / entity.getMaxHealth() < 0.75F;
-    }
-
-    private static int getEffectLevel(MobEffectInstance effectInstance) {
-        return effectInstance == null ? 1 : effectInstance.getAmplifier() + 1;
-    }
-
     private static final class OlfactionFootprintParticle {
         private final int entityId;
+        private final int stepIndex;
         private final double x;
         private final double y;
         private final double z;
         private final long expireAt;
-        private final long createdAt;
 
-        private OlfactionFootprintParticle(int entityId, double x, double y, double z, long expireAt, long createdAt) {
+        private OlfactionFootprintParticle(int entityId, int stepIndex, double x, double y, double z, long expireAt) {
             this.entityId = entityId;
+            this.stepIndex = stepIndex;
             this.x = x;
             this.y = y;
             this.z = z;
             this.expireAt = expireAt;
-            this.createdAt = createdAt;
         }
     }
 }

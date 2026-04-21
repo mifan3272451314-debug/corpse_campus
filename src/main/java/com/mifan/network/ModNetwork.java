@@ -3,6 +3,7 @@ package com.mifan.network;
 import com.mifan.corpsecampus;
 import com.mifan.network.clientbound.DangerSensePingPacket;
 import com.mifan.network.clientbound.InstinctProcPacket;
+import com.mifan.network.clientbound.OlfactionTrailSyncPacket;
 import com.mifan.network.clientbound.OpenDominanceScreenPacket;
 import com.mifan.network.clientbound.OpenMidasTouchScreenPacket;
 import com.mifan.network.clientbound.OpenRecorderOfficerScreenPacket;
@@ -47,6 +48,12 @@ public final class ModNetwork {
                 .encoder(InstinctProcPacket::encode)
                 .decoder(InstinctProcPacket::decode)
                 .consumerMainThread(InstinctProcPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(OlfactionTrailSyncPacket.class, packetId++, NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(OlfactionTrailSyncPacket::encode)
+                .decoder(OlfactionTrailSyncPacket::decode)
+                .consumerMainThread(OlfactionTrailSyncPacket::handle)
                 .add();
 
         CHANNEL.messageBuilder(OpenDominanceScreenPacket.class, packetId++, NetworkDirection.PLAY_TO_CLIENT)

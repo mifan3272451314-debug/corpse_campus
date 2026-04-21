@@ -6,6 +6,7 @@ import com.mifan.client.screen.MidasTouchTimerScreen;
 import com.mifan.client.screen.RecorderOfficerTimerScreen;
 import com.mifan.network.clientbound.DangerSensePingPacket;
 import com.mifan.network.clientbound.InstinctProcPacket;
+import com.mifan.network.clientbound.OlfactionTrailSyncPacket;
 import com.mifan.network.clientbound.OpenMidasTouchScreenPacket;
 import com.mifan.network.clientbound.OpenRecorderOfficerScreenPacket;
 import com.mifan.registry.ModMobEffects;
@@ -132,6 +133,10 @@ public final class AbilityClientHandler {
                     0.0D);
             minecraft.level.addParticle(ParticleTypes.CRIT, x, y, z, 0.0D, 0.01D, 0.0D);
         }
+    }
+
+    public static void handleOlfactionTrailSync(OlfactionTrailSyncPacket packet) {
+        OlfactionClientHandler.handleTrailSync(packet);
     }
 
     private static boolean hasInstinct(Player player) {

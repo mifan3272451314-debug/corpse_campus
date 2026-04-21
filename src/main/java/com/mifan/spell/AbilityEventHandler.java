@@ -4,6 +4,7 @@ import com.mifan.corpsecampus;
 import com.mifan.network.ModNetwork;
 import com.mifan.network.clientbound.DangerSensePingPacket;
 import com.mifan.network.clientbound.InstinctProcPacket;
+import com.mifan.network.clientbound.OlfactionTrailSyncPacket;
 import com.mifan.registry.ModMobEffects;
 import com.mifan.spell.runtime.MarkRuntime;
 import com.mifan.spell.runtime.NecroticRuntime;
@@ -49,8 +50,13 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.joml.Vector3f;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Mod.EventBusSubscriber(modid = corpsecampus.MODID)
 public final class AbilityEventHandler {
+    private static final long OLFACTION_SYNC_INTERVAL_TICKS = 6L;
+
     private AbilityEventHandler() {
     }
 
@@ -407,10 +413,15 @@ public final class AbilityEventHandler {
         int spellLevel = AbilityRuntime.getEffectLevel(effectInstance);
         double radius = AbilityRuntime.getOlfactionTrackRange(spellLevel);
         AABB box = player.getBoundingBox().inflate(radius, 6.0D, radius);
+        List<LivingEntity> nearbyTrackables = serverLevel.getEntitiesOfClass(LivingEntity.class, box,
+                entity -> entity != player && entity.isAlive() && isOlfactionTrackable(entity));
         boolean foundTrail = false;
 
-        for (LivingEntity target : serverLevel.getEntitiesOfClass(LivingEntity.class, box,
-                entity -> entity != player && entity.isAlive() && isOlfactionTrackable(entity))) {
+        if (player instanceof ServerPlayer serverPlayer && gameTime % OLFACTION_SYNC_INTERVAL_TICKS == 0L) {
+            syncOlfactionTrails(serverPlayer, nearbyTrackables, gameTime);
+        }
+
+        for (LivingEntity target : nearbyTrackables) {
             if (isNearOlfactionTrail(player, target.getPersistentData(), gameTime)) {
                 foundTrail = true;
                 break;
@@ -552,6 +563,36 @@ public final class AbilityEventHandler {
                 trail.remove(i);
             }
         }
+    }
+
+    private static void syncOlfactionTrails(ServerPlayer player, List<LivingEntity> nearbyTrackables, long gameTime) {
+        List<OlfactionTrailSyncPacket.Entry> entries = new ArrayList<>();
+        for (LivingEntity target : nearbyTrackables) {
+            ListTag trail = target.getPersistentData().getList(AbilityRuntime.TAG_OLFACTION_TRAIL, Tag.TAG_COMPOUND);
+            pruneExpiredOlfactionTrail(trail, gameTime);
+
+            int stepIndex = 0;
+            for (Tag tag : trail) {
+                if (!(tag instanceof CompoundTag entry)) {
+                    continue;
+                }
+
+                int remainingTicks = (int) Math.max(0L, entry.getLong("expire") - gameTime);
+                if (remainingTicks <= 0) {
+                    continue;
+                }
+
+                entries.add(new OlfactionTrailSyncPacket.Entry(
+                        target.getId(),
+                        stepIndex++,
+                        entry.getDouble("x"),
+                        entry.getDouble("y"),
+                        entry.getDouble("z"),
+                        remainingTicks));
+            }
+        }
+
+        ModNetwork.sendToPlayer(new OlfactionTrailSyncPacket(entries), player);
     }
 
     private static boolean isNearOlfactionTrail(Player player, CompoundTag data, long gameTime) {
