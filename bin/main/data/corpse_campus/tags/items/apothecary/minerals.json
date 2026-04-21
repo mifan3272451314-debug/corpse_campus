@@ -1,0 +1,25 @@
+{
+  "replace": false,
+  "values": [
+    "minecraft:coal",
+    "minecraft:charcoal",
+    "minecraft:iron_nugget",
+    "minecraft:iron_ingot",
+    "minecraft:copper_nugget",
+    "minecraft:copper_ingot",
+    "minecraft:gold_nugget",
+    "minecraft:gold_ingot",
+    "minecraft:netherite_scrap",
+    "minecraft:diamond",
+    "minecraft:emerald",
+    "minecraft:lapis_lazuli",
+    "minecraft:redstone",
+    "minecraft:quartz",
+    "minecraft:amethyst_shard",
+    "minecraft:prismarine_shard",
+    "minecraft:prismarine_crystals",
+    "minecraft:nautilus_shell",
+    "minecraft:heart_of_the_sea",
+    "minecraft:flint"
+  ]
+}
