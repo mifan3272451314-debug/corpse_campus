@@ -139,6 +139,14 @@ public final class AnomalyBookService {
             return List.of();
         }
 
+        return buildHistoricalTraitDrops(player, book);
+    }
+
+    public static List<ItemStack> buildHistoricalTraitDrops(ServerPlayer player, ItemStack book) {
+        if (book.isEmpty()) {
+            return List.of();
+        }
+
         ensureSpellContainer(book);
         LinkedHashMap<ResourceLocation, SchoolTraitProgress> progressMap = new LinkedHashMap<>();
         for (SpellSlot slot : ISpellContainer.getOrCreate(book).getActiveSpells()) {
@@ -171,6 +179,18 @@ public final class AnomalyBookService {
             }
         }
         return List.copyOf(drops);
+    }
+
+    public static List<ItemStack> clearBookAndCollectTraitDrops(ServerPlayer player) {
+        ItemStack book = findExistingBook(player);
+        if (book.isEmpty()) {
+            return List.of();
+        }
+
+        List<ItemStack> drops = buildHistoricalTraitDrops(player, book);
+        clearAllSpells(player, book);
+        updateBookSnapshot(player, book);
+        return drops;
     }
 
     @Nullable
