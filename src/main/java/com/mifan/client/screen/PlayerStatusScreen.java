@@ -233,18 +233,12 @@ public class PlayerStatusScreen extends Screen {
             String spellName = spec == null ? slot.getSpell().getSpellName() : spec.zhName();
             String rank = spec == null ? "?" : spec.rank().name();
             int y = listTop + 5 + row * 14;
+            String line = "• " + spellName + "  Lv." + slot.getLevel() + " [" + rank + "]";
             guiGraphics.drawString(this.font,
-                    "• " + spellName,
+                    line,
                     left + 6,
                     y,
                     0xD7F6FF,
-                    false);
-            String right = "Lv." + slot.getLevel() + " [" + rank + "]";
-            guiGraphics.drawString(this.font,
-                    right,
-                    left + width - 6 - this.font.width(right),
-                    y,
-                    0x75C9FF,
                     false);
         }
     }
