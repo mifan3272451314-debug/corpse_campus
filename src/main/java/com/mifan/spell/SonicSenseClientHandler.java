@@ -33,6 +33,7 @@ public final class SonicSenseClientHandler {
     private static final int SONIC_ECHO_FRAME_COUNT = 5;
     private static final int SONIC_ECHO_FRAME_DURATION = 10;
     private static final double SONIC_NEAR_SOUND_MUTE_RADIUS = 1.5D;
+    private static final double SONIC_FRONT_DOT_THRESHOLD = 0.05D;
 
     private static boolean sonicListening;
     private static boolean sonicListeningActive;
@@ -116,14 +117,15 @@ public final class SonicSenseClientHandler {
         guiGraphics.fill(width - 14, 0, width, height, (vignetteAlpha << 24) | 0x0D1318);
     }
 
-    public static void renderLevel(PoseStack poseStack, Camera camera, Player player, long gameTime) {
+    public static void renderLevel(PoseStack poseStack, Camera camera, Player player, long gameTime,
+            float partialTick) {
         Minecraft minecraft = Minecraft.getInstance();
         ClientLevel level = minecraft.level;
         if (level == null) {
             return;
         }
 
-        Vec3 playerPos = player.getPosition(1.0F);
+        Vec3 playerPos = player.getPosition(partialTick);
         int frameIndex = (sonicHudTick / SONIC_ECHO_FRAME_DURATION) % SONIC_ECHO_FRAME_COUNT;
         int spellLevel = getEffectLevel(player.getEffect(ModMobEffects.SONIC_ATTUNEMENT.get()));
         double revealRange = getRevealRange(spellLevel);
@@ -152,8 +154,11 @@ public final class SonicSenseClientHandler {
         bufferBuilder.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR);
 
         for (LivingEntity target : nearbyEntities) {
-            Vec3 markerPos = target.getBoundingBox().getCenter().add(0.0D, target.getBbHeight() * 0.15D, 0.0D);
+            Vec3 markerPos = getEyeBasedMarkerPos(target, partialTick);
             if (markerPos.distanceToSqr(cameraPos) > revealRangeSqr * 1.5D) {
+                continue;
+            }
+            if (!isInFrontOfCamera(camera, cameraPos, markerPos)) {
                 continue;
             }
 
@@ -212,6 +217,27 @@ public final class SonicSenseClientHandler {
         bufferBuilder.vertex(matrix, x2, y2, z2).uv(minU, minV).color(255, 255, 255, alpha).endVertex();
         bufferBuilder.vertex(matrix, x3, y3, z3).uv(maxU, minV).color(255, 255, 255, alpha).endVertex();
         bufferBuilder.vertex(matrix, x4, y4, z4).uv(maxU, maxV).color(255, 255, 255, alpha).endVertex();
+    }
+
+    private static Vec3 getEyeBasedMarkerPos(LivingEntity target, float partialTick) {
+        Vec3 eyePos = target.getEyePosition(partialTick);
+        double downwardOffset = Math.min(0.22D, target.getBbHeight() * 0.18D);
+        return eyePos.add(0.0D, -downwardOffset, 0.0D);
+    }
+
+    private static boolean isInFrontOfCamera(Camera camera, Vec3 cameraPos, Vec3 markerPos) {
+        Vec3 toMarker = markerPos.subtract(cameraPos);
+        if (toMarker.lengthSqr() < 1.0E-6D) {
+            return true;
+        }
+
+        org.joml.Vector3f leftVector = camera.getLeftVector();
+        org.joml.Vector3f upVector = camera.getUpVector();
+        Vec3 cameraForward = new Vec3(upVector.x(), upVector.y(), upVector.z())
+                .cross(new Vec3(leftVector.x(), leftVector.y(), leftVector.z()))
+                .normalize();
+
+        return toMarker.normalize().dot(cameraForward) > SONIC_FRONT_DOT_THRESHOLD;
     }
 
     private static boolean hasSonicSense(Player player) {
