@@ -48,6 +48,7 @@ public final class SonicSenseClientHandler {
             sonicListening = false;
             sonicListeningActive = false;
             sonicListenStartTime = 0L;
+            sonicHudTick = 0;
             return;
         }
 
@@ -119,6 +120,10 @@ public final class SonicSenseClientHandler {
 
     public static void renderLevel(PoseStack poseStack, Camera camera, Player player, long gameTime,
             float partialTick) {
+        if (!hasSonicSense(player)) {
+            return;
+        }
+
         Minecraft minecraft = Minecraft.getInstance();
         ClientLevel level = minecraft.level;
         if (level == null) {

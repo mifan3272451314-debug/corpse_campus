@@ -340,18 +340,6 @@ public final class AbilityEventHandler {
         if (gameTime % 40L == 0L) {
             player.addEffect(new MobEffectInstance(MobEffects.DIG_SLOWDOWN, 50, 0, false, false, false));
         }
-
-        if (player.level() instanceof ServerLevel serverLevel && gameTime % 12L == 0L) {
-            serverLevel.sendParticles(ParticleTypes.SCULK_SOUL,
-                    player.getX(),
-                    player.getEyeY() - 0.2D,
-                    player.getZ(),
-                    2,
-                    0.18D,
-                    0.08D,
-                    0.18D,
-                    0.0D);
-        }
     }
 
     private static void tickDangerSense(Player player, CompoundTag data, long gameTime) {
