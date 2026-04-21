@@ -33,7 +33,7 @@ public final class SonicSenseClientHandler {
     private static final int SONIC_ECHO_FRAME_COUNT = 5;
     private static final int SONIC_ECHO_FRAME_DURATION = 10;
     private static final double SONIC_NEAR_SOUND_MUTE_RADIUS = 1.5D;
-    private static final double SONIC_FRONT_DOT_THRESHOLD = 0.05D;
+    private static final double SONIC_FRONT_DOT_THRESHOLD = 0.025D;
 
     private static boolean sonicListening;
     private static boolean sonicListeningActive;
@@ -141,6 +141,9 @@ public final class SonicSenseClientHandler {
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
         RenderSystem.disableCull();
+        // Sonic sense markers should remain readable through terrain and foliage.
+        RenderSystem.disableDepthTest();
+        RenderSystem.depthMask(false);
         RenderSystem.setShader(GameRenderer::getPositionTexColorShader);
         RenderSystem.setShaderTexture(0, SONIC_ECHO_TEXTURE);
 
@@ -158,7 +161,7 @@ public final class SonicSenseClientHandler {
             if (markerPos.distanceToSqr(cameraPos) > revealRangeSqr * 1.5D) {
                 continue;
             }
-            if (!isInFrontOfCamera(camera, cameraPos, markerPos)) {
+            if (!isInFrontOfCamera(player, markerPos, partialTick)) {
                 continue;
             }
 
@@ -183,6 +186,8 @@ public final class SonicSenseClientHandler {
         BufferUploader.drawWithShader(bufferBuilder.end());
         poseStack.popPose();
 
+        RenderSystem.depthMask(true);
+        RenderSystem.enableDepthTest();
         RenderSystem.enableCull();
         RenderSystem.disableBlend();
     }
@@ -225,19 +230,18 @@ public final class SonicSenseClientHandler {
         return eyePos.add(0.0D, -downwardOffset, 0.0D);
     }
 
-    private static boolean isInFrontOfCamera(Camera camera, Vec3 cameraPos, Vec3 markerPos) {
-        Vec3 toMarker = markerPos.subtract(cameraPos);
+    private static boolean isInFrontOfCamera(Player player, Vec3 markerPos, float partialTick) {
+        Vec3 toMarker = markerPos.subtract(player.getEyePosition(partialTick));
         if (toMarker.lengthSqr() < 1.0E-6D) {
             return true;
         }
 
-        org.joml.Vector3f leftVector = camera.getLeftVector();
-        org.joml.Vector3f upVector = camera.getUpVector();
-        Vec3 cameraForward = new Vec3(upVector.x(), upVector.y(), upVector.z())
-                .cross(new Vec3(leftVector.x(), leftVector.y(), leftVector.z()))
-                .normalize();
+        Vec3 viewDirection = player.getViewVector(partialTick);
+        if (viewDirection.lengthSqr() < 1.0E-6D) {
+            return true;
+        }
 
-        return toMarker.normalize().dot(cameraForward) > SONIC_FRONT_DOT_THRESHOLD;
+        return toMarker.normalize().dot(viewDirection.normalize()) > SONIC_FRONT_DOT_THRESHOLD;
     }
 
     private static boolean hasSonicSense(Player player) {
