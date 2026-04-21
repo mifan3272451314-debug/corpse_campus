@@ -27,6 +27,9 @@ public final class ModMobEffects {
     public static final RegistryObject<MobEffect> MAGNETIC_CLING = MOB_EFFECTS.register("magnetic_cling",
             () -> new AbilityMarkerEffect(0x5E4CB3));
 
+    public static final RegistryObject<MobEffect> STAMINA = MOB_EFFECTS.register("stamina",
+            () -> new AbilityMarkerEffect(0x7FCF8A));
+
     public static final RegistryObject<MobEffect> INSTINCT = MOB_EFFECTS.register("instinct",
             () -> new AbilityMarkerEffect(0x7CA76E));
 

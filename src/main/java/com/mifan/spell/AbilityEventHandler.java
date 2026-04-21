@@ -56,6 +56,11 @@ import java.util.List;
 @Mod.EventBusSubscriber(modid = corpsecampus.MODID)
 public final class AbilityEventHandler {
     private static final long OLFACTION_SYNC_INTERVAL_TICKS = 6L;
+    private static final String TAG_STAMINA_DURABILITY_TRACKER = "corpse_campus_stamina_durability_tracker";
+    private static final String TAG_STAMINA_ITEM_ID = "item_id";
+    private static final String TAG_STAMINA_MAX_DAMAGE = "max_damage";
+    private static final String TAG_STAMINA_LAST_DAMAGE = "last_damage";
+    private static final String TAG_STAMINA_CARRY = "carry";
 
     private AbilityEventHandler() {
     }
@@ -74,6 +79,7 @@ public final class AbilityEventHandler {
         long gameTime = player.level().getGameTime();
 
         tickSonicSense(player, gameTime);
+        tickStamina(player, data, gameTime);
         tickDangerSense(player, data, gameTime);
         tickOlfaction(player, gameTime);
         tickElementalDomain(player, data, gameTime);
@@ -340,6 +346,92 @@ public final class AbilityEventHandler {
         if (gameTime % 40L == 0L) {
             player.addEffect(new MobEffectInstance(MobEffects.DIG_SLOWDOWN, 50, 0, false, false, false));
         }
+    }
+
+    private static void tickStamina(Player player, CompoundTag data, long gameTime) {
+        MobEffectInstance effectInstance = player.getEffect(ModMobEffects.STAMINA.get());
+        if (effectInstance == null) {
+            clearStaminaDurabilityTracker(data);
+            return;
+        }
+
+        int spellLevel = AbilityRuntime.getEffectLevel(effectInstance);
+        if (gameTime % 10L == 0L) {
+            player.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 20, Math.min(1, spellLevel - 1), false,
+                    false, true));
+        }
+        if (gameTime % 80L == 0L && player.getFoodData().getFoodLevel() < 20) {
+            player.getFoodData().eat(1, 0.0F);
+        }
+        updateStaminaDurabilityTracker(player, data);
+    }
+
+    private static void clearStaminaDurabilityTracker(CompoundTag data) {
+        data.remove(TAG_STAMINA_DURABILITY_TRACKER);
+    }
+
+    private static void updateStaminaDurabilityTracker(Player player, CompoundTag data) {
+        CompoundTag tracker = data.getCompound(TAG_STAMINA_DURABILITY_TRACKER);
+        trackStaminaSlots(tracker, "inventory", player.getInventory().items);
+        trackStaminaSlots(tracker, "armor", player.getInventory().armor);
+        trackStaminaSlots(tracker, "offhand", player.getInventory().offhand);
+
+        if (tracker.isEmpty()) {
+            data.remove(TAG_STAMINA_DURABILITY_TRACKER);
+        } else {
+            data.put(TAG_STAMINA_DURABILITY_TRACKER, tracker);
+        }
+    }
+
+    private static void trackStaminaSlots(CompoundTag tracker, String group, List<ItemStack> stacks) {
+        for (int i = 0; i < stacks.size(); i++) {
+            trackStaminaSlot(tracker, group + "_" + i, stacks.get(i));
+        }
+    }
+
+    private static void trackStaminaSlot(CompoundTag tracker, String key, ItemStack stack) {
+        if (stack.isEmpty() || !stack.isDamageableItem()) {
+            tracker.remove(key);
+            return;
+        }
+
+        String itemId = String.valueOf(net.minecraftforge.registries.ForgeRegistries.ITEMS.getKey(stack.getItem()));
+        int currentDamage = stack.getDamageValue();
+        int maxDamage = stack.getMaxDamage();
+
+        if (!tracker.contains(key, Tag.TAG_COMPOUND)) {
+            tracker.put(key, createStaminaSlotState(itemId, maxDamage, currentDamage, 0));
+            return;
+        }
+
+        CompoundTag slotState = tracker.getCompound(key);
+        if (!itemId.equals(slotState.getString(TAG_STAMINA_ITEM_ID))
+                || maxDamage != slotState.getInt(TAG_STAMINA_MAX_DAMAGE)
+                || currentDamage < slotState.getInt(TAG_STAMINA_LAST_DAMAGE)) {
+            tracker.put(key, createStaminaSlotState(itemId, maxDamage, currentDamage, 0));
+            return;
+        }
+
+        int lastDamage = slotState.getInt(TAG_STAMINA_LAST_DAMAGE);
+        int delta = currentDamage - lastDamage;
+        int carry = slotState.getInt(TAG_STAMINA_CARRY);
+        if (delta > 0) {
+            int adjustedDelta = (delta + carry) / 2;
+            carry = (delta + carry) % 2;
+            currentDamage = lastDamage + adjustedDelta;
+            stack.setDamageValue(currentDamage);
+        }
+
+        tracker.put(key, createStaminaSlotState(itemId, maxDamage, currentDamage, carry));
+    }
+
+    private static CompoundTag createStaminaSlotState(String itemId, int maxDamage, int lastDamage, int carry) {
+        CompoundTag slotState = new CompoundTag();
+        slotState.putString(TAG_STAMINA_ITEM_ID, itemId);
+        slotState.putInt(TAG_STAMINA_MAX_DAMAGE, maxDamage);
+        slotState.putInt(TAG_STAMINA_LAST_DAMAGE, lastDamage);
+        slotState.putInt(TAG_STAMINA_CARRY, carry);
+        return slotState;
     }
 
     private static void tickDangerSense(Player player, CompoundTag data, long gameTime) {

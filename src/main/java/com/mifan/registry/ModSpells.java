@@ -8,6 +8,7 @@ import com.mifan.spell.dongyue.ManiaSpell;
 import com.mifan.spell.dongyue.NecroticRebirthSpell;
 import com.mifan.spell.rizhao.MidasTouchSpell;
 import com.mifan.spell.shengqi.HealingSpell;
+import com.mifan.spell.shengqi.StaminaSpell;
 import com.mifan.spell.xujing.ElementalistSpell;
 import com.mifan.spell.xujing.MarkSpell;
 import com.mifan.spell.xujing.RecorderOfficerSpell;
@@ -54,6 +55,7 @@ public final class ModSpells {
             ExecutionerSpell::new);
     public static final RegistryObject<AbstractSpell> MARK = SPELLS.register("mark", MarkSpell::new);
     public static final RegistryObject<AbstractSpell> HEALING = SPELLS.register("healing", HealingSpell::new);
+    public static final RegistryObject<AbstractSpell> STAMINA = SPELLS.register("stamina", StaminaSpell::new);
 
     private ModSpells() {
     }
