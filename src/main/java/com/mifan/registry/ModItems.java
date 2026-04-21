@@ -14,6 +14,8 @@ public final class ModItems {
 
     public static final RegistryObject<Item> ANOMALY_TRAIT_SPELLBOOK = ITEMS.register("anomaly_trait_spellbook",
             AnomalySpellBookItem::new);
+    public static final RegistryObject<Item> ANOMALY_DETECTOR = ITEMS.register("anomaly_detector",
+            () -> new Item(new Item.Properties().stacksTo(1)));
 
     private ModItems() {
     }
