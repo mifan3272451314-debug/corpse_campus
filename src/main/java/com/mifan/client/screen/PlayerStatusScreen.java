@@ -3,6 +3,7 @@ package com.mifan.client.screen;
 import com.mifan.anomaly.AnomalyBookService;
 import com.mifan.registry.ModItems;
 import com.mifan.registry.ModSchools;
+import io.redspace.ironsspellbooks.api.magic.MagicData;
 import io.redspace.ironsspellbooks.api.registry.AttributeRegistry;
 import io.redspace.ironsspellbooks.api.spells.ISpellContainer;
 import io.redspace.ironsspellbooks.api.spells.SpellSlot;
@@ -122,7 +123,8 @@ public class PlayerStatusScreen extends Screen {
         float health = player.getHealth();
         float maxHealth = player.getMaxHealth();
         float mana = (float) player.getAttributeValue(AttributeRegistry.MAX_MANA.get());
-        float currentMana = Math.min(mana, player.getPersistentData().getFloat("irons_spellbooks_mana"));
+        MagicData magicData = MagicData.getPlayerMagicData(player);
+        float currentMana = magicData == null ? 0.0F : Math.min(mana, magicData.getMana());
         int anomalyManaBonus = book.isEmpty() ? 0 : AnomalyBookService.getStoredManaBonus(book);
 
         drawLabeledBar(guiGraphics, Component.translatable("screen.corpse_campus.player_status.health"),

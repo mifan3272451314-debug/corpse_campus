@@ -74,10 +74,28 @@ public class corpsecampus {
     public static final RegistryObject<CreativeModeTab> EXAMPLE_TAB = CREATIVE_MODE_TABS.register("example_tab",
             () -> CreativeModeTab.builder()
                     .withTabsBefore(CreativeModeTabs.COMBAT)
-                    .icon(() -> EXAMPLE_ITEM.get().getDefaultInstance())
+                    .title(net.minecraft.network.chat.Component.translatable("itemGroup.corpse_campus.main"))
+                    .icon(() -> ModItems.ANOMALY_TRAIT_SPELLBOOK.get().getDefaultInstance())
                     .displayItems((parameters, output) -> {
-                        output.accept(EXAMPLE_ITEM.get()); // Add the example item to the tab. For your own tabs, this
-                                                           // method is preferred over the event
+                        output.accept(EXAMPLE_BLOCK_ITEM.get());
+                        output.accept(EXAMPLE_ITEM.get());
+                        output.accept(ModItems.ANOMALY_TRAIT_SPELLBOOK.get());
+                        output.accept(ModItems.ANOMALY_DETECTOR.get());
+                        output.accept(ModItems.TRAIT_XUJING_B.get());
+                        output.accept(ModItems.TRAIT_XUJING_A.get());
+                        output.accept(ModItems.TRAIT_XUJING_S.get());
+                        output.accept(ModItems.TRAIT_RIZHAO_B.get());
+                        output.accept(ModItems.TRAIT_RIZHAO_A.get());
+                        output.accept(ModItems.TRAIT_RIZHAO_S.get());
+                        output.accept(ModItems.TRAIT_DONGYUE_B.get());
+                        output.accept(ModItems.TRAIT_DONGYUE_A.get());
+                        output.accept(ModItems.TRAIT_DONGYUE_S.get());
+                        output.accept(ModItems.TRAIT_YUZHE_B.get());
+                        output.accept(ModItems.TRAIT_YUZHE_A.get());
+                        output.accept(ModItems.TRAIT_YUZHE_S.get());
+                        output.accept(ModItems.TRAIT_SHENGQI_B.get());
+                        output.accept(ModItems.TRAIT_SHENGQI_A.get());
+                        output.accept(ModItems.TRAIT_SHENGQI_S.get());
                     }).build());
 
     public corpsecampus() {
@@ -131,8 +149,6 @@ public class corpsecampus {
     private void addCreative(BuildCreativeModeTabContentsEvent event) {
         if (event.getTabKey() == CreativeModeTabs.BUILDING_BLOCKS)
             event.accept(EXAMPLE_BLOCK_ITEM);
-        if (event.getTabKey() == CreativeModeTabs.TOOLS_AND_UTILITIES)
-            event.accept(ModItems.ANOMALY_TRAIT_SPELLBOOK.get());
     }
 
     // You can use SubscribeEvent and let the Event Bus discover methods to call

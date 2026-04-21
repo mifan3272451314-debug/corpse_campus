@@ -1,6 +1,7 @@
 package com.mifan.anomaly;
 
 import com.mifan.corpsecampus;
+import com.mifan.item.AnomalyTraitItem;
 import com.mifan.registry.ModAttributes;
 import com.mifan.registry.ModItems;
 import com.mifan.registry.ModSchools;
@@ -20,6 +21,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.registries.IForgeRegistry;
 import org.jetbrains.annotations.Nullable;
@@ -97,6 +99,78 @@ public final class AnomalyBookService {
             return 0.0D;
         }
         return tag.getCompound(BOOK_SCHOOL_BONUSES).getDouble(schoolId.getPath());
+    }
+
+    public static Map<ResourceLocation, AnomalySpellRank> getCurrentTraitRanks(ServerPlayer player) {
+        ItemStack book = findExistingBook(player);
+        if (book.isEmpty()) {
+            return Map.of();
+        }
+
+        ensureSpellContainer(book);
+        LinkedHashMap<ResourceLocation, AnomalySpellRank> ranks = new LinkedHashMap<>();
+        for (SpellSlot slot : ISpellContainer.getOrCreate(book).getActiveSpells()) {
+            SpellSpec spec = SPELL_SPECS.get(slot.getSpell().getSpellResource());
+            if (spec == null) {
+                continue;
+            }
+            ranks.merge(spec.schoolId(), spec.rank(), AnomalyBookService::maxRank);
+        }
+        return Map.copyOf(ranks);
+    }
+
+    public static List<ItemStack> buildCurrentTraitDrops(ServerPlayer player) {
+        Map<ResourceLocation, AnomalySpellRank> ranks = getCurrentTraitRanks(player);
+        if (ranks.isEmpty()) {
+            return List.of();
+        }
+
+        List<ItemStack> drops = new ArrayList<>();
+        for (var entry : ranks.entrySet()) {
+            Item item = ModItems.getTraitItem(entry.getKey(), entry.getValue());
+            drops.add(new ItemStack(item));
+        }
+        return List.copyOf(drops);
+    }
+
+    public static List<ItemStack> buildHistoricalTraitDrops(ServerPlayer player) {
+        ItemStack book = findExistingBook(player);
+        if (book.isEmpty()) {
+            return List.of();
+        }
+
+        ensureSpellContainer(book);
+        LinkedHashMap<ResourceLocation, SchoolTraitProgress> progressMap = new LinkedHashMap<>();
+        for (SpellSlot slot : ISpellContainer.getOrCreate(book).getActiveSpells()) {
+            SpellSpec spec = SPELL_SPECS.get(slot.getSpell().getSpellResource());
+            if (spec == null) {
+                continue;
+            }
+            progressMap.computeIfAbsent(spec.schoolId(), ignored -> new SchoolTraitProgress())
+                    .accept(spec);
+        }
+
+        if (progressMap.isEmpty()) {
+            return List.of();
+        }
+
+        String ownerName = player.getGameProfile().getName();
+        String ownerAbilitySummary = summarizeAllAbilities(progressMap);
+        List<ItemStack> drops = new ArrayList<>();
+        for (var entry : progressMap.entrySet()) {
+            ResourceLocation schoolId = entry.getKey();
+            SchoolTraitProgress progress = entry.getValue();
+            for (AnomalySpellRank rank : progress.unlockedRanks()) {
+                ItemStack stack = new ItemStack(ModItems.getTraitItem(schoolId, rank));
+                CompoundTag tag = stack.getOrCreateTag();
+                tag.putString(AnomalyTraitItem.TAG_OWNER_NAME, ownerName);
+                tag.putString(AnomalyTraitItem.TAG_OWNER_ABILITY_SUMMARY, ownerAbilitySummary);
+                tag.putString(AnomalyTraitItem.TAG_STAGE_LABEL, buildStageLabel(schoolId, rank));
+                tag.putString(AnomalyTraitItem.TAG_STAGE_ABILITIES, progress.describeRank(rank));
+                drops.add(stack);
+            }
+        }
+        return List.copyOf(drops);
     }
 
     @Nullable
@@ -495,6 +569,25 @@ public final class AnomalyBookService {
         player.containerMenu.broadcastChanges();
     }
 
+    private static ItemStack findExistingBook(ServerPlayer player) {
+        ItemStack curio = getCurioSpellbookStack(player);
+        if (isAnomalyBook(curio)) {
+            return curio;
+        }
+
+        for (ItemStack stack : player.getInventory().items) {
+            if (isAnomalyBook(stack)) {
+                return stack;
+            }
+        }
+        for (ItemStack stack : player.getInventory().offhand) {
+            if (isAnomalyBook(stack)) {
+                return stack;
+            }
+        }
+        return ItemStack.EMPTY;
+    }
+
     private static void clampCurrentManaToMax(ServerPlayer player) {
         MagicData magicData = MagicData.getPlayerMagicData(player);
         if (magicData == null) {
@@ -609,6 +702,28 @@ public final class AnomalyBookService {
         return PERCENT_FORMAT.format(value);
     }
 
+    private static AnomalySpellRank maxRank(AnomalySpellRank left, AnomalySpellRank right) {
+        return left.ordinal() >= right.ordinal() ? left : right;
+    }
+
+    private static String summarizeAllAbilities(Map<ResourceLocation, SchoolTraitProgress> progressMap) {
+        List<String> chunks = new ArrayList<>();
+        for (var entry : progressMap.entrySet()) {
+            String schoolName = localizeSchool(entry.getKey());
+            String abilities = entry.getValue().describeAllRanks();
+            chunks.add(schoolName + "（" + abilities + "）");
+        }
+        return String.join("；", chunks);
+    }
+
+    private static String buildStageLabel(ResourceLocation schoolId, AnomalySpellRank rank) {
+        return localizeSchool(schoolId) + "·" + rank.name() + "级";
+    }
+
+    private static String localizeSchool(ResourceLocation schoolId) {
+        return Component.translatable("school." + schoolId.getNamespace() + "." + schoolId.getPath()).getString();
+    }
+
     private static String stringifyUuid(@Nullable UUID uuid) {
         return uuid == null ? "未绑定" : uuid.toString();
     }
@@ -682,5 +797,52 @@ public final class AnomalyBookService {
         @Nullable
         private BookLocation primaryLocation;
         private int primaryIndex = -1;
+    }
+
+    private static final class SchoolTraitProgress {
+        private final Map<AnomalySpellRank, List<String>> abilitiesByRank = new LinkedHashMap<>();
+        @Nullable
+        private AnomalySpellRank highestRank;
+
+        private void accept(SpellSpec spec) {
+            abilitiesByRank.computeIfAbsent(spec.rank(), ignored -> new ArrayList<>());
+            List<String> names = abilitiesByRank.get(spec.rank());
+            if (!names.contains(spec.zhName())) {
+                names.add(spec.zhName());
+            }
+            highestRank = highestRank == null ? spec.rank() : maxRank(highestRank, spec.rank());
+        }
+
+        private List<AnomalySpellRank> unlockedRanks() {
+            if (highestRank == null) {
+                return List.of();
+            }
+
+            List<AnomalySpellRank> ranks = new ArrayList<>();
+            ranks.add(AnomalySpellRank.B);
+            if (highestRank.ordinal() >= AnomalySpellRank.A.ordinal()) {
+                ranks.add(AnomalySpellRank.A);
+            }
+            if (highestRank.ordinal() >= AnomalySpellRank.S.ordinal()) {
+                ranks.add(AnomalySpellRank.S);
+            }
+            return List.copyOf(ranks);
+        }
+
+        private String describeRank(AnomalySpellRank rank) {
+            List<String> names = abilitiesByRank.get(rank);
+            if (names == null || names.isEmpty()) {
+                return "该阶段暂无已记录异能";
+            }
+            return String.join("、", names);
+        }
+
+        private String describeAllRanks() {
+            List<String> lines = new ArrayList<>();
+            for (AnomalySpellRank rank : unlockedRanks()) {
+                lines.add(rank.name() + "级：" + describeRank(rank));
+            }
+            return String.join(" / ", lines);
+        }
     }
 }
