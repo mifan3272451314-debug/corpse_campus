@@ -45,9 +45,13 @@ public class ExecutionerSpell extends AbstractSpell {
     public List<MutableComponent> getUniqueInfo(int spellLevel, LivingEntity caster) {
         return List.of(
                 Component.translatable("tooltip.corpse_campus.executioner_damage_ratio",
-                        AbilityRuntime.getExecutionerDamagePercent()),
+                        AbilityRuntime.getExecutionerDamagePercent(spellLevel)),
                 Component.translatable("tooltip.corpse_campus.executioner_durability_cost",
                         AbilityRuntime.EXECUTIONER_DURABILITY_COST),
+                Component.translatable("tooltip.corpse_campus.executioner_range",
+                        String.format("%.1f", 6.0D + spellLevel * 1.25D),
+                        String.format("%.1f", 5.0D + spellLevel),
+                        String.format("%.1f", 1.8D + spellLevel * 0.22D)),
                 Component.translatable("tooltip.corpse_campus.executioner_hold_cast"),
                 Component.translatable("tooltip.corpse_campus.executioner_crouch_mode"));
     }

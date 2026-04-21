@@ -39,9 +39,20 @@ public final class MagicCommand {
                                                         .executes(context -> addSpell(
                                                                 context.getSource(),
                                                                 EntityArgument.getPlayer(context, "player"),
-                                                                StringArgumentType.getString(context, "spell"),
-                                                                IntegerArgumentType.getInteger(context, "level"),
-                                                                IntegerArgumentType.getInteger(context, "count"))))))))
+                                                                 StringArgumentType.getString(context, "spell"),
+                                                                 IntegerArgumentType.getInteger(context, "level"),
+                                                                 IntegerArgumentType.getInteger(context, "count"))))))))
+                .then(Commands.literal("givebook")
+                        .then(Commands.argument("player", EntityArgument.player())
+                                .executes(context -> giveBook(context.getSource(), EntityArgument.getPlayer(context, "player"), false))
+                                .then(Commands.argument("forceRebuild", IntegerArgumentType.integer(0, 1))
+                                        .executes(context -> giveBook(
+                                                context.getSource(),
+                                                EntityArgument.getPlayer(context, "player"),
+                                                IntegerArgumentType.getInteger(context, "forceRebuild") == 1)))))
+                .then(Commands.literal("forceequip")
+                        .then(Commands.argument("player", EntityArgument.player())
+                                .executes(context -> forceEquip(context.getSource(), EntityArgument.getPlayer(context, "player")))))
                 .then(Commands.literal("spells")
                         .then(Commands.argument("player", EntityArgument.player())
                                 .executes(context -> showSpells(context.getSource(), EntityArgument.getPlayer(context, "player")))))
@@ -49,9 +60,23 @@ public final class MagicCommand {
                         .then(Commands.argument("player", EntityArgument.player())
                                 .then(Commands.argument("spell", StringArgumentType.word())
                                         .executes(context -> clearSpell(
+                                                 context.getSource(),
+                                                 EntityArgument.getPlayer(context, "player"),
+                                                 StringArgumentType.getString(context, "spell"))))))
+                .then(Commands.literal("remove")
+                        .then(Commands.argument("player", EntityArgument.player())
+                                .then(Commands.argument("spell", StringArgumentType.word())
+                                        .executes(context -> removeSpell(
                                                 context.getSource(),
                                                 EntityArgument.getPlayer(context, "player"),
-                                                StringArgumentType.getString(context, "spell"))))))
+                                                StringArgumentType.getString(context, "spell"),
+                                                1))
+                                        .then(Commands.argument("count", IntegerArgumentType.integer(1, 64))
+                                                .executes(context -> removeSpell(
+                                                        context.getSource(),
+                                                        EntityArgument.getPlayer(context, "player"),
+                                                        StringArgumentType.getString(context, "spell"),
+                                                        IntegerArgumentType.getInteger(context, "count")))))))
                 .then(Commands.literal("clearall")
                         .then(Commands.argument("player", EntityArgument.player())
                                 .executes(context -> clearAllSpells(context.getSource(), EntityArgument.getPlayer(context, "player")))))
@@ -88,6 +113,20 @@ public final class MagicCommand {
         source.sendSuccess(() -> Component.literal("已向 " + target.getGameProfile().getName() + " 的异常法术书写入【"
                 + spellSpec.zhName() + "】Lv." + clampedLevel + " × " + count + "（重复写入仅用于升级或重试，不会占用多个同名槽位）"),
                 false);
+        return 1;
+    }
+
+    private static int giveBook(CommandSourceStack source, ServerPlayer target, boolean forceRebuild) {
+        ItemStack book = forceRebuild ? AnomalyBookService.rebuildBook(target) : AnomalyBookService.ensureBookPresent(target);
+        source.sendSuccess(() -> Component.literal((forceRebuild ? "已重建并发放 " : "已确认并发放 ")
+                + target.getGameProfile().getName() + " 的异常法术书，当前绑定书 ID：" + AnomalyBookService.getBookId(book)), false);
+        return 1;
+    }
+
+    private static int forceEquip(CommandSourceStack source, ServerPlayer target) {
+        ItemStack book = AnomalyBookService.ensureBookPresent(target);
+        source.sendSuccess(() -> Component.literal("已强制将 " + target.getGameProfile().getName()
+                + " 的异常法术书放回书槽，当前绑定书 ID：" + AnomalyBookService.getBookId(book)), false);
         return 1;
     }
 
@@ -133,6 +172,32 @@ public final class MagicCommand {
 
         source.sendSuccess(() -> Component.literal("已清空 " + target.getGameProfile().getName()
                 + " 的异常法术书，共移除 " + removedCount + " 个法术。"), false);
+        return 1;
+    }
+
+    private static int removeSpell(CommandSourceStack source, ServerPlayer target, String spellInput, int count) {
+        ResourceLocation spellId = AnomalyBookService.resolveSpellId(spellInput);
+        if (spellId == null) {
+            source.sendFailure(Component.literal("未知异常法术：" + spellInput));
+            return 0;
+        }
+
+        var spellSpec = AnomalyBookService.getSpellSpec(spellId);
+        AbstractSpell spell = AnomalyBookService.getRegisteredSpell(spellId);
+        if (spellSpec == null || spell == null) {
+            source.sendFailure(Component.literal("该法术尚未注册或不在当前异常法术白名单中：" + spellId));
+            return 0;
+        }
+
+        ItemStack book = AnomalyBookService.ensureBookPresent(target);
+        int removedLevels = AnomalyBookService.removeSpellLevels(target, book, spell, count);
+        if (removedLevels <= 0) {
+            source.sendFailure(Component.literal("目标异常法术书中不存在法术【" + spellSpec.zhName() + "】"));
+            return 0;
+        }
+
+        source.sendSuccess(() -> Component.literal("已从 " + target.getGameProfile().getName() + " 的异常法术书中扣除【"
+                + spellSpec.zhName() + "】等级 " + removedLevels + " 次"), false);
         return 1;
     }
 

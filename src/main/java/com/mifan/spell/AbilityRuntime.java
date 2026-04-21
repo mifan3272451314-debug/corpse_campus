@@ -141,11 +141,10 @@ public final class AbilityRuntime {
     public static final String TAG_ELEMENTAL_DOMAIN_CENTER_Z = "corpse_campus_elemental_domain_center_z";
     public static final String TAG_ELEMENTAL_DOMAIN_CLOSED = "corpse_campus_elemental_domain_closed";
 
-    public static final int EXECUTIONER_DURABILITY_COST = 15;
+    public static final int EXECUTIONER_DURABILITY_COST = 5;
     public static final int RECORDER_OFFICER_DEFAULT_SECONDS = 15;
     public static final int RECORDER_OFFICER_MIN_SECONDS = 5;
     public static final int RECORDER_OFFICER_MAX_SECONDS = 120;
-    private static final float EXECUTIONER_DAMAGE_RATIO = 0.25F;
     public static final float DOMINANCE_MIN_SURVIVAL_HEALTH = 1.0F;
     public static final float DOMINANCE_MAX_HEALTH_LIMIT = 35.0F;
     public static final float LIFE_THIEF_MIN_SURVIVAL_HEALTH = 1.0F;
@@ -280,8 +279,8 @@ public final class AbilityRuntime {
         return candidates.get(caster.getRandom().nextInt(candidates.size()));
     }
 
-    public static int getExecutionerDamagePercent() {
-        return ExecutionerRuntime.getDamagePercent();
+    public static int getExecutionerDamagePercent(int spellLevel) {
+        return ExecutionerRuntime.getDamagePercent(spellLevel);
     }
 
     public static int getNecroticHealAmount(int spellLevel) {

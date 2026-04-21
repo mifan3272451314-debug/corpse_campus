@@ -24,8 +24,8 @@ public final class ExecutionerRuntime {
     private ExecutionerRuntime() {
     }
 
-    public static int getDamagePercent() {
-        return 25;
+    public static int getDamagePercent(int spellLevel) {
+        return Math.round(getDamageRatio(spellLevel) * 100.0F);
     }
 
     public static boolean isWeapon(ItemStack stack) {
@@ -83,7 +83,7 @@ public final class ExecutionerRuntime {
         }
 
         data.putLong(AbilityRuntime.TAG_EXECUTIONER_LAST_TICK, gameTime);
-        float damage = getDamage(caster, weapon);
+        float damage = getDamage(caster, weapon, spellLevel);
         if (caster.isCrouching()) {
             performGroundSlash(level, caster, spellLevel, damage);
         } else {
@@ -100,14 +100,18 @@ public final class ExecutionerRuntime {
         }
     }
 
-    private static float getDamage(LivingEntity caster, ItemStack weapon) {
+    private static float getDamage(LivingEntity caster, ItemStack weapon, int spellLevel) {
         float base = 4.0F;
         if (weapon.getItem() instanceof SwordItem swordItem) {
             base = swordItem.getDamage();
         }
-        return Math.max(1.0F, base * 0.25F
+        return Math.max(1.0F, base * getDamageRatio(spellLevel)
                 + (float) caster.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.ATTACK_DAMAGE)
                         * 0.1F);
+    }
+
+    private static float getDamageRatio(int spellLevel) {
+        return 0.25F + Math.max(0, spellLevel - 1) * 0.1F;
     }
 
     private static void performWaveSlash(Level level, LivingEntity caster, int spellLevel, float damage) {

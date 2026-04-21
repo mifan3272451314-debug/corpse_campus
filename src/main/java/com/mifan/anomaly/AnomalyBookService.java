@@ -315,8 +315,7 @@ public final class AnomalyBookService {
         }
 
         SpellData existingData = mutable.getSpellAtIndex(existingIndex);
-        int existingLevel = existingData.getLevel()
-                + (existingData.getAdditionalLevel() > 0 ? existingData.getAdditionalLevel() : 0);
+        int existingLevel = existingData.getLevel();
         int removedLevels = Math.min(existingLevel, Math.max(1, count));
         int resultingLevel = existingLevel - removedLevels;
 

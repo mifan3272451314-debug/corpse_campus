@@ -68,6 +68,7 @@
   "tooltip.corpse_campus.necrotic_rebirth_kill_heal": "While undead, only kills can restore health. Heal per kill: %s",
   "tooltip.corpse_campus.executioner_damage_ratio": "Each slash deals %s%% of blade damage",
   "tooltip.corpse_campus.executioner_durability_cost": "Each slash costs %s durability",
+  "tooltip.corpse_campus.executioner_range": "Standing range %s blocks, crouch range %s blocks, crouch radius %s blocks",
   "tooltip.corpse_campus.executioner_hold_cast": "Hold to keep releasing slashes; each trigger also spends mana",
   "tooltip.corpse_campus.executioner_crouch_mode": "While crouching, slashes continuously form at the aimed point",
   "tooltip.corpse_campus.mania_forces_front_attack": "Rushes and attacks targets in front of you, with every hit showing crit impact",

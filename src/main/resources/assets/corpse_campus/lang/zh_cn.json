@@ -69,6 +69,7 @@
   "tooltip.corpse_campus.necrotic_rebirth_kill_heal": "丧尸状态下只能靠击杀恢复生命，每次回复：%s",
   "tooltip.corpse_campus.executioner_damage_ratio": "每次斩击造成刀具伤害的 %s%%",
   "tooltip.corpse_campus.executioner_durability_cost": "每次斩击消耗 %s 点耐久",
+  "tooltip.corpse_campus.executioner_range": "非潜行射程 %s 格，潜行射程 %s 格，潜行范围半径 %s 格",
   "tooltip.corpse_campus.executioner_hold_cast": "长按持续释放斩击；每次生效都会消耗法力",
   "tooltip.corpse_campus.executioner_crouch_mode": "蹲下时改为在瞄准点持续生成斩击",
   "tooltip.corpse_campus.mania_forces_front_attack": "会主动扑向并攻击前方目标，命中必定触发暴击表现",
