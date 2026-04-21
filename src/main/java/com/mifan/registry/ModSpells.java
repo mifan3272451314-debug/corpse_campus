@@ -9,6 +9,7 @@ import com.mifan.spell.dongyue.NecroticRebirthSpell;
 import com.mifan.spell.rizhao.MidasTouchSpell;
 import com.mifan.spell.shengqi.ApothecarySpell;
 import com.mifan.spell.shengqi.HealingSpell;
+import com.mifan.spell.shengqi.HuihunSpell;
 import com.mifan.spell.shengqi.StaminaSpell;
 import com.mifan.spell.xujing.ElementalistSpell;
 import com.mifan.spell.xujing.MarkSpell;
@@ -57,6 +58,7 @@ public final class ModSpells {
     public static final RegistryObject<AbstractSpell> MARK = SPELLS.register("mark", MarkSpell::new);
     public static final RegistryObject<AbstractSpell> HEALING = SPELLS.register("healing", HealingSpell::new);
     public static final RegistryObject<AbstractSpell> STAMINA = SPELLS.register("stamina", StaminaSpell::new);
+    public static final RegistryObject<AbstractSpell> HUIHUN = SPELLS.register("huihun", HuihunSpell::new);
     public static final RegistryObject<AbstractSpell> APOTHECARY = SPELLS.register("apothecary", ApothecarySpell::new);
 
     private ModSpells() {
