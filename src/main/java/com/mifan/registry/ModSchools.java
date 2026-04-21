@@ -37,6 +37,7 @@ public final class ModSchools {
             focus("xujing"),
             "school.corpse_campus.xujing",
             0x7A6FF0,
+            ModAttributes.XUJING_SPELL_POWER,
             SoundRegistry.ENDER_CAST,
             ISSDamageTypes.ENDER_MAGIC);
 
@@ -46,6 +47,7 @@ public final class ModSchools {
             focus("rizhao"),
             "school.corpse_campus.rizhao",
             0xF7C948,
+            ModAttributes.RIZHAO_SPELL_POWER,
             SoundRegistry.HOLY_CAST,
             ISSDamageTypes.HOLY_MAGIC);
 
@@ -55,6 +57,7 @@ public final class ModSchools {
             focus("dongyue"),
             "school.corpse_campus.dongyue",
             0x3BA56A,
+            ModAttributes.DONGYUE_SPELL_POWER,
             SoundRegistry.BLOOD_CAST,
             ISSDamageTypes.BLOOD_MAGIC);
 
@@ -64,6 +67,7 @@ public final class ModSchools {
             focus("yuzhe"),
             "school.corpse_campus.yuzhe",
             0x8B7AA8,
+            ModAttributes.YUZHE_SPELL_POWER,
             SoundRegistry.EVOCATION_CAST,
             ISSDamageTypes.ELDRITCH_MAGIC);
 
@@ -73,6 +77,7 @@ public final class ModSchools {
             focus("shengqi"),
             "school.corpse_campus.shengqi",
             0xB8FFF1,
+            ModAttributes.SHENGQI_SPELL_POWER,
             SoundRegistry.HOLY_CAST,
             ISSDamageTypes.HOLY_MAGIC);
 
@@ -89,13 +94,14 @@ public final class ModSchools {
             TagKey<Item> focusTag,
             String translationKey,
             int color,
+            RegistryObject<Attribute> powerAttribute,
             RegistryObject<SoundEvent> castSound,
             ResourceKey<DamageType> damageType) {
         return SCHOOLS.register(name, () -> new SchoolType(
                 schoolId,
                 focusTag,
                 Component.translatable(translationKey).withStyle(Style.EMPTY.withColor(color)),
-                attribute(AttributeRegistry.SPELL_POWER),
+                attribute(powerAttribute),
                 attribute(AttributeRegistry.SPELL_RESIST),
                 LazyOptional.of(castSound::get),
                 damageType));

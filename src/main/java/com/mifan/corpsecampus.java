@@ -1,10 +1,13 @@
 package com.mifan;
 
+import com.mifan.registry.ModAttributes;
 import com.mifan.network.ModNetwork;
 import com.mifan.registry.ModMobEffects;
+import com.mifan.registry.ModItems;
 import com.mifan.registry.ModSchools;
 import com.mifan.registry.ModSpells;
 import com.mojang.logging.LogUtils;
+import io.redspace.ironsspellbooks.render.SpellBookCurioRenderer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.food.FoodProperties;
@@ -32,6 +35,7 @@ import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.RegistryObject;
 import org.slf4j.Logger;
+import top.theillusivec4.curios.api.client.CuriosRendererRegistry;
 
 // The value here should match an entry in the META-INF/mods.toml file
 @Mod(corpsecampus.MODID)
@@ -90,6 +94,8 @@ public class corpsecampus {
         ITEMS.register(modEventBus);
         // Register the Deferred Register to the mod event bus so tabs get registered
         CREATIVE_MODE_TABS.register(modEventBus);
+        ModAttributes.register(modEventBus);
+        ModItems.register(modEventBus);
         // Register custom spell schools for Iron's Spells 'n Spellbooks
         ModSchools.register(modEventBus);
         // Register custom marker effects for toggle abilities
@@ -127,6 +133,8 @@ public class corpsecampus {
     private void addCreative(BuildCreativeModeTabContentsEvent event) {
         if (event.getTabKey() == CreativeModeTabs.BUILDING_BLOCKS)
             event.accept(EXAMPLE_BLOCK_ITEM);
+        if (event.getTabKey() == CreativeModeTabs.TOOLS_AND_UTILITIES)
+            event.accept(ModItems.ANOMALY_TRAIT_SPELLBOOK.get());
     }
 
     // You can use SubscribeEvent and let the Event Bus discover methods to call
@@ -146,6 +154,8 @@ public class corpsecampus {
             // Some client setup code
             LOGGER.info("HELLO FROM CLIENT SETUP");
             LOGGER.info("MINECRAFT NAME >> {}", Minecraft.getInstance().getUser().getName());
+            event.enqueueWork(() -> CuriosRendererRegistry.register(ModItems.ANOMALY_TRAIT_SPELLBOOK.get(),
+                    SpellBookCurioRenderer::new));
         }
     }
 }
