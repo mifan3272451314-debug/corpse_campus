@@ -171,6 +171,30 @@ public final class AnomalyBookService {
         return equipped.isEmpty() ? primary : equipped;
     }
 
+    public static ItemStack rebuildBook(ServerPlayer player) {
+        UUID expectedBookId = getBoundBookId(player);
+
+        clearAllAnomalyBooks(player, BookLocation.CURIO, player);
+        clearAllAnomalyBooks(player, BookLocation.INVENTORY, player);
+        clearAllAnomalyBooks(player, BookLocation.OFFHAND, player);
+
+        ItemStack rebuilt = restoreOrCreateBook(player, expectedBookId);
+        ensureSpellContainer(rebuilt);
+
+        UUID bookId = getBookId(rebuilt);
+        if (bookId == null) {
+            bookId = expectedBookId != null ? expectedBookId : UUID.randomUUID();
+        }
+
+        bindBookToPlayer(player, rebuilt, bookId);
+        setBoundBookId(player, bookId);
+        recalculateBookBonuses(rebuilt);
+        equipPrimaryBook(player, null, -1, rebuilt);
+        updateBookSnapshot(player, rebuilt);
+        clampCurrentManaToMax(player);
+        return getCurioSpellbookStack(player);
+    }
+
     public static boolean addSpell(ServerPlayer player, ItemStack book, AbstractSpell spell, int requestedSpellLevel,
             int count) {
         ensureSpellContainer(book);
@@ -280,6 +304,33 @@ public final class AnomalyBookService {
 
         persistSpellContainerChange(player, book, mutable);
         return removedCount;
+    }
+
+    public static int removeSpellLevels(ServerPlayer player, ItemStack book, AbstractSpell spell, int count) {
+        ensureSpellContainer(book);
+        ISpellContainerMutable mutable = ISpellContainer.getOrCreate(book).mutableCopy();
+        int existingIndex = mutable.getIndexForSpell(spell);
+        if (existingIndex < 0) {
+            return 0;
+        }
+
+        SpellData existingData = mutable.getSpellAtIndex(existingIndex);
+        int existingLevel = existingData.getLevel()
+                + (existingData.getAdditionalLevel() > 0 ? existingData.getAdditionalLevel() : 0);
+        int removedLevels = Math.min(existingLevel, Math.max(1, count));
+        int resultingLevel = existingLevel - removedLevels;
+
+        if (!mutable.removeSpellAtIndex(existingIndex)) {
+            return 0;
+        }
+
+        if (resultingLevel > 0 && !mutable.addSpellAtIndex(spell, resultingLevel, existingIndex, existingData.isLocked())) {
+            mutable.addSpellAtIndex(spell, existingLevel, existingIndex, existingData.isLocked());
+            return 0;
+        }
+
+        persistSpellContainerChange(player, book, mutable);
+        return removedLevels;
     }
 
     private static void processCandidate(ServerPlayer player, RecoveryState state, BookLocation location, int index,
@@ -396,6 +447,36 @@ public final class AnomalyBookService {
             }
             case CURIO -> getSpellbookStacksHandler(player).ifPresent(handler -> {
                 handler.getStacks().setStackInSlot(index, ItemStack.EMPTY);
+                handler.update();
+            });
+        }
+    }
+
+    private static void clearAllAnomalyBooks(ServerPlayer player, BookLocation location, ServerPlayer ignored) {
+        switch (location) {
+            case INVENTORY -> {
+                for (int i = 0; i < player.getInventory().items.size(); i++) {
+                    if (isAnomalyBook(player.getInventory().items.get(i))) {
+                        player.getInventory().items.set(i, ItemStack.EMPTY);
+                    }
+                }
+                player.getInventory().setChanged();
+            }
+            case OFFHAND -> {
+                for (int i = 0; i < player.getInventory().offhand.size(); i++) {
+                    if (isAnomalyBook(player.getInventory().offhand.get(i))) {
+                        player.getInventory().offhand.set(i, ItemStack.EMPTY);
+                    }
+                }
+                player.getInventory().setChanged();
+            }
+            case CURIO -> getSpellbookStacksHandler(player).ifPresent(handler -> {
+                IDynamicStackHandler stacks = handler.getStacks();
+                for (int i = 0; i < stacks.getSlots(); i++) {
+                    if (isAnomalyBook(stacks.getStackInSlot(i))) {
+                        stacks.setStackInSlot(i, ItemStack.EMPTY);
+                    }
+                }
                 handler.update();
             });
         }
