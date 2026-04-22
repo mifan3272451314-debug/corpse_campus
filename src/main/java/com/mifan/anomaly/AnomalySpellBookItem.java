@@ -53,7 +53,7 @@ public class AnomalySpellBookItem extends SpellBook {
                     corpsecampus.MODID + ":anomaly_spellbook_max_mana", manaBonus, AttributeModifier.Operation.ADDITION));
         }
 
-        AnomalySpellRank highestRank = AnomalyBookService.getHighestRank(stack);
+        AnomalySpellRank highestRank = AnomalyBookService.computeLoadedHighestRank(stack);
         if (highestRank != null && highestRank.getHealthBonus() > 0.0D) {
             builder.put(Attributes.MAX_HEALTH, new AttributeModifier(MAX_HEALTH_UUID,
                     corpsecampus.MODID + ":anomaly_spellbook_max_health",
