@@ -321,6 +321,12 @@ public final class AnomalyBookService {
         updateBookSnapshot(player, book);
         refreshCurioState(player);
         clampCurrentManaToMax(player);
+
+        // 成功写入法术后将玩家纳入觉醒计数
+        net.minecraft.server.MinecraftServer server = player.getServer();
+        if (server != null) {
+            AnomalyLimitService.get(server).markAwakened(player.getUUID());
+        }
         return true;
     }
 
