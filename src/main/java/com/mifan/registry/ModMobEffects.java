@@ -6,6 +6,7 @@ import io.redspace.ironsspellbooks.api.registry.AttributeRegistry;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectCategory;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
@@ -75,6 +76,9 @@ public final class ModMobEffects {
     public static final RegistryObject<MobEffect> AUTHORITY_GRASP_DRAINED = MOB_EFFECTS.register("authority_grasp_drained",
             () -> new AbilityMarkerEffect(0x3A0F55));
 
+    public static final RegistryObject<MobEffect> GOLDEN_CROW_STUN = MOB_EFFECTS.register("golden_crow_stun",
+            GoldenCrowStunEffect::new);
+
     private ModMobEffects() {
     }
 
@@ -101,6 +105,27 @@ public final class ModMobEffects {
                     AbilityRuntime.LIGHT_PRAYER_SPELL_RESIST_UUID,
                     AbilityRuntime.LIGHT_PRAYER_SPELL_RESIST_BONUS,
                     AttributeModifier.Operation.MULTIPLY_BASE);
+        }
+
+        @Override
+        public boolean isDurationEffectTick(int duration, int amplifier) {
+            return false;
+        }
+    }
+
+    private static final class GoldenCrowStunEffect extends MobEffect {
+        private GoldenCrowStunEffect() {
+            super(MobEffectCategory.HARMFUL, 0xFFC542);
+            this.addAttributeModifier(
+                    Attributes.MOVEMENT_SPEED,
+                    AbilityRuntime.GOLDEN_CROW_STUN_UUID,
+                    -1.0D,
+                    AttributeModifier.Operation.MULTIPLY_TOTAL);
+            this.addAttributeModifier(
+                    Attributes.ATTACK_DAMAGE,
+                    AbilityRuntime.GOLDEN_CROW_STUN_UUID,
+                    -1.0D,
+                    AttributeModifier.Operation.MULTIPLY_TOTAL);
         }
 
         @Override

@@ -195,6 +195,21 @@ public final class AbilityRuntime {
     public static final String LIGHT_PRAYER_SPELL_RESIST_UUID =
             "c0d4b1a3-1c07-11ee-9fa1-0002b3c1ee01";
 
+    public static final String TAG_GOLDEN_CROW_ACTIVE = "corpse_campus_golden_crow_active";
+    public static final String TAG_GOLDEN_CROW_ENTITY_UUID = "corpse_campus_golden_crow_entity_uuid";
+    public static final String TAG_GOLDEN_CROW_EXPIRE_TICK = "corpse_campus_golden_crow_expire_tick";
+    public static final String TAG_GOLDEN_CROW_LAST_DAY = "corpse_campus_golden_crow_last_day";
+    public static final String TAG_GOLDEN_CROW_MANA_SPENT = "corpse_campus_golden_crow_mana_spent";
+    public static final String GOLDEN_CROW_STUN_UUID = "7C1F5B3A-8D4E-4B3A-B5C0-2D1F6A9E3B7C";
+
+    public static final int GOLDEN_CROW_DURATION_TICKS = 20 * 60 * 3;
+    public static final int GOLDEN_CROW_STUN_DURATION_TICKS = 60;
+    public static final double GOLDEN_CROW_STUN_RADIUS = 30.0D;
+    public static final double GOLDEN_CROW_EXPLOSION_RADIUS = 10.0D;
+    public static final float GOLDEN_CROW_DAMAGE_PER_MANA = 0.5F;
+    public static final float GOLDEN_CROW_THROW_SPEED = 1.6F;
+    public static final int GOLDEN_CROW_COOLDOWN_SECONDS = 1200;
+
     public static final int EXECUTIONER_DURABILITY_COST = 5;
     public static final int RECORDER_OFFICER_DEFAULT_SECONDS = 15;
     public static final int RECORDER_OFFICER_MIN_SECONDS = 5;
