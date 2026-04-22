@@ -437,6 +437,8 @@
   "screen.corpse_campus.necromancer.count": "魂魄 ×%s",
   "screen.corpse_campus.necromancer.btn_summon": "召唤",
   "screen.corpse_campus.necromancer.btn_enhance": "强化 %s蓝",
+  "screen.corpse_campus.necromancer.btn_done": "完成",
+  "screen.corpse_campus.necromancer.hint": "按 ESC 或点击完成结束召唤，退出后才进入冷却",
   "hud.corpse_campus.necromancer_souls": "魂魄 ×%s",
 
   "spell.corpse_campus.rewind_worm": "回溯之虫",

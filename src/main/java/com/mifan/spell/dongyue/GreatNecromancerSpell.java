@@ -1,7 +1,6 @@
 package com.mifan.spell.dongyue;
 
 import com.mifan.network.ModNetwork;
-import com.mifan.network.clientbound.OpenNecromancerScreenPacket;
 import com.mifan.registry.ModSchools;
 import com.mifan.spell.AbilityRuntime;
 import com.mifan.spell.runtime.NecromancerRuntime;
@@ -93,29 +92,31 @@ public class GreatNecromancerSpell extends AbstractSpell {
             return;
         }
 
+        NecromancerRuntime.clearNecromancerCooldown(caster);
+
+        int normalCost = getManaCost(spellLevel);
+        int enhancedCost = normalCost + AbilityRuntime.NECROMANCER_ENHANCE_MANA_COST;
+
         if (caster.isShiftKeyDown()) {
-            handleQuickSummon(caster, false);
+            boolean summoned = handleQuickSummon(caster, false, normalCost);
+            if (!summoned) {
+                NecromancerRuntime.refundManaAndClearCooldown(caster, playerMagicData, normalCost);
+            }
         } else {
-            openSelectionScreen(caster);
+            NecromancerRuntime.refundManaAndClearCooldown(caster, playerMagicData, normalCost);
+            openSelectionScreen(caster, spellLevel, normalCost, enhancedCost);
         }
 
         super.onCast(level, spellLevel, entity, castSource, playerMagicData);
     }
 
-    private void openSelectionScreen(ServerPlayer caster) {
-        var souls = NecromancerRuntime.collectSouls(caster);
-        List<OpenNecromancerScreenPacket.SoulEntry> entries = new java.util.ArrayList<>(souls.size());
-        for (var entry : souls.entrySet()) {
-            entries.add(new OpenNecromancerScreenPacket.SoulEntry(entry.getKey().toString(), entry.getValue()));
-        }
-        MagicData magicData = MagicData.getPlayerMagicData(caster);
-        float mana = magicData == null ? 0.0F : magicData.getMana();
-        ModNetwork.sendToPlayer(
-                new OpenNecromancerScreenPacket(entries, mana, AbilityRuntime.NECROMANCER_ENHANCE_MANA_COST),
-                caster);
+    private void openSelectionScreen(ServerPlayer caster, int spellLevel, int normalCost, int enhancedCost) {
+        NecromancerRuntime.Session session = NecromancerRuntime.startSession(caster, spellLevel, normalCost,
+                enhancedCost);
+        ModNetwork.sendToPlayer(NecromancerRuntime.buildOpenPacket(caster, session), caster);
     }
 
-    private void handleQuickSummon(ServerPlayer caster, boolean forceEnhanced) {
+    private boolean handleQuickSummon(ServerPlayer caster, boolean forceEnhanced, int manaCost) {
         ResourceLocation lastKill = NecromancerRuntime.getLastKillType(caster);
         if (lastKill == null || NecromancerRuntime.getSoulCount(caster, lastKill) <= 0) {
             for (var entry : NecromancerRuntime.collectSouls(caster).entrySet()) {
@@ -127,13 +128,13 @@ public class GreatNecromancerSpell extends AbstractSpell {
         }
         if (lastKill == null) {
             caster.displayClientMessage(Component.translatable("message.corpse_campus.necromancer_no_soul"), true);
-            return;
+            return false;
         }
 
-        NecromancerRuntime.SummonResult result = NecromancerRuntime.summon(caster, lastKill, forceEnhanced);
+        NecromancerRuntime.SummonResult result = NecromancerRuntime.summon(caster, lastKill, forceEnhanced, manaCost);
         if (!result.success()) {
             caster.displayClientMessage(Component.translatable(result.failKey()), true);
-            return;
+            return false;
         }
 
         EntityType<?> type = result.type();
@@ -145,6 +146,7 @@ public class GreatNecromancerSpell extends AbstractSpell {
         caster.displayClientMessage(Component.translatable(messageKey, name), false);
         caster.level().playSound(null, caster.blockPosition(), SoundEvents.WITHER_SPAWN,
                 SoundSource.PLAYERS, 0.35F, result.enhanced() ? 1.4F : 1.0F);
+        return true;
     }
 
     @Override

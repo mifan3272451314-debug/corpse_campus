@@ -13,6 +13,8 @@ import com.mifan.network.clientbound.OpenMimicReleaseScreenPacket;
 import com.mifan.network.clientbound.OpenNecromancerScreenPacket;
 import com.mifan.network.clientbound.OpenPlayerStatusScreenPacket;
 import com.mifan.network.clientbound.OpenRecorderOfficerScreenPacket;
+import com.mifan.network.clientbound.UpdateNecromancerScreenPacket;
+import com.mifan.network.serverbound.CloseNecromancerScreenPacket;
 import com.mifan.network.serverbound.MimicAbsorbPacket;
 import com.mifan.network.serverbound.MimicReleasePacket;
 import com.mifan.network.serverbound.SetDominanceTargetPacket;
@@ -29,7 +31,7 @@ import net.minecraftforge.network.PacketDistributor;
 import net.minecraftforge.network.simple.SimpleChannel;
 
 public final class ModNetwork {
-    private static final String PROTOCOL_VERSION = "2";
+    private static final String PROTOCOL_VERSION = "3";
 
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             ResourceLocation.fromNamespaceAndPath(corpsecampus.MODID, "main"),
@@ -167,6 +169,18 @@ public final class ModNetwork {
                 .encoder(NecromancerSoulCountPacket::encode)
                 .decoder(NecromancerSoulCountPacket::decode)
                 .consumerMainThread(NecromancerSoulCountPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(UpdateNecromancerScreenPacket.class, packetId++, NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(UpdateNecromancerScreenPacket::encode)
+                .decoder(UpdateNecromancerScreenPacket::decode)
+                .consumerMainThread(UpdateNecromancerScreenPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(CloseNecromancerScreenPacket.class, packetId++, NetworkDirection.PLAY_TO_SERVER)
+                .encoder(CloseNecromancerScreenPacket::encode)
+                .decoder(CloseNecromancerScreenPacket::decode)
+                .consumerMainThread(CloseNecromancerScreenPacket::handle)
                 .add();
     }
 

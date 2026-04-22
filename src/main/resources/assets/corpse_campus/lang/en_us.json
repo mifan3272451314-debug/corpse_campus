@@ -399,6 +399,8 @@
   "screen.corpse_campus.necromancer.count": "Souls x%s",
   "screen.corpse_campus.necromancer.btn_summon": "Summon",
   "screen.corpse_campus.necromancer.btn_enhance": "Enhance %s mana",
+  "screen.corpse_campus.necromancer.btn_done": "Done",
+  "screen.corpse_campus.necromancer.hint": "Press ESC or click Done to finish; the cooldown only starts after you close the screen",
   "hud.corpse_campus.necromancer_souls": "Souls x%s",
 
   "spell.corpse_campus.rewind_worm": "Rewind Worm",

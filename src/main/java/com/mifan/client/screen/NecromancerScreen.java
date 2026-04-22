@@ -2,8 +2,9 @@ package com.mifan.client.screen;
 
 import com.mifan.network.ModNetwork;
 import com.mifan.network.clientbound.OpenNecromancerScreenPacket;
+import com.mifan.network.clientbound.UpdateNecromancerScreenPacket;
+import com.mifan.network.serverbound.CloseNecromancerScreenPacket;
 import com.mifan.network.serverbound.SummonNecromancerMinionPacket;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
@@ -21,18 +22,41 @@ public class NecromancerScreen extends Screen {
     private static final int ROW_HEIGHT = 26;
     private static final int ROW_WIDTH = 260;
 
-    private final List<OpenNecromancerScreenPacket.SoulEntry> souls;
-    private final float currentMana;
-    private final int enhanceCost;
+    private List<OpenNecromancerScreenPacket.SoulEntry> souls;
+    private float currentMana;
+    private int enhanceCost;
+    private boolean canCastNormal;
+    private boolean canCastEnhanced;
     private int scrollOffset;
+    private boolean closeSent;
 
     public NecromancerScreen(OpenNecromancerScreenPacket packet) {
         super(Component.translatable("screen.corpse_campus.necromancer.title"));
-        List<OpenNecromancerScreenPacket.SoulEntry> copy = new ArrayList<>(packet.getSouls());
+        applySnapshot(packet.getSouls(), packet.getCurrentMana(), packet.getEnhanceCost(),
+                packet.canCastNormal(), packet.canCastEnhanced());
+    }
+
+    public void applyUpdate(UpdateNecromancerScreenPacket packet) {
+        applySnapshot(packet.getSouls(), packet.getCurrentMana(), packet.getEnhanceCost(),
+                packet.canCastNormal(), packet.canCastEnhanced());
+        int maxOffset = Math.max(0, souls.size() - MAX_VISIBLE);
+        if (scrollOffset > maxOffset) {
+            scrollOffset = maxOffset;
+        }
+        if (this.minecraft != null) {
+            rebuildButtons();
+        }
+    }
+
+    private void applySnapshot(List<OpenNecromancerScreenPacket.SoulEntry> incoming, float mana, int enhance,
+            boolean canCastNormal, boolean canCastEnhanced) {
+        List<OpenNecromancerScreenPacket.SoulEntry> copy = new ArrayList<>(incoming);
         copy.sort(Comparator.comparingInt(OpenNecromancerScreenPacket.SoulEntry::count).reversed());
         this.souls = copy;
-        this.currentMana = packet.getCurrentMana();
-        this.enhanceCost = packet.getEnhanceCost();
+        this.currentMana = mana;
+        this.enhanceCost = enhance;
+        this.canCastNormal = canCastNormal;
+        this.canCastEnhanced = canCastEnhanced;
     }
 
     @Override
@@ -45,35 +69,30 @@ public class NecromancerScreen extends Screen {
         int top = Math.max(48, this.height / 2 - 96);
         int left = (this.width - ROW_WIDTH) / 2;
 
-        boolean canAffordEnhance = currentMana + 1.0E-4F >= enhanceCost;
-
         int visible = Math.min(MAX_VISIBLE, Math.max(0, souls.size() - scrollOffset));
         for (int i = 0; i < visible; i++) {
             OpenNecromancerScreenPacket.SoulEntry entry = souls.get(scrollOffset + i);
             int rowY = top + i * ROW_HEIGHT;
             String typeIdString = entry.typeId();
 
-            addRenderableWidget(Button.builder(
+            Button summonBtn = Button.builder(
                     Component.translatable("screen.corpse_campus.necromancer.btn_summon"),
-                    button -> {
-                        ModNetwork.CHANNEL.sendToServer(new SummonNecromancerMinionPacket(typeIdString, false));
-                        onClose();
-                    })
+                    button -> ModNetwork.CHANNEL
+                            .sendToServer(new SummonNecromancerMinionPacket(typeIdString, false)))
                     .pos(left + 140, rowY)
                     .size(56, 20)
-                    .build());
+                    .build();
+            summonBtn.active = canCastNormal && entry.count() > 0;
+            addRenderableWidget(summonBtn);
 
             Button enhancedBtn = Button.builder(
-                    Component.translatable("screen.corpse_campus.necromancer.btn_enhance",
-                            enhanceCost),
-                    button -> {
-                        ModNetwork.CHANNEL.sendToServer(new SummonNecromancerMinionPacket(typeIdString, true));
-                        onClose();
-                    })
+                    Component.translatable("screen.corpse_campus.necromancer.btn_enhance", enhanceCost),
+                    button -> ModNetwork.CHANNEL
+                            .sendToServer(new SummonNecromancerMinionPacket(typeIdString, true)))
                     .pos(left + 200, rowY)
                     .size(60, 20)
                     .build();
-            enhancedBtn.active = canAffordEnhance;
+            enhancedBtn.active = canCastEnhanced && entry.count() > 0;
             addRenderableWidget(enhancedBtn);
         }
 
@@ -91,7 +110,8 @@ public class NecromancerScreen extends Screen {
             }).pos(left - 28, top + (MAX_VISIBLE - 1) * ROW_HEIGHT).size(20, 20).build());
         }
 
-        addRenderableWidget(Button.builder(Component.translatable("gui.cancel"), button -> onClose())
+        addRenderableWidget(Button.builder(Component.translatable("screen.corpse_campus.necromancer.btn_done"),
+                button -> onClose())
                 .pos(left + ROW_WIDTH / 2 - 40, top + MAX_VISIBLE * ROW_HEIGHT + 16)
                 .size(80, 20)
                 .build());
@@ -114,6 +134,15 @@ public class NecromancerScreen extends Screen {
     }
 
     @Override
+    public void onClose() {
+        if (!closeSent) {
+            closeSent = true;
+            ModNetwork.CHANNEL.sendToServer(new CloseNecromancerScreenPacket());
+        }
+        super.onClose();
+    }
+
+    @Override
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
         renderBackground(guiGraphics);
         super.render(guiGraphics, mouseX, mouseY, partialTick);
@@ -127,6 +156,11 @@ public class NecromancerScreen extends Screen {
                 centerX,
                 top + 14,
                 0xA4B8D2);
+        guiGraphics.drawCenteredString(this.font,
+                Component.translatable("screen.corpse_campus.necromancer.hint"),
+                centerX,
+                top + 26,
+                0x7F8AA1);
 
         int rowTop = Math.max(48, this.height / 2 - 96);
         int left = (this.width - ROW_WIDTH) / 2;

@@ -3,10 +3,15 @@ package com.mifan.spell.runtime;
 import com.mifan.anomaly.AnomalyBookService;
 import com.mifan.network.ModNetwork;
 import com.mifan.network.clientbound.NecromancerSoulCountPacket;
+import com.mifan.network.clientbound.OpenNecromancerScreenPacket;
+import com.mifan.network.clientbound.UpdateNecromancerScreenPacket;
 import com.mifan.registry.ModSpells;
 import com.mifan.spell.AbilityRuntime;
 import io.redspace.ironsspellbooks.api.magic.MagicData;
+import io.redspace.ironsspellbooks.api.spells.AbstractSpell;
+import io.redspace.ironsspellbooks.api.spells.CastSource;
 import io.redspace.ironsspellbooks.api.spells.ISpellContainer;
+import io.redspace.ironsspellbooks.network.SyncManaPacket;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -45,6 +50,145 @@ import java.util.UUID;
 
 public final class NecromancerRuntime {
     private NecromancerRuntime() {
+    }
+
+    private static final Map<UUID, Session> SESSIONS = new HashMap<>();
+
+    public static final class Session {
+        private final int normalCost;
+        private final int enhancedCost;
+        private final int spellLevel;
+        private boolean summonedAtLeastOnce;
+
+        private Session(int normalCost, int enhancedCost, int spellLevel) {
+            this.normalCost = normalCost;
+            this.enhancedCost = enhancedCost;
+            this.spellLevel = spellLevel;
+        }
+
+        public int normalCost() {
+            return normalCost;
+        }
+
+        public int enhancedCost() {
+            return enhancedCost;
+        }
+
+        public int spellLevel() {
+            return spellLevel;
+        }
+
+        public boolean summonedAtLeastOnce() {
+            return summonedAtLeastOnce;
+        }
+    }
+
+    public static Session startSession(ServerPlayer player, int spellLevel, int normalCost, int enhancedCost) {
+        Session session = new Session(normalCost, enhancedCost, spellLevel);
+        SESSIONS.put(player.getUUID(), session);
+        return session;
+    }
+
+    public static Session getSession(Player player) {
+        return SESSIONS.get(player.getUUID());
+    }
+
+    public static void endSession(ServerPlayer player) {
+        Session session = SESSIONS.remove(player.getUUID());
+        if (session == null) {
+            return;
+        }
+        if (session.summonedAtLeastOnce) {
+            applyCooldown(player);
+        }
+    }
+
+    public static void discardSession(Player player) {
+        SESSIONS.remove(player.getUUID());
+    }
+
+    public static void refundManaAndClearCooldown(ServerPlayer player, MagicData magicData, float manaAmount) {
+        if (magicData != null && manaAmount > 0) {
+            magicData.setMana(magicData.getMana() + manaAmount);
+            io.redspace.ironsspellbooks.setup.PacketDistributor.sendToPlayer(player, new SyncManaPacket(magicData));
+        }
+        clearNecromancerCooldown(player);
+    }
+
+    public static void clearNecromancerCooldown(ServerPlayer player) {
+        MagicData magicData = MagicData.getPlayerMagicData(player);
+        if (magicData == null) {
+            return;
+        }
+        AbstractSpell spell = ModSpells.GREAT_NECROMANCER.get();
+        if (magicData.getPlayerCooldowns().removeCooldown(spell.getSpellId())) {
+            magicData.getPlayerCooldowns().syncToPlayer(player);
+        }
+    }
+
+    public static void applyCooldown(ServerPlayer player) {
+        MagicData magicData = MagicData.getPlayerMagicData(player);
+        if (magicData == null) {
+            return;
+        }
+        AbstractSpell spell = ModSpells.GREAT_NECROMANCER.get();
+        io.redspace.ironsspellbooks.api.magic.MagicHelper.MAGIC_MANAGER.addCooldown(player, spell, CastSource.SPELLBOOK);
+    }
+
+    public static boolean trySpendMana(ServerPlayer player, MagicData magicData, int amount) {
+        if (magicData == null) {
+            return amount <= 0;
+        }
+        if (amount <= 0) {
+            return true;
+        }
+        if (magicData.getMana() + 1.0E-4F < amount) {
+            return false;
+        }
+        magicData.setMana(Math.max(0.0F, magicData.getMana() - amount));
+        io.redspace.ironsspellbooks.setup.PacketDistributor.sendToPlayer(player, new SyncManaPacket(magicData));
+        return true;
+    }
+
+    public static void pushScreenUpdate(ServerPlayer player) {
+        Session session = SESSIONS.get(player.getUUID());
+        if (session == null) {
+            return;
+        }
+        ModNetwork.sendToPlayer(buildUpdatePacket(player, session), player);
+    }
+
+    public static OpenNecromancerScreenPacket buildOpenPacket(ServerPlayer player, Session session) {
+        List<OpenNecromancerScreenPacket.SoulEntry> entries = collectSoulEntries(player);
+        MagicData magicData = MagicData.getPlayerMagicData(player);
+        float mana = magicData == null ? 0.0F : magicData.getMana();
+        return new OpenNecromancerScreenPacket(
+                entries,
+                mana,
+                AbilityRuntime.NECROMANCER_ENHANCE_MANA_COST,
+                mana + 1.0E-4F >= session.normalCost,
+                mana + 1.0E-4F >= session.enhancedCost);
+    }
+
+    public static UpdateNecromancerScreenPacket buildUpdatePacket(ServerPlayer player, Session session) {
+        List<OpenNecromancerScreenPacket.SoulEntry> entries = collectSoulEntries(player);
+        MagicData magicData = MagicData.getPlayerMagicData(player);
+        float mana = magicData == null ? 0.0F : magicData.getMana();
+        return new UpdateNecromancerScreenPacket(
+                entries,
+                mana,
+                AbilityRuntime.NECROMANCER_ENHANCE_MANA_COST,
+                mana + 1.0E-4F >= session.normalCost,
+                mana + 1.0E-4F >= session.enhancedCost);
+    }
+
+    private static List<OpenNecromancerScreenPacket.SoulEntry> collectSoulEntries(Player player) {
+        Map<ResourceLocation, Integer> souls = collectSouls(player);
+        List<OpenNecromancerScreenPacket.SoulEntry> entries = new ArrayList<>(souls.size());
+        for (Map.Entry<ResourceLocation, Integer> entry : souls.entrySet()) {
+            entries.add(new OpenNecromancerScreenPacket.SoulEntry(entry.getKey().toString(), entry.getValue()));
+        }
+        return entries;
     }
 
     public static boolean playerOwnsNecromancer(Player player) {
@@ -175,7 +319,8 @@ public final class NecromancerRuntime {
         return true;
     }
 
-    public static SummonResult summon(ServerPlayer caster, ResourceLocation typeId, boolean forceEnhanced) {
+    public static SummonResult summon(ServerPlayer caster, ResourceLocation typeId, boolean forceEnhanced,
+            int manaCost) {
         if (typeId == null) {
             return SummonResult.fail("message.corpse_campus.necromancer_no_soul");
         }
@@ -189,15 +334,14 @@ public final class NecromancerRuntime {
             return SummonResult.fail("message.corpse_campus.necromancer_type_missing");
         }
 
-        boolean enhanced = forceEnhanced || caster.getRandom().nextFloat() < AbilityRuntime.NECROMANCER_BUFF_NATURAL_CHANCE;
-
-        if (forceEnhanced) {
-            MagicData magicData = MagicData.getPlayerMagicData(caster);
-            if (magicData == null || magicData.getMana() + 1.0E-4F < AbilityRuntime.NECROMANCER_ENHANCE_MANA_COST) {
+        MagicData magicData = MagicData.getPlayerMagicData(caster);
+        if (manaCost > 0) {
+            if (magicData == null || magicData.getMana() + 1.0E-4F < manaCost) {
                 return SummonResult.fail("message.corpse_campus.necromancer_no_mana");
             }
-            magicData.setMana(magicData.getMana() - AbilityRuntime.NECROMANCER_ENHANCE_MANA_COST);
         }
+
+        boolean enhanced = forceEnhanced || caster.getRandom().nextFloat() < AbilityRuntime.NECROMANCER_BUFF_NATURAL_CHANCE;
 
         Entity created;
         try {
@@ -240,6 +384,16 @@ public final class NecromancerRuntime {
         appendMinionUuid(caster, mob.getUUID());
         spawnSummonEffects(caster.serverLevel(), mob);
         syncSoulCount(caster);
+
+        if (manaCost > 0 && magicData != null) {
+            magicData.setMana(Math.max(0.0F, magicData.getMana() - manaCost));
+            io.redspace.ironsspellbooks.setup.PacketDistributor.sendToPlayer(caster, new SyncManaPacket(magicData));
+        }
+
+        Session session = SESSIONS.get(caster.getUUID());
+        if (session != null) {
+            session.summonedAtLeastOnce = true;
+        }
 
         return SummonResult.success(enhanced, type);
     }

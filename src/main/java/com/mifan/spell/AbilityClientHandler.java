@@ -18,6 +18,7 @@ import com.mifan.network.clientbound.OpenMimicAbsorbScreenPacket;
 import com.mifan.network.clientbound.OpenMimicReleaseScreenPacket;
 import com.mifan.network.clientbound.OpenNecromancerScreenPacket;
 import com.mifan.network.clientbound.OpenRecorderOfficerScreenPacket;
+import com.mifan.network.clientbound.UpdateNecromancerScreenPacket;
 import com.mifan.registry.ModMobEffects;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.Minecraft;
@@ -76,6 +77,13 @@ public final class AbilityClientHandler {
             return;
         }
         minecraft.setScreen(new NecromancerScreen(packet));
+    }
+
+    public static void updateNecromancerScreen(UpdateNecromancerScreenPacket packet) {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.screen instanceof NecromancerScreen screen) {
+            screen.applyUpdate(packet);
+        }
     }
 
     public static void updateNecromancerSoulCount(int total) {

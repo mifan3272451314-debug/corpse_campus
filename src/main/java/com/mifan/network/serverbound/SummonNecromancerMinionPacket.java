@@ -1,5 +1,6 @@
 package com.mifan.network.serverbound;
 
+import com.mifan.spell.AbilityRuntime;
 import com.mifan.spell.runtime.NecromancerRuntime;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.FriendlyByteBuf;
@@ -42,9 +43,16 @@ public class SummonNecromancerMinionPacket {
             if (typeId == null) {
                 return;
             }
-            NecromancerRuntime.SummonResult result = NecromancerRuntime.summon(sender, typeId, packet.forceEnhanced);
+            NecromancerRuntime.Session session = NecromancerRuntime.getSession(sender);
+            int cost = session == null
+                    ? (packet.forceEnhanced ? AbilityRuntime.NECROMANCER_ENHANCE_MANA_COST : 0)
+                    : (packet.forceEnhanced ? session.enhancedCost() : session.normalCost());
+
+            NecromancerRuntime.SummonResult result = NecromancerRuntime.summon(sender, typeId, packet.forceEnhanced,
+                    cost);
             if (!result.success()) {
                 sender.displayClientMessage(Component.translatable(result.failKey()), true);
+                NecromancerRuntime.pushScreenUpdate(sender);
                 return;
             }
             EntityType<?> type = result.type();
@@ -57,6 +65,7 @@ public class SummonNecromancerMinionPacket {
             sender.displayClientMessage(Component.translatable(key, name), false);
             sender.level().playSound(null, sender.blockPosition(), SoundEvents.WITHER_SPAWN,
                     SoundSource.PLAYERS, 0.35F, result.enhanced() ? 1.4F : 1.0F);
+            NecromancerRuntime.pushScreenUpdate(sender);
         });
         context.setPacketHandled(true);
     }

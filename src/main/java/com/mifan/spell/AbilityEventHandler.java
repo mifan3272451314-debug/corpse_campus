@@ -332,6 +332,7 @@ public final class AbilityEventHandler {
         if (event.getEntity() instanceof ServerPlayer player) {
             cleanupElementalDomain(player);
             AbilityRuntime.releaseDominance(player);
+            com.mifan.spell.runtime.NecromancerRuntime.discardSession(player);
         }
     }
 
