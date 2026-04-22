@@ -272,9 +272,9 @@ public final class AnomalyBookService {
     public static ItemStack rebuildBook(ServerPlayer player) {
         UUID expectedBookId = getBoundBookId(player);
 
-        clearAllAnomalyBooks(player, BookLocation.CURIO, player);
-        clearAllAnomalyBooks(player, BookLocation.INVENTORY, player);
-        clearAllAnomalyBooks(player, BookLocation.OFFHAND, player);
+        clearAllAnomalyBooks(player, BookLocation.CURIO, expectedBookId);
+        clearAllAnomalyBooks(player, BookLocation.INVENTORY, expectedBookId);
+        clearAllAnomalyBooks(player, BookLocation.OFFHAND, expectedBookId);
 
         ItemStack rebuilt = restoreOrCreateBook(player, expectedBookId);
         ensureSpellContainer(rebuilt);
@@ -462,7 +462,7 @@ public final class AnomalyBookService {
         }
 
         if (!state.expectedBookId.equals(bookId)) {
-            clearLocation(player, location, index);
+            // Preserve mismatched books in-place. Recovery only manages the currently bound book.
             return;
         }
 
@@ -550,11 +550,16 @@ public final class AnomalyBookService {
         }
     }
 
-    private static void clearAllAnomalyBooks(ServerPlayer player, BookLocation location, ServerPlayer ignored) {
+    private static void clearAllAnomalyBooks(ServerPlayer player, BookLocation location,
+            @Nullable UUID targetBookId) {
+        if (targetBookId == null) {
+            return;
+        }
+
         switch (location) {
             case INVENTORY -> {
                 for (int i = 0; i < player.getInventory().items.size(); i++) {
-                    if (isAnomalyBook(player.getInventory().items.get(i))) {
+                    if (shouldClearBoundBook(player, player.getInventory().items.get(i), targetBookId)) {
                         player.getInventory().items.set(i, ItemStack.EMPTY);
                     }
                 }
@@ -562,7 +567,7 @@ public final class AnomalyBookService {
             }
             case OFFHAND -> {
                 for (int i = 0; i < player.getInventory().offhand.size(); i++) {
-                    if (isAnomalyBook(player.getInventory().offhand.get(i))) {
+                    if (shouldClearBoundBook(player, player.getInventory().offhand.get(i), targetBookId)) {
                         player.getInventory().offhand.set(i, ItemStack.EMPTY);
                     }
                 }
@@ -571,13 +576,27 @@ public final class AnomalyBookService {
             case CURIO -> getSpellbookStacksHandler(player).ifPresent(handler -> {
                 IDynamicStackHandler stacks = handler.getStacks();
                 for (int i = 0; i < stacks.getSlots(); i++) {
-                    if (isAnomalyBook(stacks.getStackInSlot(i))) {
+                    if (shouldClearBoundBook(player, stacks.getStackInSlot(i), targetBookId)) {
                         stacks.setStackInSlot(i, ItemStack.EMPTY);
                     }
                 }
                 handler.update();
             });
         }
+    }
+
+    private static boolean shouldClearBoundBook(ServerPlayer player, ItemStack stack, UUID targetBookId) {
+        if (!isAnomalyBook(stack)) {
+            return false;
+        }
+
+        UUID bookId = getBookId(stack);
+        if (!targetBookId.equals(bookId)) {
+            return false;
+        }
+
+        UUID ownerUuid = getOwnerUuid(stack);
+        return ownerUuid == null || ownerUuid.equals(player.getUUID());
     }
 
     private static void moveToInventoryOrDrop(ServerPlayer player, ItemStack stack) {
