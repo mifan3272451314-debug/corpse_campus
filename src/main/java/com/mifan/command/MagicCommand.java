@@ -93,7 +93,19 @@ public final class MagicCommand {
                                 .executes(context -> limitInfo(context.getSource())))
                         .then(Commands.literal("recount")
                                 .requires(source -> source.hasPermission(3))
-                                .executes(context -> limitRecount(context.getSource()))))
+                                .executes(context -> limitRecount(context.getSource())))
+                        .then(Commands.literal("set")
+                                .requires(source -> source.hasPermission(3))
+                                .then(Commands.argument("value", IntegerArgumentType.integer(1, 9999))
+                                        .executes(context -> limitSet(
+                                                context.getSource(),
+                                                IntegerArgumentType.getInteger(context, "value")))))
+                        .then(Commands.literal("enable")
+                                .requires(source -> source.hasPermission(3))
+                                .executes(context -> limitSetEnabled(context.getSource(), true)))
+                        .then(Commands.literal("disable")
+                                .requires(source -> source.hasPermission(3))
+                                .executes(context -> limitSetEnabled(context.getSource(), false))))
                 .then(Commands.literal("help")
                         .executes(context -> showHelp(context.getSource()))));
     }
@@ -243,6 +255,29 @@ public final class MagicCommand {
         return 1;
     }
 
+    private static int limitSet(CommandSourceStack source, int newValue) {
+        MinecraftServer server = source.getServer();
+        AnomalyLimitService service = AnomalyLimitService.get(server);
+        int old = service.setCapValue(newValue);
+        source.sendSuccess(() -> Component.literal(
+                "全服异常者上限已从 " + old + " 调整为 " + newValue
+                + "（当前已觉醒: " + service.getAnomalyCount() + " 人）"), false);
+        return 1;
+    }
+
+    private static int limitSetEnabled(CommandSourceStack source, boolean enabled) {
+        MinecraftServer server = source.getServer();
+        AnomalyLimitService service = AnomalyLimitService.get(server);
+        boolean old = service.setCapEnabled(enabled);
+        if (old == enabled) {
+            source.sendFailure(Component.literal("上限当前已经是「" + (enabled ? "开启" : "关闭") + "」状态，无需变更。"));
+            return 0;
+        }
+        source.sendSuccess(() -> Component.literal(
+                "全服异常者上限已" + (enabled ? "§a开启§r（上限: " + service.getCapValue() + "）" : "§7关闭§r")), false);
+        return 1;
+    }
+
     private static int showHelp(CommandSourceStack source) {
         String[] lines = {
             "§6§l══════════ /magic 全部指令文档 ══════════",
@@ -270,9 +305,16 @@ public final class MagicCommand {
             "§7    显示书 ID、主人、额外法力值及五大流派（虚/日/东/愚/圣）强化百分比。",
             "§a§l▌ §e§l四、上限系统 §8（权限 2/3）",
             "§f  /magic limit info §8（权限 2）",
-            "§7    显示全服已觉醒人数、上限值（默认 40）及满额状态。",
+            "§7    显示全服已觉醒人数、当前上限值及满额状态。",
+            "§f  /magic limit set §7<数值 1-9999> §c（权限 3）",
+            "§7    运行时修改上限数值，立即生效并持久化（重启后保留）。",
+            "§7    示例：/magic limit set 50  →  上限改为 50 人",
+            "§f  /magic limit enable §c（权限 3）",
+            "§7    开启上限检测（B 级掉落拦截恢复）。",
+            "§f  /magic limit disable §c（权限 3）",
+            "§7    关闭上限检测（B 级掉落不再受限）。",
             "§f  /magic limit recount §c（权限 3）",
-            "§7    重扫所有在线玩家的书内法术状态，更新觉醒计数；离线记录保留。",
+            "§7    重扫所有在线玩家书内法术状态，更新觉醒计数；离线记录保留。",
             "§a§l▌ §e§l五、P1 推荐指令 §8（尚未实现，规划中）",
             "§8  /magic setsequence <玩家> <序列>     §7手动修正主序列   §c[权限 3]",
             "§8  /magic setrank <玩家> <B|A|S>        §7手动修正最高阶   §c[权限 3]",
