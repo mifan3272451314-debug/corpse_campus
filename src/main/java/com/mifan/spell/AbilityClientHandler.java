@@ -49,6 +49,7 @@ public final class AbilityClientHandler {
     private static final Map<Integer, Long> DANGER_ENTITY_MARKS = new HashMap<>();
     private static long instinctOverlayUntil;
     private static boolean instinctLastStand;
+    private static int necromancerSoulCount;
 
     private AbilityClientHandler() {
     }
@@ -75,6 +76,10 @@ public final class AbilityClientHandler {
             return;
         }
         minecraft.setScreen(new NecromancerScreen(packet));
+    }
+
+    public static void updateNecromancerSoulCount(int total) {
+        necromancerSoulCount = Math.max(0, total);
     }
 
     public static void openPlayerStatusScreen() {
@@ -292,6 +297,30 @@ public final class AbilityClientHandler {
         if (!DANGER_ENTITY_MARKS.isEmpty()) {
             drawDangerOverlay(event.getGuiGraphics(), player, width, height, gameTime);
         }
+
+        if (necromancerSoulCount > 0) {
+            drawNecromancerSoulCount(event.getGuiGraphics(), width, height);
+        }
+    }
+
+    private static void drawNecromancerSoulCount(GuiGraphics guiGraphics, int width, int height) {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.font == null) {
+            return;
+        }
+        Component label = Component.translatable("hud.corpse_campus.necromancer_souls", necromancerSoulCount);
+        int textWidth = minecraft.font.width(label);
+        int padding = 4;
+        int boxWidth = textWidth + padding * 2;
+        int boxHeight = minecraft.font.lineHeight + padding * 2;
+        int right = width - 6;
+        int bottom = height - 42;
+        int left = right - boxWidth;
+        int top = bottom - boxHeight;
+        guiGraphics.fill(left, top, right, bottom, 0x88000000);
+        guiGraphics.fill(left, top, right, top + 1, 0x88A06BE0);
+        guiGraphics.fill(left, bottom - 1, right, bottom, 0x88A06BE0);
+        guiGraphics.drawString(minecraft.font, label, left + padding, top + padding, 0xE7C6FF, false);
     }
 
     @SubscribeEvent

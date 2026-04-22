@@ -398,6 +398,7 @@
   "screen.corpse_campus.necromancer.count": "Souls x%s",
   "screen.corpse_campus.necromancer.btn_summon": "Summon",
   "screen.corpse_campus.necromancer.btn_enhance": "Enhance %s mana",
+  "hud.corpse_campus.necromancer_souls": "Souls x%s",
 
   "spell.corpse_campus.rewind_worm": "Rewind Worm",
   "spell.corpse_campus.rewind_worm.guide_description": "Xujing tier-3 ultimate. After acquiring this spell, the world is backed up into a mirror dimension (an admin must trigger the scan via /magic rewind backup create). The first cast teleports you into the saved mirror world; after a 30-minute cooldown a second cast returns you to the exact dimension and coordinates where you left. The outbound and return casts share one 30-minute cooldown.",

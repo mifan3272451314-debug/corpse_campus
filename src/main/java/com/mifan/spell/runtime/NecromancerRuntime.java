@@ -1,6 +1,8 @@
 package com.mifan.spell.runtime;
 
 import com.mifan.anomaly.AnomalyBookService;
+import com.mifan.network.ModNetwork;
+import com.mifan.network.clientbound.NecromancerSoulCountPacket;
 import com.mifan.registry.ModSpells;
 import com.mifan.spell.AbilityRuntime;
 import io.redspace.ironsspellbooks.api.magic.MagicData;
@@ -105,7 +107,12 @@ public final class NecromancerRuntime {
             serverPlayer.displayClientMessage(Component.translatable(
                     "message.corpse_campus.necromancer_soul_gained",
                     type.getDescription(), souls.getInt(typeId.toString())), true);
+            syncSoulCount(serverPlayer);
         }
+    }
+
+    public static void syncSoulCount(ServerPlayer player) {
+        ModNetwork.sendToPlayer(new NecromancerSoulCountPacket(getTotalSouls(player)), player);
     }
 
     public static int getSoulCount(Player player, ResourceLocation typeId) {
@@ -232,6 +239,7 @@ public final class NecromancerRuntime {
 
         appendMinionUuid(caster, mob.getUUID());
         spawnSummonEffects(caster.serverLevel(), mob);
+        syncSoulCount(caster);
 
         return SummonResult.success(enhanced, type);
     }

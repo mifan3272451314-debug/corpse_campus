@@ -336,6 +336,13 @@ public final class AbilityEventHandler {
     }
 
     @SubscribeEvent
+    public static void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player) {
+            NecromancerRuntime.syncSoulCount(player);
+        }
+    }
+
+    @SubscribeEvent
     public static void onLivingAttackDealt(LivingAttackEvent event) {
         DamageSource source = event.getSource();
         Entity attacker = source.getEntity();

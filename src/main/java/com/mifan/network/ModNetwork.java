@@ -3,6 +3,7 @@ package com.mifan.network;
 import com.mifan.corpsecampus;
 import com.mifan.network.clientbound.DangerSensePingPacket;
 import com.mifan.network.clientbound.InstinctProcPacket;
+import com.mifan.network.clientbound.NecromancerSoulCountPacket;
 import com.mifan.network.clientbound.OlfactionTrailSyncPacket;
 import com.mifan.network.clientbound.OpenDominanceScreenPacket;
 import com.mifan.network.clientbound.OpenFerrymanScreenPacket;
@@ -160,6 +161,12 @@ public final class ModNetwork {
                 .encoder(SummonNecromancerMinionPacket::encode)
                 .decoder(SummonNecromancerMinionPacket::decode)
                 .consumerMainThread(SummonNecromancerMinionPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(NecromancerSoulCountPacket.class, packetId++, NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(NecromancerSoulCountPacket::encode)
+                .decoder(NecromancerSoulCountPacket::decode)
+                .consumerMainThread(NecromancerSoulCountPacket::handle)
                 .add();
     }
 
