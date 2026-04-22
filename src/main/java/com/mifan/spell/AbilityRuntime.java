@@ -495,6 +495,10 @@ public final class AbilityRuntime {
         DominanceRuntime.retargetDominatedMobs(player, target);
     }
 
+    public static void releaseDominance(Player player) {
+        DominanceRuntime.release(player);
+    }
+
     public static boolean isDominatedBy(Mob mob, Player owner) {
         return DominanceRuntime.isDominatedBy(mob, owner);
     }

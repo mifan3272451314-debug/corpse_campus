@@ -34,8 +34,11 @@ public class SetMidasTouchTimerPacket {
             ServerPlayer sender = context.getSender();
             if (sender != null) {
                 io.redspace.ironsspellbooks.api.magic.MagicData magicData = io.redspace.ironsspellbooks.api.magic.MagicData.getPlayerMagicData(sender);
-                if (com.mifan.spell.rizhao.MidasTouchSpell.consumeMidasMana(sender, magicData, packet.powerLevel)) {
-                    MidasBombRuntime.armFromPlayerSelection(sender, Math.max(1, packet.spellLevel), packet.timerSeconds, packet.powerLevel);
+                float manaBefore = magicData.getMana();
+                if (com.mifan.spell.rizhao.MidasTouchSpell.consumeMidasMana(sender, magicData, packet.powerLevel)
+                        && !MidasBombRuntime.armFromPlayerSelection(sender, Math.max(1, packet.spellLevel),
+                                packet.timerSeconds, packet.powerLevel)) {
+                    magicData.setMana(manaBefore);
                 }
             }
         });

@@ -221,11 +221,17 @@ public final class AbilityEventHandler {
             return;
         }
 
-        if (entity instanceof ServerPlayer player) {
-            cleanupElementalDomain(player);
+        ServerPlayer deadPlayer = entity instanceof ServerPlayer player ? player : null;
+        if (deadPlayer != null) {
+            cleanupElementalDomain(deadPlayer);
         }
 
         NecroticRuntime.reviveCaster(event, entity);
+
+        if (deadPlayer != null && !event.isCanceled()) {
+            AbilityRuntime.releaseDominance(deadPlayer);
+        }
+
         NecroticRuntime.rewardKill(event);
     }
 
@@ -238,6 +244,10 @@ public final class AbilityEventHandler {
         CompoundTag oldData = event.getOriginal().getPersistentData();
         CompoundTag newData = event.getEntity().getPersistentData();
         AbilityRuntime.clearElementalDomain(newData);
+        AbilityRuntime.clear(newData,
+                AbilityRuntime.TAG_DOMINANCE_MOBS,
+                AbilityRuntime.TAG_DOMINANCE_TARGET_PLAYER,
+                AbilityRuntime.TAG_DOMINANCE_LINK_ACTIVE);
         if (oldData.getBoolean(AbilityRuntime.TAG_NECROTIC_REVIVE_USED)) {
             newData.putBoolean(AbilityRuntime.TAG_NECROTIC_REVIVE_USED, true);
         }
@@ -247,6 +257,7 @@ public final class AbilityEventHandler {
     public static void onPlayerLoggedOut(PlayerLoggedOutEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
             cleanupElementalDomain(player);
+            AbilityRuntime.releaseDominance(player);
         }
     }
 
