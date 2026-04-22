@@ -17,9 +17,10 @@ public final class ModEntities {
     public static final RegistryObject<EntityType<GoldenCrowSunEntity>> GOLDEN_CROW_SUN = ENTITIES.register(
             "golden_crow_sun",
             () -> EntityType.Builder.<GoldenCrowSunEntity>of(GoldenCrowSunEntity::new, MobCategory.MISC)
-                    .sized(2.4F, 2.4F)
-                    .clientTrackingRange(16)
-                    .updateInterval(2)
+                    .sized(6.0F, 6.0F)
+                    .clientTrackingRange(256)
+                    .updateInterval(1)
+                    .fireImmune()
                     .build(ResourceLocation.fromNamespaceAndPath(corpsecampus.MODID, "golden_crow_sun").toString()));
 
     private ModEntities() {

@@ -80,7 +80,9 @@ public class GoldenCrowSunEntity extends Projectile {
     }
 
     public static Vec3 computeHoverAnchor(LivingEntity owner) {
-        return new Vec3(owner.getX(), owner.getEyeY() + 2.0D, owner.getZ());
+        return new Vec3(owner.getX(),
+                owner.getEyeY() + AbilityRuntime.GOLDEN_CROW_HOVER_HEIGHT,
+                owner.getZ());
     }
 
     public void throwTowards(LivingEntity caster) {
@@ -155,28 +157,60 @@ public class GoldenCrowSunEntity extends Projectile {
         double y = this.getY();
         double z = this.getZ();
 
-        // 核心：每 tick 铺一层「日面」粒子，撑满 2.4×2.4 的实体碰撞箱
-        // 用 FLAME 大量随机分布形成球体轮廓，让玩家明显看到一个耀眼日轮
-        server.sendParticles(ParticleTypes.FLAME, x, y, z, 28, 1.6D, 1.6D, 1.6D, 0.015D);
-        server.sendParticles(ParticleTypes.SMALL_FLAME, x, y, z, 18, 1.9D, 1.9D, 1.9D, 0.01D);
-        server.sendParticles(ParticleTypes.LAVA, x, y, z, 2, 1.2D, 1.2D, 1.2D, 0.0D);
+        float mana = getManaSpent();
+        double orb = AbilityRuntime.goldenCrowOrbRadius(mana);                  // 3~30 格
+        double outer = Math.max(orb * 1.35D, orb + 3.0D);                       // 外壳
+        float pScale = AbilityRuntime.goldenCrowParticleScale(mana);            // 0.3~3.0
 
-        // 每 4 tick 一次「心跳脉冲」：强烈闪光 + 端棒亮点，营造日面跳动感
+        // A) 核心：实心球内填充 FLAME，数量随法力缩放
+        int coreFlame = Math.max(20, (int) (400 * pScale));
+        int coreSmall = Math.max(15, (int) (260 * pScale));
+        int coreLava = Math.max(2, (int) (20 * pScale));
+        server.sendParticles(ParticleTypes.FLAME, x, y, z, coreFlame,
+                orb, orb, orb, 0.05D);
+        server.sendParticles(ParticleTypes.SMALL_FLAME, x, y, z, coreSmall,
+                orb * 1.1D, orb * 1.1D, orb * 1.1D, 0.03D);
+        server.sendParticles(ParticleTypes.LAVA, x, y, z, coreLava,
+                orb * 0.8D, orb * 0.8D, orb * 0.8D, 0.0D);
+
+        // B) 外壳：扩散到 outer 半径
+        int shellSmall = Math.max(10, (int) (180 * pScale));
+        int shellEndRod = Math.max(6, (int) (90 * pScale));
+        server.sendParticles(ParticleTypes.SMALL_FLAME, x, y, z, shellSmall,
+                outer, outer * 0.6D, outer, 0.02D);
+        server.sendParticles(ParticleTypes.END_ROD, x, y, z, shellEndRod,
+                outer * 0.9D, outer * 0.9D, outer * 0.9D, 0.03D);
+
+        // C) 每 2 tick 日冕环，半径在 orb~outer 间脉动；每圈粒子数按法力放大
+        if (this.tickCount % 2 == 0) {
+            double pulse = 0.5D + 0.5D * Math.sin(this.tickCount * 0.08D);
+            double ring = orb + pulse * (outer - orb);
+            emitCoronaRing(server, x, y, z, ring, Math.max(16, (int) (128 * pScale)));
+        }
+
+        // D) 每 4 tick 心跳脉冲
         if (this.tickCount % 4 == 0) {
-            server.sendParticles(ParticleTypes.END_ROD, x, y, z, 12, 2.0D, 2.0D, 2.0D, 0.04D);
-            server.sendParticles(ParticleTypes.FLASH, x, y, z, 1, 0.0D, 0.0D, 0.0D, 0.0D);
+            server.sendParticles(ParticleTypes.FLASH, x, y, z, Math.max(1, (int) (4 * pScale)),
+                    orb, orb, orb, 0.0D);
+            server.sendParticles(ParticleTypes.END_ROD, x, y, z, Math.max(20, (int) (260 * pScale)),
+                    orb, orb, orb, 0.15D);
         }
 
-        // 每 10 tick 一次「日冕环」：一圈扩散的光粒，像日冕
-        if (this.tickCount % 10 == 0) {
-            emitCoronaRing(server, x, y, z, 2.6D, 24);
+        // E) 每 8 tick 三圈日冕
+        if (this.tickCount % 8 == 0) {
+            emitCoronaRing(server, x, y, z, orb * 0.6D, Math.max(12, (int) (96 * pScale)));
+            emitCoronaRing(server, x, y, z, orb, Math.max(16, (int) (120 * pScale)));
+            emitCoronaRing(server, x, y, z, outer, Math.max(20, (int) (160 * pScale)));
         }
 
-        // 投掷阶段：额外长拖尾
+        // 投掷阶段：额外拖尾
         if (this.isThrown()) {
-            server.sendParticles(ParticleTypes.LARGE_SMOKE, x, y, z, 4, 0.4D, 0.4D, 0.4D, 0.01D);
+            server.sendParticles(ParticleTypes.LARGE_SMOKE, x, y, z, Math.max(4, (int) (40 * pScale)),
+                    orb * 0.4D, orb * 0.4D, orb * 0.4D, 0.05D);
+            server.sendParticles(ParticleTypes.LAVA, x, y, z, Math.max(6, (int) (60 * pScale)),
+                    orb * 0.5D, orb * 0.5D, orb * 0.5D, 0.2D);
             if (this.tickCount % 2 == 0) {
-                server.sendParticles(ParticleTypes.FLASH, x, y, z, 1, 0.0D, 0.0D, 0.0D, 0.0D);
+                server.sendParticles(ParticleTypes.FLASH, x, y, z, 2, 0.0D, 0.0D, 0.0D, 0.0D);
             }
         }
     }
@@ -229,8 +263,9 @@ public class GoldenCrowSunEntity extends Projectile {
 
         float manaSpent = this.getManaSpent();
         float damage = manaSpent * AbilityRuntime.GOLDEN_CROW_DAMAGE_PER_MANA;
-        double explosionRadius = AbilityRuntime.GOLDEN_CROW_EXPLOSION_RADIUS;
-        double stunRadius = AbilityRuntime.GOLDEN_CROW_STUN_RADIUS;
+        double explosionRadius = AbilityRuntime.goldenCrowExplosionRadius(manaSpent);   // 5~50
+        double stunRadius = AbilityRuntime.goldenCrowStunRadius(manaSpent);             // 10~60
+        float pScale = AbilityRuntime.goldenCrowParticleScale(manaSpent);
 
         Entity owner = this.getOwner();
         LivingEntity livingOwner = owner instanceof LivingEntity le ? le : null;
@@ -264,31 +299,47 @@ public class GoldenCrowSunEntity extends Projectile {
         }
 
         server.sendParticles(ParticleTypes.EXPLOSION_EMITTER, pos.x, pos.y, pos.z, 1, 0.0D, 0.0D, 0.0D, 0.0D);
-        server.sendParticles(ParticleTypes.FLASH, pos.x, pos.y, pos.z, 8, 2.0D, 2.0D, 2.0D, 0.0D);
+        server.sendParticles(ParticleTypes.FLASH, pos.x, pos.y, pos.z, Math.max(2, (int) (8 * pScale)),
+                2.0D, 2.0D, 2.0D, 0.0D);
         server.playSound(null, BlockPos.containing(pos.x, pos.y, pos.z), SoundEvents.GENERIC_EXPLODE,
                 SoundSource.PLAYERS, 4.0F, 0.6F);
 
-        // 震撼视觉：多重爆炸发射器 + 巨型冲击波环 + 火焰飞溅
-        for (int i = 0; i < 6; i++) {
-            double ox = (server.random.nextDouble() - 0.5D) * 6.0D;
-            double oy = (server.random.nextDouble() - 0.5D) * 3.0D;
-            double oz = (server.random.nextDouble() - 0.5D) * 6.0D;
+        // 多重爆炸发射器：数量随法力缩放，位置撒在爆炸球面内
+        int emitterCount = Math.max(4, (int) (24 * pScale));
+        for (int i = 0; i < emitterCount; i++) {
+            double ox = (server.random.nextDouble() - 0.5D) * explosionRadius * 1.6D;
+            double oy = (server.random.nextDouble() - 0.5D) * explosionRadius * 0.8D;
+            double oz = (server.random.nextDouble() - 0.5D) * explosionRadius * 1.6D;
             server.sendParticles(ParticleTypes.EXPLOSION_EMITTER,
                     pos.x + ox, pos.y + oy, pos.z + oz, 1, 0.0D, 0.0D, 0.0D, 0.0D);
         }
-        // 三环冲击波：小中大，营造震荡感
-        emitShockwaveRing(server, pos, 3.0D, 32, ParticleTypes.FLAME);
-        emitShockwaveRing(server, pos, 6.5D, 48, ParticleTypes.FLAME);
-        emitShockwaveRing(server, pos, 10.0D, 64, ParticleTypes.END_ROD);
-        // 向四周飞溅的火焰
-        server.sendParticles(ParticleTypes.LAVA, pos.x, pos.y, pos.z, 60, 5.0D, 3.0D, 5.0D, 0.3D);
-        server.sendParticles(ParticleTypes.FLAME, pos.x, pos.y, pos.z, 180, 6.0D, 4.0D, 6.0D, 0.4D);
-        server.sendParticles(ParticleTypes.FLASH, pos.x, pos.y, pos.z, 3, 0.0D, 0.0D, 0.0D, 0.0D);
-        // 附加额外音效层，提升听觉反馈
+        // 7 圈震荡波，按实际 explosionRadius / stunRadius 布置；粒子密度随 pScale
+        emitShockwaveRing(server, pos, explosionRadius * 0.16D, Math.max(12, (int) (80 * pScale)), ParticleTypes.FLAME);
+        emitShockwaveRing(server, pos, explosionRadius * 0.32D, Math.max(16, (int) (128 * pScale)), ParticleTypes.FLAME);
+        emitShockwaveRing(server, pos, explosionRadius * 0.50D, Math.max(24, (int) (200 * pScale)), ParticleTypes.END_ROD);
+        emitShockwaveRing(server, pos, explosionRadius * 0.68D, Math.max(32, (int) (256 * pScale)), ParticleTypes.FLAME);
+        emitShockwaveRing(server, pos, explosionRadius * 0.84D, Math.max(40, (int) (320 * pScale)), ParticleTypes.SMALL_FLAME);
+        emitShockwaveRing(server, pos, explosionRadius, Math.max(48, (int) (400 * pScale)), ParticleTypes.END_ROD);
+        emitShockwaveRing(server, pos, stunRadius, Math.max(64, (int) (480 * pScale)), ParticleTypes.FLASH);
+        // 超大飞溅：数量 × pScale（最高 × 3）
+        server.sendParticles(ParticleTypes.LAVA, pos.x, pos.y, pos.z, Math.max(30, (int) (600 * pScale)),
+                explosionRadius * 0.6D, explosionRadius * 0.3D, explosionRadius * 0.6D, 1.2D);
+        server.sendParticles(ParticleTypes.FLAME, pos.x, pos.y, pos.z, Math.max(80, (int) (1800 * pScale)),
+                explosionRadius * 0.8D, explosionRadius * 0.4D, explosionRadius * 0.8D, 1.6D);
+        server.sendParticles(ParticleTypes.SMALL_FLAME, pos.x, pos.y, pos.z, Math.max(60, (int) (1200 * pScale)),
+                explosionRadius * 0.9D, explosionRadius * 0.5D, explosionRadius * 0.9D, 1.0D);
+        server.sendParticles(ParticleTypes.FLASH, pos.x, pos.y, pos.z, Math.max(3, (int) (12 * pScale)),
+                explosionRadius * 0.4D, explosionRadius * 0.4D, explosionRadius * 0.4D, 0.0D);
+        // 音效：音量随法力越强越响
+        float vol = 2.0F + pScale * 4.0F;
         server.playSound(null, BlockPos.containing(pos.x, pos.y, pos.z), SoundEvents.LIGHTNING_BOLT_THUNDER,
-                SoundSource.PLAYERS, 2.5F, 0.7F);
+                SoundSource.PLAYERS, vol, 0.5F);
+        server.playSound(null, BlockPos.containing(pos.x, pos.y, pos.z), SoundEvents.LIGHTNING_BOLT_THUNDER,
+                SoundSource.PLAYERS, vol, 0.8F);
         server.playSound(null, BlockPos.containing(pos.x, pos.y, pos.z), SoundEvents.BEACON_DEACTIVATE,
-                SoundSource.PLAYERS, 2.0F, 0.5F);
+                SoundSource.PLAYERS, vol * 0.7F, 0.4F);
+        server.playSound(null, BlockPos.containing(pos.x, pos.y, pos.z), SoundEvents.GENERIC_EXPLODE,
+                SoundSource.PLAYERS, vol * 1.3F, 0.3F);
 
         if (livingOwner instanceof Player playerOwner) {
             CompoundTag data = playerOwner.getPersistentData();

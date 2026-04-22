@@ -204,11 +204,51 @@ public final class AbilityRuntime {
 
     public static final int GOLDEN_CROW_DURATION_TICKS = 20 * 60 * 3;
     public static final int GOLDEN_CROW_STUN_DURATION_TICKS = 60;
-    public static final double GOLDEN_CROW_STUN_RADIUS = 30.0D;
-    public static final double GOLDEN_CROW_EXPLOSION_RADIUS = 10.0D;
+
+    // 动态缩放上下限：越低 = 基础保底（蓝量为 0 也看得见小太阳），越高 = 蓝量充足时的极限
+    public static final double GOLDEN_CROW_ORB_RADIUS_MIN = 3.0D;
+    public static final double GOLDEN_CROW_ORB_RADIUS_MAX = 30.0D;
+    public static final double GOLDEN_CROW_EXPLOSION_RADIUS_MIN = 5.0D;
+    public static final double GOLDEN_CROW_EXPLOSION_RADIUS_MAX = 50.0D;
+    public static final double GOLDEN_CROW_STUN_RADIUS_MIN = 10.0D;
+    public static final double GOLDEN_CROW_STUN_RADIUS_MAX = 60.0D;
+    public static final float GOLDEN_CROW_PARTICLE_SCALE_MIN = 0.3F;
+    public static final float GOLDEN_CROW_PARTICLE_SCALE_MAX = 3.0F;
+    // 达到极限所需法力的软门槛：mana / SOFT_CAP 取 0~1 后映射到上述线性区间
+    public static final float GOLDEN_CROW_MANA_SOFT_CAP = 900.0F;
+
     public static final float GOLDEN_CROW_DAMAGE_PER_MANA = 0.5F;
-    public static final float GOLDEN_CROW_THROW_SPEED = 1.6F;
+    public static final float GOLDEN_CROW_THROW_SPEED = 5.0F;
+    public static final double GOLDEN_CROW_HOVER_HEIGHT = 20.0D;
     public static final int GOLDEN_CROW_COOLDOWN_SECONDS = 1200;
+    public static final int GOLDEN_CROW_CAST_TIME_TICKS = 80;
+
+    public static float goldenCrowScale(float manaSpent) {
+        float t = Math.max(0.0F, manaSpent) / GOLDEN_CROW_MANA_SOFT_CAP;
+        return Math.min(1.0F, t);
+    }
+
+    public static double goldenCrowOrbRadius(float manaSpent) {
+        return lerp(GOLDEN_CROW_ORB_RADIUS_MIN, GOLDEN_CROW_ORB_RADIUS_MAX, goldenCrowScale(manaSpent));
+    }
+
+    public static double goldenCrowExplosionRadius(float manaSpent) {
+        return lerp(GOLDEN_CROW_EXPLOSION_RADIUS_MIN, GOLDEN_CROW_EXPLOSION_RADIUS_MAX,
+                goldenCrowScale(manaSpent));
+    }
+
+    public static double goldenCrowStunRadius(float manaSpent) {
+        return lerp(GOLDEN_CROW_STUN_RADIUS_MIN, GOLDEN_CROW_STUN_RADIUS_MAX, goldenCrowScale(manaSpent));
+    }
+
+    public static float goldenCrowParticleScale(float manaSpent) {
+        return (float) lerp(GOLDEN_CROW_PARTICLE_SCALE_MIN, GOLDEN_CROW_PARTICLE_SCALE_MAX,
+                goldenCrowScale(manaSpent));
+    }
+
+    private static double lerp(double a, double b, float t) {
+        return a + (b - a) * t;
+    }
 
     public static final int EXECUTIONER_DURABILITY_COST = 5;
     public static final int RECORDER_OFFICER_DEFAULT_SECONDS = 15;
