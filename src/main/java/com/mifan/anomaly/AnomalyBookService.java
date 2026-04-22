@@ -147,6 +147,10 @@ public final class AnomalyBookService {
             return List.of();
         }
 
+        if (!isManagedBookForPlayer(player, book, getBoundBookId(player))) {
+            return List.of();
+        }
+
         ensureSpellContainer(book);
         LinkedHashMap<ResourceLocation, SchoolTraitProgress> progressMap = new LinkedHashMap<>();
         for (SpellSlot slot : ISpellContainer.getOrCreate(book).getActiveSpells()) {
@@ -591,22 +595,42 @@ public final class AnomalyBookService {
     }
 
     private static ItemStack findExistingBook(ServerPlayer player) {
+        UUID boundBookId = getBoundBookId(player);
+
         ItemStack curio = getCurioSpellbookStack(player);
-        if (isAnomalyBook(curio)) {
+        if (isManagedBookForPlayer(player, curio, boundBookId)) {
             return curio;
         }
 
         for (ItemStack stack : player.getInventory().items) {
-            if (isAnomalyBook(stack)) {
+            if (isManagedBookForPlayer(player, stack, boundBookId)) {
                 return stack;
             }
         }
         for (ItemStack stack : player.getInventory().offhand) {
-            if (isAnomalyBook(stack)) {
+            if (isManagedBookForPlayer(player, stack, boundBookId)) {
                 return stack;
             }
         }
         return ItemStack.EMPTY;
+    }
+
+    private static boolean isManagedBookForPlayer(ServerPlayer player, ItemStack stack, @Nullable UUID boundBookId) {
+        if (!isAnomalyBook(stack)) {
+            return false;
+        }
+
+        UUID ownerUuid = getOwnerUuid(stack);
+        if (ownerUuid != null && !ownerUuid.equals(player.getUUID())) {
+            return false;
+        }
+
+        UUID bookId = getBookId(stack);
+        if (boundBookId != null) {
+            return boundBookId.equals(bookId);
+        }
+
+        return player.getUUID().equals(ownerUuid);
     }
 
     private static void clampCurrentManaToMax(ServerPlayer player) {
