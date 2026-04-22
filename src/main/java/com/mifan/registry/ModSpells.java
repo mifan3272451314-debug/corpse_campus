@@ -9,6 +9,7 @@ import com.mifan.spell.dongyue.ManiaSpell;
 import com.mifan.spell.dongyue.NecroticRebirthSpell;
 import com.mifan.spell.rizhao.AffinitySpell;
 import com.mifan.spell.rizhao.FertileLandSpell;
+import com.mifan.spell.rizhao.LightPrayerSpell;
 import com.mifan.spell.rizhao.MidasTouchSpell;
 import com.mifan.spell.rizhao.NingheSpell;
 import com.mifan.spell.rizhao.SunlightSpell;
@@ -24,6 +25,7 @@ import com.mifan.spell.xujing.RecorderOfficerSpell;
 import com.mifan.spell.xujing.DangerSenseSpell;
 import com.mifan.spell.xujing.OlfactionSpell;
 import com.mifan.spell.xujing.SonicSenseSpell;
+import com.mifan.spell.yuzhe.AuthorityGraspSpell;
 import com.mifan.spell.yuzhe.DominanceSpell;
 import com.mifan.spell.yuzhe.LifeThiefSpell;
 import com.mifan.spell.yuzhe.MagneticClingSpell;
@@ -91,6 +93,8 @@ public final class ModSpells {
                         GrafterSpell::new);
         public static final RegistryObject<AbstractSpell> FERRYMAN = SPELLS.register("ferryman",
                         FerrymanSpell::new);
+        public static final RegistryObject<AbstractSpell> AUTHORITY_GRASP = SPELLS.register("authority_grasp",
+                        AuthorityGraspSpell::new);
 
         private ModSpells() {
         }

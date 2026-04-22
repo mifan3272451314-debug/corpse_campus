@@ -1,8 +1,11 @@
 package com.mifan.registry;
 
 import com.mifan.corpsecampus;
+import com.mifan.spell.AbilityRuntime;
+import io.redspace.ironsspellbooks.api.registry.AttributeRegistry;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectCategory;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
@@ -63,6 +66,9 @@ public final class ModMobEffects {
     public static final RegistryObject<MobEffect> SUNLIGHT_NEUTRALIZED = MOB_EFFECTS.register("sunlight_neutralized",
             () -> new AbilityMarkerEffect(0xFFE880));
 
+    public static final RegistryObject<MobEffect> LIGHT_PRAYER = MOB_EFFECTS.register("light_prayer",
+            LightPrayerEffect::new);
+
     private ModMobEffects() {
     }
 
@@ -73,6 +79,22 @@ public final class ModMobEffects {
     private static final class AbilityMarkerEffect extends MobEffect {
         private AbilityMarkerEffect(int color) {
             super(MobEffectCategory.BENEFICIAL, color);
+        }
+
+        @Override
+        public boolean isDurationEffectTick(int duration, int amplifier) {
+            return false;
+        }
+    }
+
+    private static final class LightPrayerEffect extends MobEffect {
+        private LightPrayerEffect() {
+            super(MobEffectCategory.BENEFICIAL, 0xFFE066);
+            this.addAttributeModifier(
+                    AttributeRegistry.SPELL_RESIST.get(),
+                    AbilityRuntime.LIGHT_PRAYER_SPELL_RESIST_UUID,
+                    AbilityRuntime.LIGHT_PRAYER_SPELL_RESIST_BONUS,
+                    AttributeModifier.Operation.MULTIPLY_BASE);
         }
 
         @Override

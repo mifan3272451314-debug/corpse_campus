@@ -11,6 +11,7 @@ import com.mifan.spell.runtime.MarkRuntime;
 import com.mifan.spell.runtime.NecroticRuntime;
 import com.mifan.spell.runtime.TelekinesisRuntime;
 import com.mifan.spell.yuzhe.LifeThiefSpell;
+import io.redspace.ironsspellbooks.api.events.SpellPreCastEvent;
 import io.redspace.ironsspellbooks.api.magic.MagicData;
 import io.redspace.ironsspellbooks.api.registry.AttributeRegistry;
 import net.minecraft.core.BlockPos;
@@ -90,6 +91,7 @@ public final class AbilityEventHandler {
         tickOlfaction(player, gameTime);
         tickElementalDomain(player, data, gameTime);
         AbilityRuntime.tickDominance(player);
+        tickAuthorityGrasp(player, data, gameTime);
         MidasBombRuntime.tickPlayerInventory(player);
         tickMagneticCling(player, data, gameTime);
         tickMania(player, data, gameTime);
@@ -160,6 +162,13 @@ public final class AbilityEventHandler {
             return;
         }
 
+        // 万权一手：施法者每次实际命中目标时，对目标施加抽能 + 减速（持续到万权结束）
+        if (directEntity instanceof LivingEntity authorityCaster
+                && authorityCaster != entity
+                && authorityCaster.hasEffect(ModMobEffects.AUTHORITY_GRASP_CASTER.get())) {
+            applyAuthorityDrain(authorityCaster, entity, entity.level().getGameTime());
+        }
+
         CompoundTag data = entity.getPersistentData();
         long gameTime = entity.level().getGameTime();
         if (data.contains(AbilityRuntime.TAG_INSTINCT_INVULNERABLE_UNTIL)
@@ -173,6 +182,13 @@ public final class AbilityEventHandler {
         LivingEntity entity = event.getEntity();
         if (entity.level().isClientSide) {
             return;
+        }
+
+        // 万权一手：施法者每次受到实际伤害时，从已有支配列表拉一只到身边，本次施法最多 5 只
+        if (entity instanceof Player authorityCaster
+                && authorityCaster.hasEffect(ModMobEffects.AUTHORITY_GRASP_CASTER.get())
+                && event.getAmount() > 0.0F) {
+            triggerAuthorityHurtSummon(authorityCaster);
         }
 
         if (entity instanceof Player magneticPlayer
@@ -280,7 +296,10 @@ public final class AbilityEventHandler {
                 AbilityRuntime.TAG_IMPERMANENCE_GRANTED_SPELL,
                 AbilityRuntime.TAG_IMPERMANENCE_GRANTED_LEVEL,
                 AbilityRuntime.TAG_FERRYMAN_TARGET,
-                AbilityRuntime.TAG_FERRYMAN_LEVEL);
+                AbilityRuntime.TAG_FERRYMAN_LEVEL,
+                AbilityRuntime.TAG_AUTHORITY_GRASP_EXPIRE_TICK,
+                AbilityRuntime.TAG_AUTHORITY_GRASP_SUMMON_COUNT,
+                AbilityRuntime.TAG_AUTHORITY_GRASP_DRAINED_EXPIRE);
         if (oldData.getBoolean(AbilityRuntime.TAG_NECROTIC_REVIVE_USED)) {
             newData.putBoolean(AbilityRuntime.TAG_NECROTIC_REVIVE_USED, true);
         }

@@ -172,6 +172,20 @@ public final class AbilityRuntime {
     public static final int SUNLIGHT_BURN_DURATION_SECONDS = 3;
     public static final float SUNLIGHT_RIZHAO_MANA_PER_SECOND = 2.0F;
 
+    public static final int LIGHT_PRAYER_DURATION_TICKS = 1200;
+    public static final double LIGHT_PRAYER_RADIUS = 6.0D;
+    public static final float LIGHT_PRAYER_BURN_DAMAGE_PER_SECOND = 0.5F;
+    public static final long LIGHT_PRAYER_BURN_INTERVAL_TICKS = 20L;
+    public static final long LIGHT_PRAYER_KNOCKBACK_INTERVAL_TICKS = 10L;
+    public static final double LIGHT_PRAYER_KNOCKBACK_STRENGTH = 0.22D;
+    public static final double LIGHT_PRAYER_KNOCKBACK_VERTICAL = 0.05D;
+    public static final float LIGHT_PRAYER_MONSTER_BONUS_MULTIPLIER = 2.0F;
+    public static final int LIGHT_PRAYER_WEAPON_IGNITE_SECONDS = 5;
+    public static final int LIGHT_PRAYER_RESISTANCE_AMPLIFIER = 1;
+    public static final double LIGHT_PRAYER_SPELL_RESIST_BONUS = 0.25D;
+    public static final String LIGHT_PRAYER_SPELL_RESIST_UUID =
+            "c0d4b1a3-1c07-11ee-9fa1-0002b3c1ee01";
+
     public static final int EXECUTIONER_DURABILITY_COST = 5;
     public static final int RECORDER_OFFICER_DEFAULT_SECONDS = 15;
     public static final int RECORDER_OFFICER_MIN_SECONDS = 5;
