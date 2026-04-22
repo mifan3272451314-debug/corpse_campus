@@ -341,6 +341,75 @@ public final class AnomalyBookService {
         return AbsorbResult.success(successMessageKey, schoolName, spec.zhName());
     }
 
+    /**
+     * 异常法术卷轴右键通道（{@link com.mifan.item.SpellScrollItem}）。
+     *
+     * 分支（用户 2026-04-23 口径）：
+     *   1) 未觉醒 + B 级卷轴 → 走 applyAwakening 通道（受 40 上限拦截）
+     *   2) 未觉醒 + A/S 级卷轴 → 拒绝，要求先 B 觉醒
+     *   3) 已觉醒 + 主序列不匹配 → 拒绝（序列已锁）
+     *   4) 已觉醒 + 主序列匹配 + 已拥有该法术 → 拒绝不消耗
+     *   5) 已觉醒 + 主序列匹配 + 未拥有该法术 → 装法术 + 按需上调 highest_rank
+     */
+    public static AbsorbResult applyScrollSpell(ServerPlayer player, ResourceLocation spellId) {
+        ItemStack book = ensureBookPresent(player);
+        if (book.isEmpty() || !isAnomalyBook(book)) {
+            return AbsorbResult.failure("message.corpse_campus.absorb_no_book");
+        }
+
+        SpellSpec spec = SPELL_SPECS.get(spellId);
+        if (spec == null) {
+            return AbsorbResult.failure("message.corpse_campus.absorb_spell_missing", spellId.toString());
+        }
+
+        AbstractSpell spell = getRegisteredSpell(spellId);
+        if (spell == null) {
+            return AbsorbResult.failure("message.corpse_campus.absorb_spell_missing", spec.zhName());
+        }
+
+        if (!isAwakened(book)) {
+            // 分支 1 / 2：未觉醒
+            if (spec.rank() != AnomalySpellRank.B) {
+                return AbsorbResult.failure("message.corpse_campus.scroll_must_b_first");
+            }
+            return applyAwakening(player, spec.schoolId(), spellId, false,
+                    "message.corpse_campus.scroll_awakened");
+        }
+
+        // 已觉醒：分支 3 / 4 / 5
+        ResourceLocation mainSequence = getMainSequenceId(book);
+        if (mainSequence == null || !mainSequence.equals(spec.schoolId())) {
+            return AbsorbResult.failure("message.corpse_campus.scroll_wrong_sequence",
+                    localizeSchool(spec.schoolId()));
+        }
+
+        // 检查是否已拥有该法术
+        ensureSpellContainer(book);
+        for (SpellSlot slot : ISpellContainer.getOrCreate(book).getActiveSpells()) {
+            if (slot.getSpell().getSpellResource().equals(spellId)) {
+                return AbsorbResult.failure("message.corpse_campus.scroll_already_owned", spec.zhName());
+            }
+        }
+
+        // 装入法术
+        boolean added = addSpell(player, book, spell, 1, 1);
+        if (!added) {
+            return AbsorbResult.failure("message.corpse_campus.absorb_write_failed");
+        }
+
+        // 按需上调 highest_rank
+        AnomalySpellRank currentHighest = getHighestRank(book);
+        if (currentHighest == null || spec.rank().ordinal() > currentHighest.ordinal()) {
+            book.getOrCreateTag().putString(BOOK_HIGHEST_RANK, spec.rank().name());
+        }
+
+        updateBookSnapshot(player, book);
+        refreshCurioState(player);
+
+        return AbsorbResult.success("message.corpse_campus.scroll_spell_granted",
+                spec.zhName(), spec.rank().name());
+    }
+
     public static double getStoredSchoolBonusPercent(ItemStack stack, ResourceLocation schoolId) {
         CompoundTag tag = stack.getTag();
         if (tag == null || !tag.contains(BOOK_SCHOOL_BONUSES, Tag.TAG_COMPOUND)) {

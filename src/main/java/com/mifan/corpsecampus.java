@@ -97,6 +97,11 @@ public class corpsecampus {
                         output.accept(ModItems.TRAIT_SHENGQI_B.get());
                         output.accept(ModItems.TRAIT_SHENGQI_A.get());
                         output.accept(ModItems.TRAIT_SHENGQI_S.get());
+                        // 异常法术卷轴：一个 Item + NBT 区分 35 个法术，循环输出
+                        for (com.mifan.anomaly.AnomalyBookService.SpellSpec spec
+                                : com.mifan.anomaly.AnomalyBookService.getAllSpellSpecs()) {
+                            output.accept(com.mifan.item.SpellScrollItem.createFor(spec.spellId()));
+                        }
                         // 管理员调试核心物品
                         output.accept(ModItems.DESIGNATED_ABILITY.get());
                         output.accept(ModItems.RANK_CORE_B.get());
@@ -180,6 +185,34 @@ public class corpsecampus {
             // Some client setup code
             LOGGER.info("HELLO FROM CLIENT SETUP");
             LOGGER.info("MINECRAFT NAME >> {}", Minecraft.getInstance().getUser().getName());
+
+            event.enqueueWork(() -> {
+                // 异能法术卷轴：按 NBT 里存的 spellId → 所属流派，给出 0-4 浮点索引，
+                // spell_scroll.json 用 overrides 映射到 5 张 scroll_<school>.png
+                net.minecraft.client.renderer.item.ItemProperties.register(
+                        ModItems.SPELL_SCROLL.get(),
+                        net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(MODID, "school"),
+                        (stack, level, entity, seed) -> {
+                            net.minecraft.resources.ResourceLocation spellId =
+                                    com.mifan.item.SpellScrollItem.getSpellId(stack);
+                            if (spellId == null) {
+                                return 0.0F;
+                            }
+                            com.mifan.anomaly.AnomalyBookService.SpellSpec spec =
+                                    com.mifan.anomaly.AnomalyBookService.getSpellSpec(spellId);
+                            if (spec == null) {
+                                return 0.0F;
+                            }
+                            return switch (spec.schoolId().getPath()) {
+                                case "xujing" -> 0.0F;
+                                case "rizhao" -> 1.0F;
+                                case "dongyue" -> 2.0F;
+                                case "yuzhe" -> 3.0F;
+                                case "shengqi" -> 4.0F;
+                                default -> 0.0F;
+                            };
+                        });
+            });
         }
 
         @SubscribeEvent

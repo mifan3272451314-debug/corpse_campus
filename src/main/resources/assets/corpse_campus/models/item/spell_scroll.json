@@ -1,0 +1,12 @@
+{
+  "parent": "item/generated",
+  "textures": {
+    "layer0": "corpse_campus:item/scroll_xujing"
+  },
+  "overrides": [
+    { "predicate": { "corpse_campus:school": 1.0 }, "model": "corpse_campus:item/scroll_rizhao" },
+    { "predicate": { "corpse_campus:school": 2.0 }, "model": "corpse_campus:item/scroll_dongyue" },
+    { "predicate": { "corpse_campus:school": 3.0 }, "model": "corpse_campus:item/scroll_yuzhe" },
+    { "predicate": { "corpse_campus:school": 4.0 }, "model": "corpse_campus:item/scroll_shengqi" }
+  ]
+}

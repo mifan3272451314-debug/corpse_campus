@@ -8,6 +8,7 @@ import com.mifan.item.AnomalyDetectorItem;
 import com.mifan.item.AnomalyTraitItem;
 import com.mifan.item.DesignatedAbilityItem;
 import com.mifan.item.RankBlessingItem;
+import com.mifan.item.SpellScrollItem;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraftforge.eventbus.api.IEventBus;
@@ -67,6 +68,8 @@ public final class ModItems {
             AbilityClearItem::new);
     public static final RegistryObject<Item> DESIGNATED_ABILITY = ITEMS.register("designated_ability",
             DesignatedAbilityItem::new);
+    public static final RegistryObject<Item> SPELL_SCROLL = ITEMS.register("spell_scroll",
+            SpellScrollItem::new);
 
     private ModItems() {
     }
