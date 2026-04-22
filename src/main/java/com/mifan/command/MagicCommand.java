@@ -93,7 +93,9 @@ public final class MagicCommand {
                                 .executes(context -> limitInfo(context.getSource())))
                         .then(Commands.literal("recount")
                                 .requires(source -> source.hasPermission(3))
-                                .executes(context -> limitRecount(context.getSource())))));
+                                .executes(context -> limitRecount(context.getSource()))))
+                .then(Commands.literal("help")
+                        .executes(context -> showHelp(context.getSource()))));
     }
 
     private static int addSpell(CommandSourceStack source, ServerPlayer target, String spellInput, int level, int count) {
@@ -238,6 +240,47 @@ public final class MagicCommand {
         int count = service.recountFromServer(server);
         source.sendSuccess(() -> Component.literal(
                 "已重新统计全服异常者计数（在线玩家重算，离线保留原值），当前: " + count + " 人"), false);
+        return 1;
+    }
+
+    private static int showHelp(CommandSourceStack source) {
+        String[] lines = {
+            "§6§l═══ /magic 指令文档 ═══",
+            "§e书管理",
+            "§f  /magic givebook §7<玩家> §8[0|1]",
+            "§7    发放或重建异常法术书。第二参数传 1 时强制重建。",
+            "§f  /magic forceequip §7<玩家>",
+            "§7    强制将异常书放回 Curios 书槽。",
+            "§f  /magic fixbook §7<玩家>",
+            "§7    自动修复书绑定并强制佩戴，等同于 givebook + forceequip。",
+            "§e法术管理",
+            "§f  /magic add §7<玩家> <法术ID或中文名> <等级> <次数>",
+            "§7    向目标异常书写入法术。若已有低等级版本则升级，不产生重复槽位。",
+            "§7    中文别名示例：音波 危机 嗅觉 印记 记录官 元素使",
+            "§7                  亲和 点金客 岱岳 躁狂 本能 冥化 刽子手",
+            "§7                  万象 念力 支配 磁吸 盗命客 回魂 愈合 耐力 药师",
+            "§f  /magic spells §7<玩家>",
+            "§7    列出目标异常书中当前装载的所有法术（ID / 等级 / 阶级）。",
+            "§f  /magic clear §7<玩家> <法术>",
+            "§7    完整移除目标书中的指定法术（不留任何等级）。",
+            "§f  /magic clearall §7<玩家>",
+            "§7    清空目标书中的全部法术。",
+            "§f  /magic remove §7<玩家> <法术> §8[次数]",
+            "§7    从指定法术的等级中扣除 count 次（默认 1）。降至 0 则移除。",
+            "§e状态查询",
+            "§f  /magic state §7<玩家>",
+            "§7    查看目标玩家的书 ID、绑定信息、额外法力与五大流派强化加成。",
+            "§e上限系统",
+            "§f  /magic limit info",
+            "§7    查看全服已觉醒人数、上限值及是否满额。",
+            "§f  /magic limit recount §c[需权限 3]",
+            "§7    重新扫描在线玩家，刷新觉醒计数（离线记录保留）。",
+            "§8提示：法术 ID 支持注册名（如 sonic_sense）、中文名（音波）",
+            "§8      以及 corpse_campus:sonic_sense 完整格式。"
+        };
+        for (String line : lines) {
+            source.sendSuccess(() -> Component.literal(line), false);
+        }
         return 1;
     }
 }
