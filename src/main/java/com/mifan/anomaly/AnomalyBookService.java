@@ -150,6 +150,23 @@ public final class AnomalyBookService {
         }
     }
 
+    @Nullable
+    public static AnomalySpellRank computeLoadedHighestRank(ItemStack book) {
+        if (book.isEmpty()) {
+            return null;
+        }
+        ensureSpellContainer(book);
+        AnomalySpellRank highest = null;
+        for (SpellSlot slot : ISpellContainer.getOrCreate(book).getActiveSpells()) {
+            SpellSpec spec = SPELL_SPECS.get(slot.getSpell().getSpellResource());
+            if (spec == null) {
+                continue;
+            }
+            highest = (highest == null) ? spec.rank() : maxRank(highest, spec.rank());
+        }
+        return highest;
+    }
+
     private static void writeSequenceBinding(ItemStack book, ResourceLocation schoolId, AnomalySpellRank rank) {
         CompoundTag tag = book.getOrCreateTag();
         tag.putBoolean(BOOK_AWAKENED, true);
@@ -726,8 +743,15 @@ public final class AnomalyBookService {
 
         ISpellContainerMutable mutable = ISpellContainer.getOrCreate(book).mutableCopy();
         SpellData existing = mutable.getSpellAtIndex(target.index());
+        // ISS 的 addSpellAtIndex 要求目标 slot 为空才会成功：升级必须"先删后写"，
+        // 否则一律返回 false 被误判为 SPELL_NOT_LOADED，导致玩家看到"该异能未搭载"。
+        if (!mutable.removeSpellAtIndex(target.index())) {
+            return UpgradeOutcome.SPELL_NOT_LOADED;
+        }
         boolean written = mutable.addSpellAtIndex(spell, currentLevel + 1, target.index(), existing.isLocked());
         if (!written) {
+            // 写入失败：尽量把原 spell 重新放回，避免把玩家的技能写没了。
+            mutable.addSpellAtIndex(spell, currentLevel, target.index(), existing.isLocked());
             return UpgradeOutcome.SPELL_NOT_LOADED;
         }
         ISpellContainer.set(book, mutable.toImmutable());
