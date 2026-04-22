@@ -29,6 +29,7 @@
   "spell.corpse_campus.stamina": "耐力",
   "spell.corpse_campus.huihun": "回魂",
   "spell.corpse_campus.apothecary": "药师",
+  "spell.corpse_campus.endless_life": "生生不息",
   "item.corpse_campus.anomaly_trait_spellbook": "异常特性",
   "item.corpse_campus.anomaly_detector": "监测器",
   "item.corpse_campus.trait_xujing_b": "虚境·B级异常特性",
@@ -355,5 +356,25 @@
   "message.corpse_campus.ferryman_target_set": "已在 %s 身上点亮摆渡印记",
   "message.corpse_campus.ferryman_granted": "%s 被摆渡到彼岸，你从其亡魂中获得了【%s】",
   "message.corpse_campus.ferryman_granted_failed": "%s 已死亡，但摆渡奖励【%s】未能写入异常法术书",
-  "message.corpse_campus.ferryman_grant_missing": "死灵法术 %s 在当前运行环境中不存在，奖励无效"
+  "message.corpse_campus.ferryman_grant_missing": "死灵法术 %s 在当前运行环境中不存在，奖励无效",
+
+  "tooltip.corpse_campus.endless_life_revive": "施法后会通知所有权限等级 ≥2 的管理员，由管理员复活所有死去的玩家",
+  "tooltip.corpse_campus.endless_life_inherit": "施法者立刻获得圣祈一阶（回魂/愈合/耐力/药师）+ 二阶（嫁接师/摆渡人）共 6 项法术",
+  "tooltip.corpse_campus.endless_life_self_consume": "施法后【生生不息】会从你的异常法术书中自行消除",
+  "tooltip.corpse_campus.endless_life_global_seal": "施法后全局封锁：自此再无人能获得【生生不息】（管理员可用 /magic seal endless_life false 解封）",
+  "message.corpse_campus.endless_life_cast_self": "你完成了【生生不息】的施法，圣祈一阶与二阶能力已写入你的异常法术书（新写入 %s 项）",
+  "message.corpse_campus.endless_life_notify_ops": "%s 释放了【生生不息】，请你复活所有死去的玩家。点击坐标可传送至施法者：%s",
+  "message.corpse_campus.endless_life_location": "[%.1f, %.1f, %.1f | %s]",
+  "message.corpse_campus.endless_life_click_hint": "点击传送到施法者位置",
+
+  "spell.corpse_campus.authority_grasp": "万权一手",
+  "spell.corpse_campus.authority_grasp.guide_description": "愚者三级终阶。开启后 5 分钟内，攻击或贴近对方都会抽取其能力，使其短暂无法施法并附带减速；期间你每次受到伤害，会从你已支配的生物中召来一只到身边，最多 5 只。使用时会清空当前能量。",
+  "tooltip.corpse_campus.authority_grasp_duration": "持续 %s 分钟",
+  "tooltip.corpse_campus.authority_grasp_drain": "攻击或贴近目标时，抽取其能力（无法施放法术），并附加减速 II",
+  "tooltip.corpse_campus.authority_grasp_touch": "贴近触发距离：%s 格",
+  "tooltip.corpse_campus.authority_grasp_hurt_summon": "自身受到伤害时，会从已支配生物中被动召来 1 只到身边（最多 %s 只）",
+  "tooltip.corpse_campus.authority_grasp_cost_all_mana": "施放时会消耗当前全部能量",
+  "tooltip.corpse_campus.authority_grasp_cooldown": "冷却时间：%s 分钟",
+  "message.corpse_campus.authority_grasp_on": "万权一手已开启，5 分钟内你的触碰将抽走一切",
+  "message.corpse_campus.authority_grasp_drained": "你的能力被【万权一手】抽取，暂时无法施法"
 }
