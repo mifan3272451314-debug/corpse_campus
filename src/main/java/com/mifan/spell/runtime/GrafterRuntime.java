@@ -1,12 +1,17 @@
 package com.mifan.spell.runtime;
 
 import com.mifan.anomaly.AnomalyBookService;
+import com.mifan.item.AnomalyTraitItem;
 import io.redspace.ironsspellbooks.api.registry.SpellRegistry;
 import io.redspace.ironsspellbooks.api.spells.AbstractSpell;
 import io.redspace.ironsspellbooks.api.spells.SpellSlot;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.AABB;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -58,6 +63,63 @@ public final class GrafterRuntime {
     public static boolean isGraftTargetEligible(ServerPlayer target) {
         // 非异能者：未搭载任何异常法术
         return !AnomalyBookService.hasLoadedSpells(target);
+    }
+
+    public static ItemEntity findNearbyDroppedTraitItem(ServerPlayer caster, double range) {
+        Level level = caster.level();
+        AABB box = caster.getBoundingBox().inflate(range);
+        return level.getEntitiesOfClass(ItemEntity.class, box,
+                        e -> e.isAlive() && !e.getItem().isEmpty()
+                                && e.getItem().getItem() instanceof AnomalyTraitItem
+                                && e.getItem().getTag() != null
+                                && e.getItem().getTag().contains(AnomalyTraitItem.TAG_STAGE_ABILITIES))
+                .stream()
+                .min((a, b) -> Double.compare(caster.distanceToSqr(a), caster.distanceToSqr(b)))
+                .orElse(null);
+    }
+
+    public static String absorbDroppedTraitItem(ServerPlayer caster, ItemEntity itemEntity) {
+        ItemStack stack = itemEntity.getItem();
+        CompoundTag tag = stack.getTag();
+        if (tag == null || !tag.contains(AnomalyTraitItem.TAG_STAGE_ABILITIES)) {
+            return null;
+        }
+        String abilitiesCsv = tag.getString(AnomalyTraitItem.TAG_STAGE_ABILITIES);
+        if (abilitiesCsv.isEmpty() || "该阶段暂无已记录异能".equals(abilitiesCsv.trim())) {
+            return null;
+        }
+
+        // TAG_STAGE_ABILITIES 存的是中文名（可能以 "、" 或 "," 分隔），按别名表反查
+        String[] parts = abilitiesCsv.split("[、,，]\\s*");
+        List<EligibleSpell> resolved = new ArrayList<>();
+        for (String part : parts) {
+            String name = part.trim();
+            if (name.isEmpty()) {
+                continue;
+            }
+            ResourceLocation id = AnomalyBookService.resolveSpellId(name);
+            if (id == null || isForbidden(id)) {
+                continue;
+            }
+            resolved.add(new EligibleSpell(id, 1));
+        }
+        if (resolved.isEmpty()) {
+            return null;
+        }
+
+        EligibleSpell chosen = resolved.get(caster.getRandom().nextInt(resolved.size()));
+        if (!writeSpellIntoBook(caster, chosen)) {
+            return null;
+        }
+
+        // 消耗掉落物
+        stack.shrink(1);
+        if (stack.isEmpty()) {
+            itemEntity.discard();
+        }
+
+        AbstractSpell spell = SpellRegistry.getSpell(chosen.id());
+        return spell != null ? spell.getSpellName() : chosen.id().getPath();
     }
 
     private static boolean writeSpellIntoBook(ServerPlayer player, EligibleSpell spell) {

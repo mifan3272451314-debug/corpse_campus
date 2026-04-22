@@ -34,7 +34,7 @@ public class ImpermanenceMonkSpell extends AbstractSpell {
             .setMinRarity(SpellRarity.RARE)
             .setSchoolResource(ModSchools.DONGYUE_RESOURCE)
             .setMaxLevel(3)
-            .setCooldownSeconds(4)
+            .setCooldownSeconds(1800)
             .build();
 
     public ImpermanenceMonkSpell() {
@@ -53,8 +53,10 @@ public class ImpermanenceMonkSpell extends AbstractSpell {
                 Component.translatable("tooltip.corpse_campus.impermanence_range",
                         AbilityRuntime.IMPERMANENCE_INFECTION_RANGE),
                 Component.translatable("tooltip.corpse_campus.impermanence_block_attack"),
-                Component.translatable("tooltip.corpse_campus.impermanence_self_boost"),
-                Component.translatable("tooltip.corpse_campus.impermanence_sneak_clear"));
+                Component.translatable("tooltip.corpse_campus.impermanence_grant_b_spell"),
+                Component.translatable("tooltip.corpse_campus.impermanence_revoke_on_release"),
+                Component.translatable("tooltip.corpse_campus.impermanence_sneak_clear"),
+                Component.translatable("tooltip.corpse_campus.impermanence_long_cooldown"));
     }
 
     @Override
@@ -85,7 +87,7 @@ public class ImpermanenceMonkSpell extends AbstractSpell {
     @Override
     public void onCast(Level level, int spellLevel, LivingEntity entity, CastSource castSource,
             MagicData playerMagicData) {
-        if (level.isClientSide || !(entity instanceof Player caster)) {
+        if (level.isClientSide || !(entity instanceof net.minecraft.server.level.ServerPlayer caster)) {
             super.onCast(level, spellLevel, entity, castSource, playerMagicData);
             return;
         }
@@ -101,7 +103,7 @@ public class ImpermanenceMonkSpell extends AbstractSpell {
             return;
         }
 
-        Player target = findNearbyPlayer(level, caster);
+        net.minecraft.server.level.ServerPlayer target = findNearbyPlayer(level, caster);
         if (target == null) {
             caster.displayClientMessage(
                     Component.translatable("message.corpse_campus.impermanence_no_target"), true);
@@ -114,6 +116,9 @@ public class ImpermanenceMonkSpell extends AbstractSpell {
             target.removeEffect(ModMobEffects.IMPERMANENCE_MONK_INFECTED.get());
             caster.displayClientMessage(Component.translatable(
                     "message.corpse_campus.impermanence_released", target.getDisplayName()), true);
+            target.displayClientMessage(Component.translatable(
+                    "message.corpse_campus.impermanence_released_you",
+                    caster.getDisplayName()), false);
             super.onCast(level, spellLevel, entity, castSource, playerMagicData);
             return;
         }
@@ -125,7 +130,8 @@ public class ImpermanenceMonkSpell extends AbstractSpell {
             return;
         }
 
-        if (ImpermanenceMonkRuntime.infectTarget(caster, target)) {
+        ImpermanenceMonkRuntime.InfectionResult result = ImpermanenceMonkRuntime.infectTarget(caster, target);
+        if (result.success()) {
             target.addEffect(new MobEffectInstance(
                     ModMobEffects.IMPERMANENCE_MONK_INFECTED.get(),
                     AbilityRuntime.TOGGLE_DURATION_TICKS,
@@ -148,13 +154,21 @@ public class ImpermanenceMonkSpell extends AbstractSpell {
                     count,
                     AbilityRuntime.IMPERMANENCE_MAX_TARGETS), false);
 
-            target.displayClientMessage(
-                    Component.translatable("message.corpse_campus.impermanence_infected_you",
-                            caster.getDisplayName()),
-                    false);
-
-            // "给予自己的一阶技能"：基于感染数量给予施法者递进的增益（一阶技能的抽象化表达）
-            applySelfBoost(caster, count, spellLevel);
+            if (result.grantedSpellName() != null) {
+                caster.displayClientMessage(Component.translatable(
+                        "message.corpse_campus.impermanence_granted_caster",
+                        target.getDisplayName(),
+                        result.grantedSpellName()), false);
+                target.displayClientMessage(Component.translatable(
+                        "message.corpse_campus.impermanence_infected_you_granted",
+                        caster.getDisplayName(),
+                        result.grantedSpellName()), false);
+            } else {
+                target.displayClientMessage(
+                        Component.translatable("message.corpse_campus.impermanence_infected_you",
+                                caster.getDisplayName()),
+                        false);
+            }
 
             level.playSound(null, caster.blockPosition(), SoundEvents.WITHER_SHOOT,
                     SoundSource.PLAYERS, 0.45F, 1.6F);
@@ -165,20 +179,9 @@ public class ImpermanenceMonkSpell extends AbstractSpell {
         super.onCast(level, spellLevel, entity, castSource, playerMagicData);
     }
 
-    private void applySelfBoost(Player caster, int infectedCount, int spellLevel) {
-        int durationTicks = 20 * 30 * infectedCount;
-        int amplifier = Math.min(2, infectedCount - 1);
-        caster.addEffect(new MobEffectInstance(
-                net.minecraft.world.effect.MobEffects.DAMAGE_BOOST,
-                durationTicks, amplifier, false, true, true));
-        caster.addEffect(new MobEffectInstance(
-                net.minecraft.world.effect.MobEffects.MOVEMENT_SPEED,
-                durationTicks, Math.max(0, amplifier - 1), false, true, true));
-    }
-
-    private Player findNearbyPlayer(Level level, Player caster) {
+    private net.minecraft.server.level.ServerPlayer findNearbyPlayer(Level level, Player caster) {
         AABB box = caster.getBoundingBox().inflate(AbilityRuntime.IMPERMANENCE_INFECTION_RANGE);
-        return level.getEntitiesOfClass(Player.class, box,
+        return level.getEntitiesOfClass(net.minecraft.server.level.ServerPlayer.class, box,
                         p -> p != caster && p.isAlive() && caster.hasLineOfSight(p))
                 .stream()
                 .min((a, b) -> Double.compare(caster.distanceToSqr(a), caster.distanceToSqr(b)))

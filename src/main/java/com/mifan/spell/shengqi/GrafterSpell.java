@@ -41,7 +41,7 @@ public class GrafterSpell extends AbstractSpell {
         this.manaCostPerLevel = 10;
         this.baseSpellPower = 0;
         this.spellPowerPerLevel = 0;
-        this.castTime = 0;
+        this.castTime = 200;
         this.baseManaCost = 40;
     }
 
@@ -49,15 +49,18 @@ public class GrafterSpell extends AbstractSpell {
     public List<MutableComponent> getUniqueInfo(int spellLevel, LivingEntity caster) {
         return List.of(
                 Component.translatable("tooltip.corpse_campus.grafter_range", GRAFT_RANGE),
+                Component.translatable("tooltip.corpse_campus.grafter_cast_time"),
                 Component.translatable("tooltip.corpse_campus.grafter_absorb_mode"),
                 Component.translatable("tooltip.corpse_campus.grafter_graft_mode"),
+                Component.translatable("tooltip.corpse_campus.grafter_drop_absorb"),
+                Component.translatable("tooltip.corpse_campus.grafter_no_mimic_copy"),
                 Component.translatable("tooltip.corpse_campus.grafter_forbidden"),
                 Component.translatable("tooltip.corpse_campus.grafter_cross_sequence"));
     }
 
     @Override
     public CastType getCastType() {
-        return CastType.INSTANT;
+        return CastType.LONG;
     }
 
     @Override
@@ -90,8 +93,24 @@ public class GrafterSpell extends AbstractSpell {
 
         ServerPlayer target = findNearbyPlayer(level, caster);
         if (target == null) {
-            caster.displayClientMessage(
-                    Component.translatable("message.corpse_campus.grafter_no_target"), true);
+            // 没有可作为对象的玩家时，嫁接师可吸收地上掉落的异能物品
+            net.minecraft.world.entity.item.ItemEntity droppedTrait = GrafterRuntime.findNearbyDroppedTraitItem(caster,
+                    GRAFT_RANGE);
+            if (droppedTrait != null) {
+                String absorbedSpellName = GrafterRuntime.absorbDroppedTraitItem(caster, droppedTrait);
+                if (absorbedSpellName != null) {
+                    caster.displayClientMessage(Component.translatable(
+                            "message.corpse_campus.grafter_absorbed_dropped", absorbedSpellName), false);
+                    level.playSound(null, caster.blockPosition(), SoundEvents.BEACON_ACTIVATE,
+                            SoundSource.PLAYERS, 0.45F, 1.1F);
+                } else {
+                    caster.displayClientMessage(
+                            Component.translatable("message.corpse_campus.grafter_dropped_empty"), true);
+                }
+            } else {
+                caster.displayClientMessage(
+                        Component.translatable("message.corpse_campus.grafter_no_target"), true);
+            }
             super.onCast(level, spellLevel, entity, castSource, playerMagicData);
             return;
         }
@@ -161,7 +180,7 @@ public class GrafterSpell extends AbstractSpell {
     private ServerPlayer findNearbyPlayer(Level level, Player caster) {
         AABB box = caster.getBoundingBox().inflate(GRAFT_RANGE);
         return level.getEntitiesOfClass(ServerPlayer.class, box,
-                        p -> p != caster && p.isAlive() && caster.hasLineOfSight(p))
+                p -> p != caster && p.isAlive() && caster.hasLineOfSight(p))
                 .stream()
                 .min((a, b) -> Double.compare(caster.distanceToSqr(a), caster.distanceToSqr(b)))
                 .orElse(null);
