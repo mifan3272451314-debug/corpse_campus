@@ -446,11 +446,11 @@
   "tooltip.corpse_campus.rewind_worm_toggle": "首次施放：穿越到镜像备份维度；再次施放：回到施放前的维度与坐标",
   "tooltip.corpse_campus.rewind_worm_cooldown": "去 / 回共享一个 30 分钟冷却",
   "tooltip.corpse_campus.rewind_worm_require_backup": "需管理员先执行 /magic rewind backup create <玩家> [半径] 把当前世界扫描进镜像维度",
-  "tooltip.corpse_campus.rewind_worm_mirror_semantics": "镜像维度内的方块态以管理员最近一次备份时刻为准；不迁移方块实体与实体",
+  "tooltip.corpse_campus.rewind_worm_mirror_semantics": "镜像维度内的方块态以管理员最近一次备份时刻为准",
   "message.corpse_campus.rewind_mirror_not_ready": "回溯之虫：镜像维度尚未准备好。请联系管理员执行 /magic rewind backup create <玩家> 启动备份扫描",
   "message.corpse_campus.rewind_mirror_missing": "回溯之虫：镜像维度 corpse_campus:rewind_mirror 未加载。请检查数据包是否正确部署",
   "message.corpse_campus.rewind_on_cooldown": "回溯之虫仍在冷却中，剩余 %s",
   "message.corpse_campus.rewind_anchor_lost": "回溯之虫：回返锚点已丢失，无法回到原位置（可能是死亡或跨存档导致）",
-  "message.corpse_campus.rewind_into_mirror": "回溯之虫启动：你穿越到了镜像备份维度",
+  "message.corpse_campus.rewind_into_mirror": "回溯之虫启动：你穿越到了镜像维度",
   "message.corpse_campus.rewind_out_of_mirror": "回溯之虫回环：你已回到原维度的备份锚点"
 }
