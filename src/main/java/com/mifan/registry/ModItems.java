@@ -6,6 +6,7 @@ import com.mifan.corpsecampus;
 import com.mifan.item.AbilityClearItem;
 import com.mifan.item.AnomalyDetectorItem;
 import com.mifan.item.AnomalyTraitItem;
+import com.mifan.item.DesignatedAbilityItem;
 import com.mifan.item.RankBlessingItem;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
@@ -64,6 +65,8 @@ public final class ModItems {
             () -> new RankBlessingItem(AnomalySpellRank.S));
     public static final RegistryObject<Item> ABILITY_CLEAR_CORE = ITEMS.register("ability_clear_core",
             AbilityClearItem::new);
+    public static final RegistryObject<Item> DESIGNATED_ABILITY = ITEMS.register("designated_ability",
+            DesignatedAbilityItem::new);
 
     private ModItems() {
     }

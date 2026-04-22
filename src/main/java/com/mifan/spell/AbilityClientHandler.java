@@ -1,6 +1,7 @@
 package com.mifan.spell;
 
 import com.mifan.corpsecampus;
+import com.mifan.client.screen.DesignatedAbilityScreen;
 import com.mifan.client.screen.DominanceTargetScreen;
 import com.mifan.client.screen.FerrymanTargetScreen;
 import com.mifan.client.screen.MidasTouchTimerScreen;
@@ -96,6 +97,14 @@ public final class AbilityClientHandler {
             return;
         }
         minecraft.setScreen(new PlayerStatusScreen());
+    }
+
+    public static void openDesignatedAbilityScreen() {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.player == null || minecraft.level == null) {
+            return;
+        }
+        minecraft.setScreen(new DesignatedAbilityScreen());
     }
 
     public static void openMidasTouchTimerScreen(OpenMidasTouchScreenPacket packet) {

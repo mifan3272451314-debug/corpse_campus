@@ -5,6 +5,7 @@ import com.mifan.network.clientbound.DangerSensePingPacket;
 import com.mifan.network.clientbound.InstinctProcPacket;
 import com.mifan.network.clientbound.NecromancerSoulCountPacket;
 import com.mifan.network.clientbound.OlfactionTrailSyncPacket;
+import com.mifan.network.clientbound.OpenDesignatedAbilityScreenPacket;
 import com.mifan.network.clientbound.OpenDominanceScreenPacket;
 import com.mifan.network.clientbound.OpenFerrymanScreenPacket;
 import com.mifan.network.clientbound.OpenMidasTouchScreenPacket;
@@ -16,6 +17,7 @@ import com.mifan.network.clientbound.OpenRecorderOfficerScreenPacket;
 import com.mifan.network.clientbound.UpdateNecromancerScreenPacket;
 import com.mifan.network.serverbound.AssignNecromancerTargetPacket;
 import com.mifan.network.serverbound.CloseNecromancerScreenPacket;
+import com.mifan.network.serverbound.ConfigureDesignatedAbilityPacket;
 import com.mifan.network.serverbound.MimicAbsorbPacket;
 import com.mifan.network.serverbound.MimicReleasePacket;
 import com.mifan.network.serverbound.SetDominanceTargetPacket;
@@ -195,6 +197,19 @@ public final class ModNetwork {
                 .encoder(AssignNecromancerTargetPacket::encode)
                 .decoder(AssignNecromancerTargetPacket::decode)
                 .consumerMainThread(AssignNecromancerTargetPacket::handle)
+                .add();
+
+        // 指定异能（管理员核心物品）
+        CHANNEL.messageBuilder(OpenDesignatedAbilityScreenPacket.class, packetId++, NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(OpenDesignatedAbilityScreenPacket::encode)
+                .decoder(OpenDesignatedAbilityScreenPacket::decode)
+                .consumerMainThread(OpenDesignatedAbilityScreenPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(ConfigureDesignatedAbilityPacket.class, packetId++, NetworkDirection.PLAY_TO_SERVER)
+                .encoder(ConfigureDesignatedAbilityPacket::encode)
+                .decoder(ConfigureDesignatedAbilityPacket::decode)
+                .consumerMainThread(ConfigureDesignatedAbilityPacket::handle)
                 .add();
     }
 

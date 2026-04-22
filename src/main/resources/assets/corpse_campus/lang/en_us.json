@@ -450,5 +450,25 @@
   "tooltip.corpse_campus.ability_clear_hint": "Right-click to fully reset the player (abilities, sequence, rank, XP, inventory, gear, effects).",
   "tooltip.corpse_campus.ability_clear_warning": "§cWarning: clears entire inventory, armor, Curios slots and XP. Cannot be undone.",
   "message.corpse_campus.rank_core_applied": "Rank set to §e%s§r",
-  "message.corpse_campus.ability_cleared": "All abilities / sequence / rank / gear / XP / natural awakening progress cleared."
+  "message.corpse_campus.ability_cleared": "All abilities / sequence / rank / gear / XP / natural awakening progress cleared.",
+
+  "item.corpse_campus.designated_ability": "Designated Ability",
+  "item.corpse_campus.designated_ability.configured": "%s Core",
+  "tooltip.corpse_campus.designated_ability_unconfigured": "Right-click to open the configuration screen (school / spell / level).",
+  "tooltip.corpse_campus.designated_ability_school": "School: %s",
+  "tooltip.corpse_campus.designated_ability_spell": "Spell: %s",
+  "tooltip.corpse_campus.designated_ability_level": "Level: Lv.%d",
+  "tooltip.corpse_campus.designated_ability_use_hint": "An unawakened player right-clicking this is directly awakened (bypasses the 40 cap).",
+  "screen.corpse_campus.designated_ability.title": "Designated Ability — Configure",
+  "screen.corpse_campus.designated_ability.subtitle": "Pick school, then spell, then level. Click confirm to bind.",
+  "screen.corpse_campus.designated_ability.school_column": "§bSchool",
+  "screen.corpse_campus.designated_ability.spell_column": "§bSpell",
+  "screen.corpse_campus.designated_ability.level_column": "§bLevel",
+  "screen.corpse_campus.designated_ability.btn_confirm": "Confirm",
+  "screen.corpse_campus.designated_ability.btn_cancel": "Cancel",
+  "message.corpse_campus.designated_ability.configured": "Bound §e%s§r (school §b%s§r / level §6%d§r).",
+  "message.corpse_campus.designated_ability.awakened": "Awakened via Designated Ability: §b%s§r · §e%s§r · §6Lv.%d§r",
+  "message.corpse_campus.designated_ability.not_holding": "Hold a Designated Ability item in your main or off hand before confirming.",
+  "message.corpse_campus.designated_ability.already_configured": "This item is already configured. Use or clear it first.",
+  "message.corpse_campus.designated_ability.bad_nbt": "Designated Ability NBT is corrupt; cannot awaken."
 }

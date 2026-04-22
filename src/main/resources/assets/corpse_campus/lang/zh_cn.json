@@ -486,5 +486,25 @@
   "tooltip.corpse_campus.ability_clear_hint": "右键将玩家完全重置为白板（异能/序列/位阶/经验/物品/装备/状态）",
   "tooltip.corpse_campus.ability_clear_warning": "§c警告：会清空全部物品栏 / 装备 / Curios 槽位 / 经验，操作不可撤销",
   "message.corpse_campus.rank_core_applied": "位阶已设为 §e%s§r 级",
-  "message.corpse_campus.ability_cleared": "已清除全部异能 / 序列 / 位阶 / 装备 / 经验 / 自然觉醒进度"
+  "message.corpse_campus.ability_cleared": "已清除全部异能 / 序列 / 位阶 / 装备 / 经验 / 自然觉醒进度",
+
+  "item.corpse_campus.designated_ability": "指定异能",
+  "item.corpse_campus.designated_ability.configured": "%s核心",
+  "tooltip.corpse_campus.designated_ability_unconfigured": "右键打开配置界面，选择流派 / 法术 / 等级",
+  "tooltip.corpse_campus.designated_ability_school": "流派：%s",
+  "tooltip.corpse_campus.designated_ability_spell": "法术：%s",
+  "tooltip.corpse_campus.designated_ability_level": "等级：Lv.%d",
+  "tooltip.corpse_campus.designated_ability_use_hint": "未觉醒玩家右键 → 直接定向觉醒（不消耗 40 上限名额）",
+  "screen.corpse_campus.designated_ability.title": "指定异能 — 配置",
+  "screen.corpse_campus.designated_ability.subtitle": "依次选择流派、法术、等级，然后点击确定",
+  "screen.corpse_campus.designated_ability.school_column": "§b流派",
+  "screen.corpse_campus.designated_ability.spell_column": "§b法术",
+  "screen.corpse_campus.designated_ability.level_column": "§b等级",
+  "screen.corpse_campus.designated_ability.btn_confirm": "确定",
+  "screen.corpse_campus.designated_ability.btn_cancel": "取消",
+  "message.corpse_campus.designated_ability.configured": "已绑定 §e%s§r（流派 §b%s§r / 等级 §6%d§r）",
+  "message.corpse_campus.designated_ability.awakened": "已通过指定异能觉醒：§b%s§r · §e%s§r · §6Lv.%d§r",
+  "message.corpse_campus.designated_ability.not_holding": "请把指定异能物品拿到主手或副手再确定",
+  "message.corpse_campus.designated_ability.already_configured": "该物品已配置，请先使用或清除",
+  "message.corpse_campus.designated_ability.bad_nbt": "指定异能 NBT 损坏，无法觉醒"
 }
