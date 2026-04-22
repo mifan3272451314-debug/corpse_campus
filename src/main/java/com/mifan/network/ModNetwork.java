@@ -7,8 +7,12 @@ import com.mifan.network.clientbound.OlfactionTrailSyncPacket;
 import com.mifan.network.clientbound.OpenDominanceScreenPacket;
 import com.mifan.network.clientbound.OpenFerrymanScreenPacket;
 import com.mifan.network.clientbound.OpenMidasTouchScreenPacket;
+import com.mifan.network.clientbound.OpenMimicAbsorbScreenPacket;
+import com.mifan.network.clientbound.OpenMimicReleaseScreenPacket;
 import com.mifan.network.clientbound.OpenPlayerStatusScreenPacket;
 import com.mifan.network.clientbound.OpenRecorderOfficerScreenPacket;
+import com.mifan.network.serverbound.MimicAbsorbPacket;
+import com.mifan.network.serverbound.MimicReleasePacket;
 import com.mifan.network.serverbound.SetDominanceTargetPacket;
 import com.mifan.network.serverbound.SetFerrymanTargetPacket;
 import com.mifan.network.serverbound.SetMidasTouchTimerPacket;
@@ -111,6 +115,30 @@ public final class ModNetwork {
                 .encoder(SetFerrymanTargetPacket::encode)
                 .decoder(SetFerrymanTargetPacket::decode)
                 .consumerMainThread(SetFerrymanTargetPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(OpenMimicAbsorbScreenPacket.class, packetId++, NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(OpenMimicAbsorbScreenPacket::encode)
+                .decoder(OpenMimicAbsorbScreenPacket::decode)
+                .consumerMainThread(OpenMimicAbsorbScreenPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(OpenMimicReleaseScreenPacket.class, packetId++, NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(OpenMimicReleaseScreenPacket::encode)
+                .decoder(OpenMimicReleaseScreenPacket::decode)
+                .consumerMainThread(OpenMimicReleaseScreenPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(MimicAbsorbPacket.class, packetId++, NetworkDirection.PLAY_TO_SERVER)
+                .encoder(MimicAbsorbPacket::encode)
+                .decoder(MimicAbsorbPacket::decode)
+                .consumerMainThread(MimicAbsorbPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(MimicReleasePacket.class, packetId++, NetworkDirection.PLAY_TO_SERVER)
+                .encoder(MimicReleasePacket::encode)
+                .decoder(MimicReleasePacket::decode)
+                .consumerMainThread(MimicReleasePacket::handle)
                 .add();
     }
 
