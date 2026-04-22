@@ -1,7 +1,6 @@
 package com.mifan.anomaly;
 
 import com.mifan.corpsecampus;
-import com.mifan.registry.ModItems;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -108,17 +107,9 @@ public final class AnomalyEventHandler {
         CompoundTag anomalyData = persisted.getCompound("AnomalyP0");
         int count = anomalyData.getInt(PENDING_TRAIT_DROPS);
 
-        // 满额时 B 级特性不再掉落，避免新玩家觉醒
-        boolean blockBDrops = AnomalyConfig.globalCapEnabled
-                && AnomalyConfig.disableBDropWhenFull
-                && AnomalyLimitService.get(player.getServer()).isCapReached();
-
         for (int i = 0; i < count; i++) {
             ItemStack stack = ItemStack.of(anomalyData.getCompound("PendingTraitDrop_" + i));
             if (stack.isEmpty()) {
-                continue;
-            }
-            if (blockBDrops && ModItems.isBRankTraitItem(stack.getItem())) {
                 continue;
             }
             ItemEntity entity = new ItemEntity(player.level(), player.getX(), player.getY(), player.getZ(), stack);

@@ -600,8 +600,6 @@ public final class MagicCommand {
                         + "§7（SavedData 实时值；/magic limit set <value> 可改）",
                 "§f  limit.countAwakenedPlayers = §e" + AnomalyConfig.countAwakenedPlayers
                         + "§7（config 文件值，需重载 config）",
-                "§f  limit.disableBDropWhenFull = §e" + AnomalyConfig.disableBDropWhenFull
-                        + "§7（config 文件值，需重载 config）",
                 "§f  limit.autoRecountOnServerStart = §e" + AnomalyConfig.autoRecountOnServerStart
                         + "§7（config 文件值，需重载 config）",
                 "§a§l▌ §e§l数值规则（代码常量，不可运行时调）",
