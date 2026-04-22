@@ -3,6 +3,7 @@ package com.mifan.registry;
 import com.mifan.corpsecampus;
 import com.mifan.spell.dongyue.DaiyueSpell;
 import com.mifan.spell.dongyue.ExecutionerSpell;
+import com.mifan.spell.dongyue.GreatNecromancerSpell;
 import com.mifan.spell.dongyue.ImpermanenceMonkSpell;
 import com.mifan.spell.dongyue.InstinctSpell;
 import com.mifan.spell.dongyue.ManiaSpell;
@@ -24,6 +25,7 @@ import com.mifan.spell.shengqi.StaminaSpell;
 import com.mifan.spell.xujing.ElementalistSpell;
 import com.mifan.spell.xujing.MarkSpell;
 import com.mifan.spell.xujing.RecorderOfficerSpell;
+import com.mifan.spell.xujing.RewindWormSpell;
 import com.mifan.spell.xujing.DangerSenseSpell;
 import com.mifan.spell.xujing.OlfactionSpell;
 import com.mifan.spell.xujing.SonicSenseSpell;
@@ -103,6 +105,10 @@ public final class ModSpells {
                         AuthorityGraspSpell::new);
         public static final RegistryObject<AbstractSpell> ENDLESS_LIFE = SPELLS.register("endless_life",
                         EndlessLifeSpell::new);
+        public static final RegistryObject<AbstractSpell> GREAT_NECROMANCER = SPELLS.register("great_necromancer",
+                        GreatNecromancerSpell::new);
+        public static final RegistryObject<AbstractSpell> REWIND_WORM = SPELLS.register("rewind_worm",
+                        RewindWormSpell::new);
 
         private ModSpells() {
         }

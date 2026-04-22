@@ -8,6 +8,7 @@ import com.mifan.network.clientbound.InstinctProcPacket;
 import com.mifan.network.clientbound.OlfactionTrailSyncPacket;
 import com.mifan.registry.ModMobEffects;
 import com.mifan.spell.runtime.MarkRuntime;
+import com.mifan.spell.runtime.NecromancerRuntime;
 import com.mifan.spell.runtime.NecroticRuntime;
 import com.mifan.spell.runtime.TelekinesisRuntime;
 import com.mifan.spell.yuzhe.LifeThiefSpell;
@@ -104,6 +105,7 @@ public final class AbilityEventHandler {
         clearLifeThiefTargetIfInvalid(player);
         clearMimicSlotsIfInactive(player, data);
         clearImpermanenceIfInactive(player, data);
+        NecromancerRuntime.tick(player);
     }
 
     @SubscribeEvent
@@ -113,6 +115,11 @@ public final class AbilityEventHandler {
         }
         if (event.level instanceof ServerLevel serverLevel) {
             MidasBombRuntime.tickLevel(serverLevel);
+            // 只在主世界 tick 时驱动回溯之虫镜像备份扫描（避免每维度重复调度）
+            if (serverLevel.dimension() == net.minecraft.world.level.Level.OVERWORLD
+                    && serverLevel.getServer() != null) {
+                com.mifan.spell.runtime.RewindBackupService.tick(serverLevel.getServer());
+            }
         }
     }
 
@@ -149,6 +156,15 @@ public final class AbilityEventHandler {
             event.setCanceled(true);
             if (mob.getTarget() == player) {
                 mob.setTarget(null);
+            }
+            return;
+        }
+
+        if (entity instanceof Player necroOwner && directEntity instanceof Mob necroMinion
+                && NecromancerRuntime.isMinionOf(necroMinion, necroOwner)) {
+            event.setCanceled(true);
+            if (necroMinion.getTarget() == necroOwner) {
+                necroMinion.setTarget(null);
             }
             return;
         }
@@ -272,9 +288,15 @@ public final class AbilityEventHandler {
         if (deadPlayer != null && !event.isCanceled()) {
             AbilityRuntime.releaseDominance(deadPlayer);
             AbilityRuntime.onFerrymanTargetDeath(deadPlayer);
+            NecromancerRuntime.release(deadPlayer);
         }
 
         NecroticRuntime.rewardKill(event);
+
+        Entity killerEntity = event.getSource().getEntity();
+        if (killerEntity instanceof Player killerPlayer && !(entity instanceof Player)) {
+            NecromancerRuntime.onMonsterKilled(killerPlayer, entity);
+        }
     }
 
     @SubscribeEvent
@@ -301,6 +323,8 @@ public final class AbilityEventHandler {
         if (oldData.getBoolean(AbilityRuntime.TAG_NECROTIC_REVIVE_USED)) {
             newData.putBoolean(AbilityRuntime.TAG_NECROTIC_REVIVE_USED, true);
         }
+        // 回溯之虫：保留 CD、清 in_mirror 标记，锚点不再复制（死后老锚点无意义）
+        com.mifan.spell.runtime.RewindWormRuntime.onDeath(oldData, newData);
     }
 
     @SubscribeEvent
@@ -367,6 +391,7 @@ public final class AbilityEventHandler {
 
         AbilityRuntime.retargetDominatedMobs(player, livingTarget);
         player.getPersistentData().remove(AbilityRuntime.TAG_DOMINANCE_TARGET_PLAYER);
+        NecromancerRuntime.onCasterAttackedTarget(player, livingTarget);
     }
 
     @SubscribeEvent

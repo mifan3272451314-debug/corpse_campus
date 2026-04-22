@@ -130,6 +130,27 @@ public final class AbilityRuntime {
     public static final String TAG_DOMINANCE_OWNER = "corpse_campus_dominance_owner";
     public static final String TAG_DOMINANCE_LEVEL = "corpse_campus_dominance_level";
 
+    public static final String TAG_NECROMANCER_SOULS = "corpse_campus_necromancer_souls";
+    public static final String TAG_NECROMANCER_LAST_KILL = "corpse_campus_necromancer_last_kill";
+    public static final String TAG_NECROMANCER_MINIONS = "corpse_campus_necromancer_minions";
+    public static final String TAG_NECROMANCER_LAST_ATTACK_TARGET = "corpse_campus_necromancer_last_attack_target";
+    public static final String TAG_NECROMANCER_LAST_ATTACK_TICK = "corpse_campus_necromancer_last_attack_tick";
+    public static final String TAG_NECROMANCER_OWNER = "corpse_campus_necromancer_owner";
+    public static final String TAG_NECROMANCER_BUFFED = "corpse_campus_necromancer_buffed";
+    public static final String TAG_NECROMANCER_BUFF_HEAL_EXPIRE = "corpse_campus_necromancer_buff_heal_expire";
+
+    public static final int NECROMANCER_PATROL_RADIUS = 30;
+    public static final int NECROMANCER_TELEPORT_RADIUS = 50;
+    public static final float NECROMANCER_BUFF_NATURAL_CHANCE = 0.15F;
+    public static final int NECROMANCER_ENHANCE_MANA_COST = 120;
+    public static final long NECROMANCER_ATTACK_FOCUS_TICKS = 200L;
+    public static final float NECROMANCER_BUFF_HEALTH_MULT = 1.5F;
+    public static final float NECROMANCER_BUFF_SPEED_MULT = 1.3F;
+    public static final int NECROMANCER_BUFF_ABSORPTION_AMP = 1;
+    public static final int NECROMANCER_BUFF_ABSORPTION_DURATION_TICKS = 2400;
+    public static final String NECROMANCER_HEALTH_BUFF_UUID = "b3e8d10c-2e9f-45a2-9b7d-1c0a2ad7be10";
+    public static final String NECROMANCER_SPEED_BUFF_UUID = "7c2f4a81-8a10-4ed2-9a10-51df00d91c90";
+
     public static final String TAG_AUTHORITY_GRASP_EXPIRE_TICK = "corpse_campus_authority_grasp_expire";
     public static final String TAG_AUTHORITY_GRASP_SUMMON_COUNT = "corpse_campus_authority_grasp_summon_count";
     public static final String TAG_AUTHORITY_GRASP_DRAINED_EXPIRE = "corpse_campus_authority_grasp_drained_expire";
