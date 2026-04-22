@@ -1,5 +1,6 @@
 package com.mifan.spell.runtime;
 
+import com.mifan.compat.playerrevive.PlayerReviveCompat;
 import com.mifan.registry.ModMobEffects;
 import com.mifan.spell.AbilityRuntime;
 import net.minecraft.nbt.CompoundTag;
@@ -116,6 +117,37 @@ public final class NecroticRuntime {
         }
 
         event.setCanceled(true);
+        applyNecroticRevive(player);
+    }
+
+    /**
+     * PlayerRevive 兼容入口：当玩家手上挂着冥化 armed 效果，且被 PlayerRevive 放入 bleeding 状态时，
+     * 强制走冥化复活流程，跳过倒地等救援阶段。仅在 PlayerRevive 已安装时生效。
+     */
+    public static void tickPlayerReviveCompat(Player player) {
+        if (!PlayerReviveCompat.isLoaded()) {
+            return;
+        }
+        if (!(player instanceof ServerPlayer serverPlayer)) {
+            return;
+        }
+        if (!serverPlayer.hasEffect(ModMobEffects.NECROTIC_REBIRTH_ARMED.get())) {
+            return;
+        }
+        CompoundTag data = serverPlayer.getPersistentData();
+        if (data.getBoolean(AbilityRuntime.TAG_NECROTIC_REVIVE_USED)) {
+            return;
+        }
+        if (!PlayerReviveCompat.isBleeding(serverPlayer)) {
+            return;
+        }
+
+        PlayerReviveCompat.revive(serverPlayer);
+        applyNecroticRevive(serverPlayer);
+    }
+
+    private static void applyNecroticRevive(ServerPlayer player) {
+        CompoundTag data = player.getPersistentData();
         data.putBoolean(AbilityRuntime.TAG_NECROTIC_REVIVE_USED, true);
         MobEffectInstance armedEffect = player.getEffect(ModMobEffects.NECROTIC_REBIRTH_ARMED.get());
         int spellLevel = AbilityRuntime.getEffectLevel(armedEffect);

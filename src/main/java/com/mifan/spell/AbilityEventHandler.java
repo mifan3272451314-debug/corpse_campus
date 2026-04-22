@@ -98,6 +98,7 @@ public final class AbilityEventHandler {
         tickMagneticCling(player, data, gameTime);
         tickMania(player, data, gameTime);
         NecroticRuntime.tickUndead(player, data, gameTime);
+        NecroticRuntime.tickPlayerReviveCompat(player);
         MarkRuntime.tick(player, data, gameTime);
         tickNinghe(player, gameTime);
         tickSunlight(player, gameTime);
