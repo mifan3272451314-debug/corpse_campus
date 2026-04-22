@@ -122,12 +122,14 @@ public final class NecroticRuntime {
         player.removeEffect(ModMobEffects.NECROTIC_REBIRTH_ARMED.get());
         player.setHealth(1.0F);
         player.removeAllEffects();
-        player.addEffect(new MobEffectInstance(ModMobEffects.NECROTIC_UNDEAD.get(),
-                AbilityRuntime.TOGGLE_DURATION_TICKS,
+        MobEffectInstance undeadInstance = new MobEffectInstance(ModMobEffects.NECROTIC_UNDEAD.get(),
+                MobEffectInstance.INFINITE_DURATION,
                 spellLevel - 1,
                 false,
                 false,
-                false));
+                false);
+        undeadInstance.setCurativeItems(new java.util.ArrayList<>());
+        player.addEffect(undeadInstance);
         applyMaxHealth(player, data);
         player.setHealth((float) player.getMaxHealth());
         player.addEffect(new MobEffectInstance(MobEffects.DAMAGE_BOOST, 20 * 30, 0, false, false, true));

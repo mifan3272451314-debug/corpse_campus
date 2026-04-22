@@ -287,6 +287,7 @@
   "message.corpse_campus.necrotic_rebirth_revived": "你在死亡中复苏，已化为丧尸",
   "message.corpse_campus.necrotic_rebirth_kill_heal": "吞噬生机，恢复了 %s 点生命",
   "message.corpse_campus.necrotic_rebirth_restored": "你已通过杀戮恢复全部生命，冥化结束",
+  "message.corpse_campus.necrotic_rebirth_locked": "丧尸形态已锁定，无法主动关闭",
   "message.corpse_campus.instinct_dodge": "本能闪避触发",
   "message.corpse_campus.instinct_last_stand": "本能保命触发",
   "message.corpse_campus.executioner_need_blade": "刽子手需要主手持有可用刀具",

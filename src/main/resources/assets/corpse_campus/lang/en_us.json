@@ -249,6 +249,7 @@
   "message.corpse_campus.necrotic_rebirth_revived": "You clawed your way back and became undead",
   "message.corpse_campus.necrotic_rebirth_kill_heal": "You devoured life and restored %s health",
   "message.corpse_campus.necrotic_rebirth_restored": "Your vitality has been fully restored; necrotic rebirth ends",
+  "message.corpse_campus.necrotic_rebirth_locked": "Undead form is locked and cannot be manually disabled",
   "message.corpse_campus.instinct_dodge": "Instinct dodge triggered",
   "message.corpse_campus.instinct_last_stand": "Instinct last stand triggered",
   "message.corpse_campus.executioner_need_blade": "Executioner requires a usable blade in your main hand",
