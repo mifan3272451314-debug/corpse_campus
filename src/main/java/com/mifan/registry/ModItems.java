@@ -22,27 +22,43 @@ public final class ModItems {
             AnomalySpellBookItem::new);
     public static final RegistryObject<Item> ANOMALY_DETECTOR = ITEMS.register("anomaly_detector",
             AnomalyDetectorItem::new);
-    public static final RegistryObject<Item> TRAIT_XUJING_B = registerTraitItem("trait_xujing_b");
-    public static final RegistryObject<Item> TRAIT_XUJING_A = registerTraitItem("trait_xujing_a");
-    public static final RegistryObject<Item> TRAIT_XUJING_S = registerTraitItem("trait_xujing_s");
-    public static final RegistryObject<Item> TRAIT_RIZHAO_B = registerTraitItem("trait_rizhao_b");
-    public static final RegistryObject<Item> TRAIT_RIZHAO_A = registerTraitItem("trait_rizhao_a");
-    public static final RegistryObject<Item> TRAIT_RIZHAO_S = registerTraitItem("trait_rizhao_s");
-    public static final RegistryObject<Item> TRAIT_DONGYUE_B = registerTraitItem("trait_dongyue_b");
-    public static final RegistryObject<Item> TRAIT_DONGYUE_A = registerTraitItem("trait_dongyue_a");
-    public static final RegistryObject<Item> TRAIT_DONGYUE_S = registerTraitItem("trait_dongyue_s");
-    public static final RegistryObject<Item> TRAIT_YUZHE_B = registerTraitItem("trait_yuzhe_b");
-    public static final RegistryObject<Item> TRAIT_YUZHE_A = registerTraitItem("trait_yuzhe_a");
-    public static final RegistryObject<Item> TRAIT_YUZHE_S = registerTraitItem("trait_yuzhe_s");
-    public static final RegistryObject<Item> TRAIT_SHENGQI_B = registerTraitItem("trait_shengqi_b");
-    public static final RegistryObject<Item> TRAIT_SHENGQI_A = registerTraitItem("trait_shengqi_a");
-    public static final RegistryObject<Item> TRAIT_SHENGQI_S = registerTraitItem("trait_shengqi_s");
+    public static final RegistryObject<Item> TRAIT_XUJING_B = registerTraitItem("trait_xujing_b",
+            ModSchools.XUJING_RESOURCE, AnomalySpellRank.B);
+    public static final RegistryObject<Item> TRAIT_XUJING_A = registerTraitItem("trait_xujing_a",
+            ModSchools.XUJING_RESOURCE, AnomalySpellRank.A);
+    public static final RegistryObject<Item> TRAIT_XUJING_S = registerTraitItem("trait_xujing_s",
+            ModSchools.XUJING_RESOURCE, AnomalySpellRank.S);
+    public static final RegistryObject<Item> TRAIT_RIZHAO_B = registerTraitItem("trait_rizhao_b",
+            ModSchools.RIZHAO_RESOURCE, AnomalySpellRank.B);
+    public static final RegistryObject<Item> TRAIT_RIZHAO_A = registerTraitItem("trait_rizhao_a",
+            ModSchools.RIZHAO_RESOURCE, AnomalySpellRank.A);
+    public static final RegistryObject<Item> TRAIT_RIZHAO_S = registerTraitItem("trait_rizhao_s",
+            ModSchools.RIZHAO_RESOURCE, AnomalySpellRank.S);
+    public static final RegistryObject<Item> TRAIT_DONGYUE_B = registerTraitItem("trait_dongyue_b",
+            ModSchools.DONGYUE_RESOURCE, AnomalySpellRank.B);
+    public static final RegistryObject<Item> TRAIT_DONGYUE_A = registerTraitItem("trait_dongyue_a",
+            ModSchools.DONGYUE_RESOURCE, AnomalySpellRank.A);
+    public static final RegistryObject<Item> TRAIT_DONGYUE_S = registerTraitItem("trait_dongyue_s",
+            ModSchools.DONGYUE_RESOURCE, AnomalySpellRank.S);
+    public static final RegistryObject<Item> TRAIT_YUZHE_B = registerTraitItem("trait_yuzhe_b",
+            ModSchools.YUZHE_RESOURCE, AnomalySpellRank.B);
+    public static final RegistryObject<Item> TRAIT_YUZHE_A = registerTraitItem("trait_yuzhe_a",
+            ModSchools.YUZHE_RESOURCE, AnomalySpellRank.A);
+    public static final RegistryObject<Item> TRAIT_YUZHE_S = registerTraitItem("trait_yuzhe_s",
+            ModSchools.YUZHE_RESOURCE, AnomalySpellRank.S);
+    public static final RegistryObject<Item> TRAIT_SHENGQI_B = registerTraitItem("trait_shengqi_b",
+            ModSchools.SHENGQI_RESOURCE, AnomalySpellRank.B);
+    public static final RegistryObject<Item> TRAIT_SHENGQI_A = registerTraitItem("trait_shengqi_a",
+            ModSchools.SHENGQI_RESOURCE, AnomalySpellRank.A);
+    public static final RegistryObject<Item> TRAIT_SHENGQI_S = registerTraitItem("trait_shengqi_s",
+            ModSchools.SHENGQI_RESOURCE, AnomalySpellRank.S);
 
     private ModItems() {
     }
 
-    private static RegistryObject<Item> registerTraitItem(String id) {
-        return ITEMS.register(id, AnomalyTraitItem::new);
+    private static RegistryObject<Item> registerTraitItem(String id, ResourceLocation schoolId,
+            AnomalySpellRank rank) {
+        return ITEMS.register(id, () -> new AnomalyTraitItem(schoolId, rank));
     }
 
     public static Item getTraitItem(ResourceLocation schoolId, AnomalySpellRank rank) {

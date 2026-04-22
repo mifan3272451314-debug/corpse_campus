@@ -75,6 +75,15 @@ public final class AnomalyEventHandler {
         }
 
         List<ItemStack> pendingDrops = AnomalyBookService.clearBookAndCollectTraitDrops(player);
+
+        MinecraftServer server = player.getServer();
+        if (server != null) {
+            AnomalyLimitService.get(server).clearAwakened(player.getUUID());
+        }
+        player.displayClientMessage(
+                net.minecraft.network.chat.Component.translatable("message.corpse_campus.sequence_reset_on_death"),
+                false);
+
         if (pendingDrops.isEmpty()) {
             return;
         }

@@ -124,6 +124,15 @@ public final class AnomalyLimitService extends SavedData {
         return false;
     }
 
+    /** 将玩家从已觉醒集合移除，首次移除返回 true。用于死亡后清除觉醒状态。 */
+    public boolean clearAwakened(UUID uuid) {
+        if (awakenedPlayers.remove(uuid)) {
+            setDirty();
+            return true;
+        }
+        return false;
+    }
+
     /**
      * 重新扫描在线玩家，更新觉醒集合；离线玩家记录保留。
      */

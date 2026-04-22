@@ -52,6 +52,9 @@ public final class AnomalyBookService {
     private static final String BOOK_OWNER_NAME = "AnomalyOwnerName";
     private static final String BOOK_MANA_BONUS = "AnomalyManaBonus";
     private static final String BOOK_SCHOOL_BONUSES = "AnomalySchoolBonuses";
+    private static final String BOOK_AWAKENED = "AnomalyAwakened";
+    private static final String BOOK_MAIN_SEQUENCE = "AnomalyMainSequence";
+    private static final String BOOK_HIGHEST_RANK = "AnomalyHighestRank";
 
     private static final DecimalFormat PERCENT_FORMAT = new DecimalFormat("0.##");
 
@@ -96,6 +99,123 @@ public final class AnomalyBookService {
     public static int getStoredManaBonus(ItemStack stack) {
         CompoundTag tag = stack.getTag();
         return tag == null ? 0 : tag.getInt(BOOK_MANA_BONUS);
+    }
+
+    public static boolean isAwakened(ItemStack book) {
+        CompoundTag tag = book.getTag();
+        return tag != null && tag.getBoolean(BOOK_AWAKENED);
+    }
+
+    @Nullable
+    public static ResourceLocation getMainSequenceId(ItemStack book) {
+        CompoundTag tag = book.getTag();
+        if (tag == null || !tag.contains(BOOK_MAIN_SEQUENCE, Tag.TAG_STRING)) {
+            return null;
+        }
+        String path = tag.getString(BOOK_MAIN_SEQUENCE);
+        if (path.isEmpty()) {
+            return null;
+        }
+        return ResourceLocation.fromNamespaceAndPath(corpsecampus.MODID, path);
+    }
+
+    @Nullable
+    public static AnomalySpellRank getHighestRank(ItemStack book) {
+        CompoundTag tag = book.getTag();
+        if (tag == null || !tag.contains(BOOK_HIGHEST_RANK, Tag.TAG_STRING)) {
+            return null;
+        }
+        String name = tag.getString(BOOK_HIGHEST_RANK);
+        if (name.isEmpty() || "NONE".equals(name)) {
+            return null;
+        }
+        try {
+            return AnomalySpellRank.valueOf(name);
+        } catch (IllegalArgumentException ignored) {
+            return null;
+        }
+    }
+
+    private static void writeSequenceBinding(ItemStack book, ResourceLocation schoolId, AnomalySpellRank rank) {
+        CompoundTag tag = book.getOrCreateTag();
+        tag.putBoolean(BOOK_AWAKENED, true);
+        tag.putString(BOOK_MAIN_SEQUENCE, schoolId.getPath());
+        tag.putString(BOOK_HIGHEST_RANK, rank.name());
+    }
+
+    public static void clearSequenceBinding(ItemStack book) {
+        CompoundTag tag = book.getTag();
+        if (tag == null) {
+            return;
+        }
+        tag.putBoolean(BOOK_AWAKENED, false);
+        tag.remove(BOOK_MAIN_SEQUENCE);
+        tag.remove(BOOK_HIGHEST_RANK);
+    }
+
+    public record AbsorbResult(boolean success, Component message) {
+        public static AbsorbResult failure(String translationKey, Object... args) {
+            return new AbsorbResult(false, Component.translatable(translationKey, args));
+        }
+
+        public static AbsorbResult success(String translationKey, Object... args) {
+            return new AbsorbResult(true, Component.translatable(translationKey, args));
+        }
+    }
+
+    public static AbsorbResult tryAbsorbBTrait(ServerPlayer player, ResourceLocation schoolId) {
+        ItemStack book = ensureBookPresent(player);
+        if (book.isEmpty() || !isAnomalyBook(book)) {
+            return AbsorbResult.failure("message.corpse_campus.absorb_no_book");
+        }
+
+        if (isAwakened(book)) {
+            return AbsorbResult.failure("message.corpse_campus.sequence_locked");
+        }
+
+        net.minecraft.server.MinecraftServer server = player.getServer();
+        if (server != null
+                && AnomalyConfig.globalCapEnabled
+                && AnomalyLimitService.get(server).isCapReached()) {
+            return AbsorbResult.failure("message.corpse_campus.anomaly_cap_reached");
+        }
+
+        ensureSpellContainer(book);
+        java.util.Set<ResourceLocation> existing = new java.util.HashSet<>();
+        for (SpellSlot slot : ISpellContainer.getOrCreate(book).getActiveSpells()) {
+            existing.add(slot.getSpell().getSpellResource());
+        }
+
+        List<SpellSpec> candidates = new ArrayList<>();
+        for (SpellSpec spec : SPELL_SPECS.values()) {
+            if (spec.rank() == AnomalySpellRank.B
+                    && spec.schoolId().equals(schoolId)
+                    && !existing.contains(spec.spellId())) {
+                candidates.add(spec);
+            }
+        }
+
+        if (candidates.isEmpty()) {
+            return AbsorbResult.failure("message.corpse_campus.absorb_no_spell_available");
+        }
+
+        SpellSpec picked = candidates.get(player.getRandom().nextInt(candidates.size()));
+        AbstractSpell spell = getRegisteredSpell(picked.spellId());
+        if (spell == null) {
+            return AbsorbResult.failure("message.corpse_campus.absorb_spell_missing", picked.zhName());
+        }
+
+        boolean added = addSpell(player, book, spell, 1, 1);
+        if (!added) {
+            return AbsorbResult.failure("message.corpse_campus.absorb_write_failed");
+        }
+
+        writeSequenceBinding(book, schoolId, AnomalySpellRank.B);
+        updateBookSnapshot(player, book);
+        refreshCurioState(player);
+
+        String schoolName = localizeSchool(schoolId);
+        return AbsorbResult.success("message.corpse_campus.awakened", schoolName, picked.zhName());
     }
 
     public static double getStoredSchoolBonusPercent(ItemStack stack, ResourceLocation schoolId) {
@@ -198,6 +318,7 @@ public final class AnomalyBookService {
 
         List<ItemStack> drops = buildHistoricalTraitDrops(player, book);
         clearAllSpells(player, book);
+        clearSequenceBinding(book);
         updateBookSnapshot(player, book);
         return drops;
     }
@@ -374,10 +495,7 @@ public final class AnomalyBookService {
     }
 
     public static boolean hasSchoolSpellLoaded(Player player, ResourceLocation schoolId) {
-        if (!(player instanceof ServerPlayer serverPlayer)) {
-            return false;
-        }
-        ItemStack book = findExistingBook(serverPlayer);
+        ItemStack book = findBookForRead(player);
         if (book.isEmpty()) {
             return false;
         }
@@ -392,7 +510,44 @@ public final class AnomalyBookService {
     }
 
     public static boolean isRizhaoSequencePlayer(Player player) {
-        return hasSchoolSpellLoaded(player, ModSchools.RIZHAO_RESOURCE);
+        ItemStack book = findBookForRead(player);
+        if (book.isEmpty() || !isAwakened(book)) {
+            return false;
+        }
+        return ModSchools.RIZHAO_RESOURCE.equals(getMainSequenceId(book));
+    }
+
+    public static ItemStack findBookForRead(Player player) {
+        // Curios slot (if inventory is available via CuriosApi)
+        try {
+            java.util.Optional<ICurioStacksHandler> handler = CuriosApi.getCuriosInventory(player)
+                    .resolve()
+                    .flatMap(inv -> inv.getStacksHandler(SPELLBOOK_SLOT));
+            if (handler.isPresent() && handler.get().getStacks().getSlots() > 0) {
+                ItemStack slotStack = handler.get().getStacks().getStackInSlot(0);
+                if (isAnomalyBook(slotStack) && ownerMatches(slotStack, player)) {
+                    return slotStack;
+                }
+            }
+        } catch (Throwable ignored) {
+            // Curios may not be fully initialized on client in rare cases.
+        }
+        for (ItemStack stack : player.getInventory().items) {
+            if (isAnomalyBook(stack) && ownerMatches(stack, player)) {
+                return stack;
+            }
+        }
+        for (ItemStack stack : player.getInventory().offhand) {
+            if (isAnomalyBook(stack) && ownerMatches(stack, player)) {
+                return stack;
+            }
+        }
+        return ItemStack.EMPTY;
+    }
+
+    private static boolean ownerMatches(ItemStack book, Player player) {
+        UUID ownerUuid = getOwnerUuid(book);
+        return ownerUuid == null || ownerUuid.equals(player.getUUID());
     }
 
     public static List<SpellSlot> getPlayerLoadedSpellSlots(ServerPlayer player) {
@@ -854,6 +1009,7 @@ public final class AnomalyBookService {
         register(map, "affinity", "亲和", AnomalySpellRank.B, ModSchools.RIZHAO_RESOURCE);
         register(map, "ninghe", "宁禾", AnomalySpellRank.B, ModSchools.RIZHAO_RESOURCE);
         register(map, "sunlight", "日光", AnomalySpellRank.B, ModSchools.RIZHAO_RESOURCE);
+        register(map, "fertile_land", "沃土", AnomalySpellRank.B, ModSchools.RIZHAO_RESOURCE);
         register(map, "midas_touch", "点金客", AnomalySpellRank.A, ModSchools.RIZHAO_RESOURCE);
 
         register(map, "daiyue", "岱岳", AnomalySpellRank.B, ModSchools.DONGYUE_RESOURCE);
