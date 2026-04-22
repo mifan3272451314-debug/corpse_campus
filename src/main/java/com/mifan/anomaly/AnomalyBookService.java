@@ -634,8 +634,11 @@ public final class AnomalyBookService {
     }
 
     public static UpgradeOutcome upgradeLoadedSpell(ServerPlayer player, ResourceLocation spellId) {
-        ItemStack book = findExistingBook(player);
-        if (book.isEmpty()) {
+        // 使用 ensureBookPresent 保证客户端 UI 可见的那本书与服务端校验的书一致：
+        // findExistingBook 只按 boundBookId 严格匹配，若玩家 PLAYER_BOUND_BOOK_ID 缺失/不同步会找不到书，
+        // 与 UI 侧 findBookForRead（按 owner）产生不一致，造成"该异能未搭载"的误报。
+        ItemStack book = ensureBookPresent(player);
+        if (book.isEmpty() || !isAnomalyBook(book)) {
             return UpgradeOutcome.NO_BOOK;
         }
         ensureSpellContainer(book);
