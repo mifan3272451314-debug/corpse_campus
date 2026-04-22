@@ -2,6 +2,7 @@ package com.mifan.spell.runtime;
 
 import com.mifan.anomaly.AnomalyBookService;
 import com.mifan.item.AnomalyTraitItem;
+import com.mojang.logging.LogUtils;
 import io.redspace.ironsspellbooks.api.registry.SpellRegistry;
 import io.redspace.ironsspellbooks.api.spells.AbstractSpell;
 import io.redspace.ironsspellbooks.api.spells.SpellSlot;
@@ -13,11 +14,14 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public final class GrafterRuntime {
+    private static final Logger LOGGER = LogUtils.getLogger();
+
     public static final ResourceLocation GRAFTER_ID = ResourceLocation.fromNamespaceAndPath("corpse_campus", "grafter");
     public static final ResourceLocation ENDLESS_LIFE_ID = ResourceLocation.fromNamespaceAndPath("corpse_campus", "endless_life");
 
@@ -47,7 +51,10 @@ public final class GrafterRuntime {
      * 嫁接师吸收：从 target 法术书随机抽 1 条非禁用法术写到 caster 身上，
      * 并把这条法术从 target 自己的法术书移除（"抽走"而非"复制"）。
      *
-     * @return 被抽走的法术，若没有候选或写入失败返回 null（失败时不会扣 target）。
+     * 执行顺序：先从 target 移除，确认成功后再写入 caster。
+     * 若写入 caster 失败则回滚，把 spell 放回 target，保证不会出现双份。
+     *
+     * @return 被抽走的法术，若没有候选、移除失败或写入失败返回 null。
      */
     @Nullable
     public static EligibleSpell absorb(ServerPlayer caster, ServerPlayer target) {
@@ -56,10 +63,17 @@ public final class GrafterRuntime {
             return null;
         }
         EligibleSpell chosen = candidates.get(caster.getRandom().nextInt(candidates.size()));
-        if (!writeSpellIntoBook(caster, chosen)) {
+        if (!removeSpellFromOwnedBook(target, chosen)) {
+            LOGGER.warn("[Grafter] absorb aborted: failed to remove spell {} from target {}",
+                    chosen.id(), target.getGameProfile().getName());
             return null;
         }
-        removeSpellFromOwnedBook(target, chosen);
+        if (!writeSpellIntoBook(caster, chosen)) {
+            LOGGER.warn("[Grafter] absorb write failed, rolling back spell {} back to target {}",
+                    chosen.id(), target.getGameProfile().getName());
+            writeSpellIntoBook(target, chosen);
+            return null;
+        }
         return chosen;
     }
 
@@ -67,7 +81,10 @@ public final class GrafterRuntime {
      * 嫁接师嫁接：从 caster 法术书随机抽 1 条非禁用法术写给 target，
      * 并把这条法术从 caster 自己的法术书移除（对称语义：自己付出一条才能给出去）。
      *
-     * @return 被嫁接出去的法术，若没有候选或写入失败返回 null（失败时不会扣 caster）。
+     * 执行顺序：先从 caster 移除，确认成功后再写入 target。
+     * 若写入 target 失败则回滚，把 spell 放回 caster。
+     *
+     * @return 被嫁接出去的法术，若没有候选、移除失败或写入失败返回 null。
      */
     @Nullable
     public static EligibleSpell graft(ServerPlayer caster, ServerPlayer target) {
@@ -76,10 +93,17 @@ public final class GrafterRuntime {
             return null;
         }
         EligibleSpell chosen = candidates.get(caster.getRandom().nextInt(candidates.size()));
-        if (!writeSpellIntoBook(target, chosen)) {
+        if (!removeSpellFromOwnedBook(caster, chosen)) {
+            LOGGER.warn("[Grafter] graft aborted: failed to remove spell {} from caster {}",
+                    chosen.id(), caster.getGameProfile().getName());
             return null;
         }
-        removeSpellFromOwnedBook(caster, chosen);
+        if (!writeSpellIntoBook(target, chosen)) {
+            LOGGER.warn("[Grafter] graft write failed, rolling back spell {} back to caster {}",
+                    chosen.id(), caster.getGameProfile().getName());
+            writeSpellIntoBook(caster, chosen);
+            return null;
+        }
         return chosen;
     }
 
@@ -157,15 +181,24 @@ public final class GrafterRuntime {
         return AnomalyBookService.addSpell(player, book, abstractSpell, spell.level(), 1);
     }
 
-    private static void removeSpellFromOwnedBook(ServerPlayer player, EligibleSpell spell) {
+    private static boolean removeSpellFromOwnedBook(ServerPlayer player, EligibleSpell spell) {
         AbstractSpell abstractSpell = SpellRegistry.getSpell(spell.id());
         if (abstractSpell == null) {
-            return;
+            LOGGER.warn("[Grafter] remove failed: spell {} not in registry for player {}",
+                    spell.id(), player.getGameProfile().getName());
+            return false;
         }
         ItemStack book = AnomalyBookService.getOwnedBook(player);
         if (book.isEmpty()) {
-            return;
+            LOGGER.warn("[Grafter] remove failed: player {} has no owned anomaly book (spell {})",
+                    player.getGameProfile().getName(), spell.id());
+            return false;
         }
-        AnomalyBookService.clearSpell(player, book, abstractSpell);
+        boolean cleared = AnomalyBookService.clearSpell(player, book, abstractSpell);
+        if (!cleared) {
+            LOGGER.warn("[Grafter] remove failed: clearSpell returned false for spell {} on player {}",
+                    spell.id(), player.getGameProfile().getName());
+        }
+        return cleared;
     }
 }
