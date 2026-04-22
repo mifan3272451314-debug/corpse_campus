@@ -430,6 +430,13 @@
   "message.corpse_campus.necromancer_type_missing": "该种类的魂魄无法显化为实体",
   "message.corpse_campus.necromancer_summoned": "你召唤了一只 %s",
   "message.corpse_campus.necromancer_summoned_enhanced": "你召唤了一只被强化的 %s",
+  "screen.corpse_campus.necromancer.title": "冥司召魂台",
+  "screen.corpse_campus.necromancer.subtitle": "当前法力值：%s（强化消耗 120）",
+  "screen.corpse_campus.necromancer.empty": "尚未收集到任何魂魄",
+  "screen.corpse_campus.necromancer.count": "魂魄 ×%s",
+  "screen.corpse_campus.necromancer.btn_summon": "召唤",
+  "screen.corpse_campus.necromancer.btn_enhance": "强化 %s蓝",
+  "hud.corpse_campus.necromancer_souls": "魂魄 ×%s",
 
   "spell.corpse_campus.rewind_worm": "回溯之虫",
   "spell.corpse_campus.rewind_worm.guide_description": "虚境 · S 级终阶。获得本法术后，世界会被备份到一个镜像维度（需管理员通过 /magic rewind backup create 触发扫描）。首次施放会把你传送到镜像维度中保存的世界；30 分钟冷却后再次施放会把你传回施放时的原位置与维度。进去与出来共享同一个 30 分钟冷却。",

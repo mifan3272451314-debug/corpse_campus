@@ -335,6 +335,33 @@ public final class AbilityEventHandler {
         }
     }
 
+    /**
+     * 镜像维度（corpse_campus:rewind_mirror）"时间冻结"：
+     * <ul>
+     *   <li>拦截所有非复制流程加入镜像的 Mob（自然刷怪、命令召唤、生物蛋等）</li>
+     *   <li>放行：打了 {@link com.mifan.spell.runtime.RewindBackupService#TAG_ENTITY_REWIND_COPIED} 标志的实体（= 我们从主维度复制过来的）</li>
+     *   <li>放行：非 Mob（如画、物品展示框、箭；这些如果误进镜像通常是玩家亲自放的）</li>
+     * </ul>
+     */
+    @SubscribeEvent
+    public static void onEntityJoinMirror(net.minecraftforge.event.entity.EntityJoinLevelEvent event) {
+        if (!(event.getLevel() instanceof ServerLevel serverLevel)) {
+            return;
+        }
+        if (!serverLevel.dimension().equals(com.mifan.spell.runtime.RewindBackupService.MIRROR_DIMENSION)) {
+            return;
+        }
+        Entity entity = event.getEntity();
+        if (!(entity instanceof net.minecraft.world.entity.Mob)) {
+            return;
+        }
+        if (entity.getPersistentData()
+                .getBoolean(com.mifan.spell.runtime.RewindBackupService.TAG_ENTITY_REWIND_COPIED)) {
+            return;
+        }
+        event.setCanceled(true);
+    }
+
     @SubscribeEvent
     public static void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {

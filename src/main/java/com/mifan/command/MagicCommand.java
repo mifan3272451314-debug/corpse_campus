@@ -925,15 +925,16 @@ public final class MagicCommand {
             case STARTED -> {
                 int radiusChunks = Math.max(1, (radiusBlocks + 15) >> 4);
                 int totalChunks = RewindBackupService.getState(source.getServer()).totalChunks;
-                long estMin = (long) totalChunks / Math.max(1, RewindBackupService.CHUNKS_PER_TICK) / 20L / 60L;
+                // 三阶段串行：总耗时 ≈ blocks/2 + BE/4 + entities/4 tick；按最慢的 blocks 相估算
+                long estMin = (long) totalChunks / Math.max(1, RewindBackupService.CHUNKS_PER_TICK_BLOCKS) / 20L / 60L;
                 source.sendSuccess(() -> Component.literal("§a已启动回溯之虫镜像备份 §7→ 玩家 "
                         + target.getGameProfile().getName() + "，中心维度 "
                         + sourceLevel.dimension().location() + "，中心方块 ("
                         + center.getX() + "," + center.getY() + "," + center.getZ()
                         + ")，半径 " + radiusBlocks + " 格 (" + radiusChunks + " chunks)"
-                        + "，待扫描 " + totalChunks + " chunks，按每 tick "
-                        + RewindBackupService.CHUNKS_PER_TICK + " chunks 估计约需 "
-                        + estMin + " 分钟。"), true);
+                        + "，每阶段待扫描 " + totalChunks + " chunks。"
+                        + "三阶段串行 (方块态 → 方块实体 → 生物实体)，按最慢阶段估算约 "
+                        + estMin + " 分钟起；用 /magic rewind backup status 可查阶段进度。"), true);
                 return 1;
             }
             case BUSY -> {

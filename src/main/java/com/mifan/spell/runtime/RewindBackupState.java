@@ -13,7 +13,7 @@ import java.util.Deque;
 public final class RewindBackupState extends SavedData {
     public static final String FILE_ID = "corpse_campus_rewind_backup";
 
-    public enum Phase { IDLE, SCANNING, READY }
+    public enum Phase { IDLE, SCAN_BLOCKS, SCAN_BLOCK_ENTITIES, SCAN_ENTITIES, READY }
 
     public Phase phase = Phase.IDLE;
     public String sourceDim = "";
@@ -22,6 +22,9 @@ public final class RewindBackupState extends SavedData {
     public int radiusChunks = 0;
     public int scannedChunks = 0;
     public int totalChunks = 0;
+    public int blocksScanned = 0;
+    public int blockEntitiesScanned = 0;
+    public int entitiesScanned = 0;
     public long startTick = 0L;
     public long lastUpdateTick = 0L;
     public final Deque<Long> queue = new ArrayDeque<>();
@@ -38,6 +41,9 @@ public final class RewindBackupState extends SavedData {
         s.radiusChunks = tag.getInt("radius");
         s.scannedChunks = tag.getInt("scanned");
         s.totalChunks = tag.getInt("total");
+        s.blocksScanned = tag.getInt("blocksScanned");
+        s.blockEntitiesScanned = tag.getInt("blockEntitiesScanned");
+        s.entitiesScanned = tag.getInt("entitiesScanned");
         s.startTick = tag.getLong("startTick");
         s.lastUpdateTick = tag.getLong("lastUpdateTick");
         ListTag list = tag.getList("queue", Tag.TAG_LONG);
@@ -59,6 +65,9 @@ public final class RewindBackupState extends SavedData {
         tag.putInt("radius", radiusChunks);
         tag.putInt("scanned", scannedChunks);
         tag.putInt("total", totalChunks);
+        tag.putInt("blocksScanned", blocksScanned);
+        tag.putInt("blockEntitiesScanned", blockEntitiesScanned);
+        tag.putInt("entitiesScanned", entitiesScanned);
         tag.putLong("startTick", startTick);
         tag.putLong("lastUpdateTick", lastUpdateTick);
         ListTag list = new ListTag();
@@ -69,8 +78,10 @@ public final class RewindBackupState extends SavedData {
         return tag;
     }
 
+    /** 读取旧版本 phase 枚举字串。"SCANNING" 视为旧版 → 向前兼容到 SCAN_BLOCKS。 */
     private static Phase readPhase(String name) {
         if (name == null || name.isEmpty()) return Phase.IDLE;
+        if ("SCANNING".equals(name)) return Phase.SCAN_BLOCKS; // v0 兼容
         try {
             return Phase.valueOf(name);
         } catch (IllegalArgumentException ignored) {
