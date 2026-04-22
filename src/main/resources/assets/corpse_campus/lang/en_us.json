@@ -392,6 +392,12 @@
   "message.corpse_campus.necromancer_type_missing": "This soul cannot manifest as an entity",
   "message.corpse_campus.necromancer_summoned": "Summoned a %s",
   "message.corpse_campus.necromancer_summoned_enhanced": "Summoned an enhanced %s",
+  "screen.corpse_campus.necromancer.title": "Necromancer's Seance",
+  "screen.corpse_campus.necromancer.subtitle": "Current mana: %s (enhance costs 120)",
+  "screen.corpse_campus.necromancer.empty": "No souls gathered yet",
+  "screen.corpse_campus.necromancer.count": "Souls x%s",
+  "screen.corpse_campus.necromancer.btn_summon": "Summon",
+  "screen.corpse_campus.necromancer.btn_enhance": "Enhance %s mana",
 
   "spell.corpse_campus.rewind_worm": "Rewind Worm",
   "spell.corpse_campus.rewind_worm.guide_description": "Xujing tier-3 ultimate. After acquiring this spell, the world is backed up into a mirror dimension (an admin must trigger the scan via /magic rewind backup create). The first cast teleports you into the saved mirror world; after a 30-minute cooldown a second cast returns you to the exact dimension and coordinates where you left. The outbound and return casts share one 30-minute cooldown.",

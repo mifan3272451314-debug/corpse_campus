@@ -9,6 +9,7 @@ import com.mifan.network.clientbound.OpenFerrymanScreenPacket;
 import com.mifan.network.clientbound.OpenMidasTouchScreenPacket;
 import com.mifan.network.clientbound.OpenMimicAbsorbScreenPacket;
 import com.mifan.network.clientbound.OpenMimicReleaseScreenPacket;
+import com.mifan.network.clientbound.OpenNecromancerScreenPacket;
 import com.mifan.network.clientbound.OpenPlayerStatusScreenPacket;
 import com.mifan.network.clientbound.OpenRecorderOfficerScreenPacket;
 import com.mifan.network.serverbound.MimicAbsorbPacket;
@@ -17,6 +18,7 @@ import com.mifan.network.serverbound.SetDominanceTargetPacket;
 import com.mifan.network.serverbound.SetFerrymanTargetPacket;
 import com.mifan.network.serverbound.SetMidasTouchTimerPacket;
 import com.mifan.network.serverbound.SetRecorderOfficerTimerPacket;
+import com.mifan.network.serverbound.SummonNecromancerMinionPacket;
 import com.mifan.network.serverbound.UpgradeAnomalySpellPacket;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
@@ -146,6 +148,18 @@ public final class ModNetwork {
                 .encoder(UpgradeAnomalySpellPacket::encode)
                 .decoder(UpgradeAnomalySpellPacket::decode)
                 .consumerMainThread(UpgradeAnomalySpellPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(OpenNecromancerScreenPacket.class, packetId++, NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(OpenNecromancerScreenPacket::encode)
+                .decoder(OpenNecromancerScreenPacket::decode)
+                .consumerMainThread(OpenNecromancerScreenPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(SummonNecromancerMinionPacket.class, packetId++, NetworkDirection.PLAY_TO_SERVER)
+                .encoder(SummonNecromancerMinionPacket::encode)
+                .decoder(SummonNecromancerMinionPacket::decode)
+                .consumerMainThread(SummonNecromancerMinionPacket::handle)
                 .add();
     }
 

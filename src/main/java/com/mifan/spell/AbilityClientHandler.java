@@ -6,6 +6,7 @@ import com.mifan.client.screen.FerrymanTargetScreen;
 import com.mifan.client.screen.MidasTouchTimerScreen;
 import com.mifan.client.screen.MimicAbsorbScreen;
 import com.mifan.client.screen.MimicReleaseScreen;
+import com.mifan.client.screen.NecromancerScreen;
 import com.mifan.client.screen.PlayerStatusScreen;
 import com.mifan.client.screen.RecorderOfficerTimerScreen;
 import com.mifan.network.clientbound.DangerSensePingPacket;
@@ -15,6 +16,7 @@ import com.mifan.network.clientbound.OpenFerrymanScreenPacket;
 import com.mifan.network.clientbound.OpenMidasTouchScreenPacket;
 import com.mifan.network.clientbound.OpenMimicAbsorbScreenPacket;
 import com.mifan.network.clientbound.OpenMimicReleaseScreenPacket;
+import com.mifan.network.clientbound.OpenNecromancerScreenPacket;
 import com.mifan.network.clientbound.OpenRecorderOfficerScreenPacket;
 import com.mifan.registry.ModMobEffects;
 import net.minecraft.client.gui.GuiGraphics;
@@ -65,6 +67,14 @@ public final class AbilityClientHandler {
             return;
         }
         minecraft.setScreen(new FerrymanTargetScreen(packet.getSpellLevel()));
+    }
+
+    public static void openNecromancerScreen(OpenNecromancerScreenPacket packet) {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.player == null || minecraft.level == null) {
+            return;
+        }
+        minecraft.setScreen(new NecromancerScreen(packet));
     }
 
     public static void openPlayerStatusScreen() {

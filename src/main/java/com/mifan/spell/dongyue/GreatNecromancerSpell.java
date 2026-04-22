@@ -1,5 +1,7 @@
 package com.mifan.spell.dongyue;
 
+import com.mifan.network.ModNetwork;
+import com.mifan.network.clientbound.OpenNecromancerScreenPacket;
 import com.mifan.registry.ModSchools;
 import com.mifan.spell.AbilityRuntime;
 import com.mifan.spell.runtime.NecromancerRuntime;
@@ -94,10 +96,23 @@ public class GreatNecromancerSpell extends AbstractSpell {
         if (caster.isShiftKeyDown()) {
             handleQuickSummon(caster, false);
         } else {
-            handleQuickSummon(caster, true);
+            openSelectionScreen(caster);
         }
 
         super.onCast(level, spellLevel, entity, castSource, playerMagicData);
+    }
+
+    private void openSelectionScreen(ServerPlayer caster) {
+        var souls = NecromancerRuntime.collectSouls(caster);
+        List<OpenNecromancerScreenPacket.SoulEntry> entries = new java.util.ArrayList<>(souls.size());
+        for (var entry : souls.entrySet()) {
+            entries.add(new OpenNecromancerScreenPacket.SoulEntry(entry.getKey().toString(), entry.getValue()));
+        }
+        MagicData magicData = MagicData.getPlayerMagicData(caster);
+        float mana = magicData == null ? 0.0F : magicData.getMana();
+        ModNetwork.sendToPlayer(
+                new OpenNecromancerScreenPacket(entries, mana, AbilityRuntime.NECROMANCER_ENHANCE_MANA_COST),
+                caster);
     }
 
     private void handleQuickSummon(ServerPlayer caster, boolean forceEnhanced) {
