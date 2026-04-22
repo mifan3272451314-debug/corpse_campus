@@ -96,3 +96,12 @@ mandatory = true
 versionRange = "[1.0.2-rc1+1.20,)"
 ordering = "AFTER"
 side = "BOTH"
+
+# Optional compat: PlayerRevive. Not required; when present, "冥化 (Necrotic Rebirth)"
+# armed state bypasses the bleeding/downed phase and triggers full revive directly.
+[[dependencies."${mod_id}"]]
+modId = "playerrevive"
+mandatory = false
+versionRange = "[2.0.0,)"
+ordering = "AFTER"
+side = "BOTH"
