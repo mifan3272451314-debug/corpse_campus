@@ -52,6 +52,9 @@ public class OlfactionSpell extends AbstractSpell {
                 Component.translatable("tooltip.corpse_campus.olfaction_low_health_threshold",
                         AbilityRuntime.getOlfactionLowHealthPercent()),
                 Component.translatable("tooltip.corpse_campus.olfaction_speed_boost"),
+                Component.translatable("tooltip.corpse_campus.olfaction_invisibility_on_trail"),
+                Component.translatable("tooltip.corpse_campus.olfaction_invisibility_cooldown",
+                        AbilityRuntime.getOlfactionInvisCooldownSeconds(spellLevel)),
                 Component.translatable("tooltip.corpse_campus.toggle_cast"));
     }
 

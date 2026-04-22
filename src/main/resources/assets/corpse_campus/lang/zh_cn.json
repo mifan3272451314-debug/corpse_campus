@@ -190,6 +190,8 @@
   "tooltip.corpse_campus.olfaction_track_range": "追踪范围：%s 格",
   "tooltip.corpse_campus.olfaction_low_health_threshold": "可看见生命值低于 %s%% 实体留下的红色脚印",
   "tooltip.corpse_campus.olfaction_speed_boost": "沿着红色脚印追踪时获得速度 II",
+  "tooltip.corpse_campus.olfaction_invisibility_on_trail": "追踪红色脚印时同时进入隐身",
+  "tooltip.corpse_campus.olfaction_invisibility_cooldown": "主动攻击会打破隐身，再次隐身的冷却：%s 秒",
   "tooltip.corpse_campus.elementalist_domain_radius": "领域半径：%s 格",
   "tooltip.corpse_campus.elementalist_closed_domain_radius": "蹲下施法时封闭结界半径：%s 格",
   "tooltip.corpse_campus.elementalist_mana_drain": "维持期间每 0.25 秒消耗：%s 法力",

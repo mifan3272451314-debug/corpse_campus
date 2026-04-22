@@ -170,6 +170,8 @@
   "tooltip.corpse_campus.olfaction_track_range": "Track range: %s blocks",
   "tooltip.corpse_campus.olfaction_low_health_threshold": "Reveals red tracks from entities below %s%% health",
   "tooltip.corpse_campus.olfaction_speed_boost": "Following those tracks grants Speed II",
+  "tooltip.corpse_campus.olfaction_invisibility_on_trail": "Grants Invisibility while following red tracks",
+  "tooltip.corpse_campus.olfaction_invisibility_cooldown": "Attacking breaks Invisibility. Re-stealth cooldown: %s sec",
   "tooltip.corpse_campus.elementalist_domain_radius": "Domain radius: %s blocks",
   "tooltip.corpse_campus.elementalist_closed_domain_radius": "Crouching closed-domain radius: %s blocks",
   "tooltip.corpse_campus.elementalist_mana_drain": "Mana drain every 0.25 s: %s",

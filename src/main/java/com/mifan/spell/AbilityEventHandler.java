@@ -428,6 +428,24 @@ public final class AbilityEventHandler {
         AbilityRuntime.retargetDominatedMobs(player, livingTarget);
         player.getPersistentData().remove(AbilityRuntime.TAG_DOMINANCE_TARGET_PLAYER);
         NecromancerRuntime.onCasterAttackedTarget(player, livingTarget);
+        breakOlfactionInvisibilityOnAttack(player);
+    }
+
+    private static void breakOlfactionInvisibilityOnAttack(Player player) {
+        MobEffectInstance olfaction = player.getEffect(ModMobEffects.OLFACTION.get());
+        if (olfaction == null) {
+            return;
+        }
+
+        MobEffectInstance invis = player.getEffect(MobEffects.INVISIBILITY);
+        if (invis == null || invis.getDuration() > AbilityRuntime.OLFACTION_INVIS_EXTERNAL_THRESHOLD_TICKS) {
+            return;
+        }
+
+        player.removeEffect(MobEffects.INVISIBILITY);
+        int spellLevel = AbilityRuntime.getEffectLevel(olfaction);
+        long until = player.level().getGameTime() + AbilityRuntime.getOlfactionInvisCooldownTicks(spellLevel);
+        player.getPersistentData().putLong(AbilityRuntime.TAG_OLFACTION_INVIS_COOLDOWN_UNTIL, until);
     }
 
     // 冥司仇恨：覆盖远程/法术伤害 —— 只要主人造成伤害，就把目标登记为最近攻击目标
@@ -772,7 +790,26 @@ public final class AbilityEventHandler {
 
         if (foundTrail) {
             player.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 30, 1, false, false, true));
+            tryGrantOlfactionInvisibility(player, gameTime);
         }
+    }
+
+    private static void tryGrantOlfactionInvisibility(Player player, long gameTime) {
+        CompoundTag data = player.getPersistentData();
+        long cooldownUntil = data.getLong(AbilityRuntime.TAG_OLFACTION_INVIS_COOLDOWN_UNTIL);
+        if (gameTime < cooldownUntil) {
+            return;
+        }
+
+        MobEffectInstance existing = player.getEffect(MobEffects.INVISIBILITY);
+        if (existing != null && existing.getDuration() > AbilityRuntime.OLFACTION_INVIS_EXTERNAL_THRESHOLD_TICKS) {
+            return;
+        }
+
+        player.addEffect(new MobEffectInstance(
+                MobEffects.INVISIBILITY,
+                AbilityRuntime.OLFACTION_INVIS_REFRESH_TICKS,
+                0, false, false, false));
     }
 
     private static void tickElementalDomain(Player player, CompoundTag data, long gameTime) {
