@@ -45,6 +45,15 @@ public final class ModMobEffects {
     public static final RegistryObject<MobEffect> LIFE_THIEF = MOB_EFFECTS.register("life_thief",
             () -> new AbilityMarkerEffect(0x6C2A8A));
 
+    public static final RegistryObject<MobEffect> MIMIC = MOB_EFFECTS.register("mimic",
+            () -> new AbilityMarkerEffect(0x9B6BCC));
+
+    public static final RegistryObject<MobEffect> IMPERMANENCE_MONK = MOB_EFFECTS.register("impermanence_monk",
+            () -> new AbilityMarkerEffect(0x3D7A5A));
+
+    public static final RegistryObject<MobEffect> IMPERMANENCE_MONK_INFECTED = MOB_EFFECTS.register("impermanence_monk_infected",
+            () -> new AbilityMarkerEffect(0x2E5E3A));
+
     private ModMobEffects() {
     }
 

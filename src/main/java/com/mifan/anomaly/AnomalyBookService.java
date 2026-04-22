@@ -358,6 +358,33 @@ public final class AnomalyBookService {
         return lines;
     }
 
+    public static List<ResourceLocation> getPlayerBRankSpellIds(ServerPlayer player) {
+        ItemStack book = findExistingBook(player);
+        if (book.isEmpty()) {
+            return List.of();
+        }
+        List<ResourceLocation> result = new ArrayList<>();
+        for (SpellSlot slot : ISpellContainer.getOrCreate(book).getActiveSpells()) {
+            SpellSpec spec = SPELL_SPECS.get(slot.getSpell().getSpellResource());
+            if (spec != null && spec.rank() == AnomalySpellRank.B) {
+                result.add(slot.getSpell().getSpellResource());
+            }
+        }
+        return List.copyOf(result);
+    }
+
+    public static List<SpellSlot> getPlayerLoadedSpellSlots(ServerPlayer player) {
+        ItemStack book = findExistingBook(player);
+        if (book.isEmpty()) {
+            return List.of();
+        }
+        return List.copyOf(ISpellContainer.getOrCreate(book).getActiveSpells());
+    }
+
+    public static ItemStack getOwnedBook(ServerPlayer player) {
+        return findExistingBook(player);
+    }
+
     public static List<Component> buildLoadedSpellLines(ServerPlayer player) {
         ItemStack book = ensureBookPresent(player);
         List<Component> lines = new ArrayList<>();
@@ -810,17 +837,20 @@ public final class AnomalyBookService {
         register(map, "instinct", "本能", AnomalySpellRank.B, ModSchools.DONGYUE_RESOURCE);
         register(map, "necrotic_rebirth", "冥化", AnomalySpellRank.B, ModSchools.DONGYUE_RESOURCE);
         register(map, "executioner", "刽子手", AnomalySpellRank.A, ModSchools.DONGYUE_RESOURCE);
+        register(map, "impermanence_monk", "无常僧", AnomalySpellRank.A, ModSchools.DONGYUE_RESOURCE);
 
         register(map, "wanxiang", "万象", AnomalySpellRank.B, ModSchools.YUZHE_RESOURCE);
         register(map, "telekinesis", "念力", AnomalySpellRank.B, ModSchools.YUZHE_RESOURCE);
         register(map, "dominance", "支配", AnomalySpellRank.B, ModSchools.YUZHE_RESOURCE);
         register(map, "magnetic_cling", "磁吸", AnomalySpellRank.B, ModSchools.YUZHE_RESOURCE);
         register(map, "life_thief", "盗命客", AnomalySpellRank.A, ModSchools.YUZHE_RESOURCE);
+        register(map, "mimic", "模仿者", AnomalySpellRank.A, ModSchools.YUZHE_RESOURCE);
 
         register(map, "huihun", "回魂", AnomalySpellRank.B, ModSchools.SHENGQI_RESOURCE);
         register(map, "healing", "愈合", AnomalySpellRank.B, ModSchools.SHENGQI_RESOURCE);
         register(map, "stamina", "耐力", AnomalySpellRank.B, ModSchools.SHENGQI_RESOURCE);
         register(map, "apothecary", "药师", AnomalySpellRank.B, ModSchools.SHENGQI_RESOURCE);
+        register(map, "grafter", "嫁接师", AnomalySpellRank.A, ModSchools.SHENGQI_RESOURCE);
         return Map.copyOf(map);
     }
 

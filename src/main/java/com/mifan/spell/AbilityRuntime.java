@@ -131,6 +131,16 @@ public final class AbilityRuntime {
 
     public static final String TAG_LIFE_THIEF_LAST_REDIRECT_TICK = "corpse_campus_life_thief_last_redirect_tick";
 
+    public static final String TAG_MIMIC_SLOTS = "corpse_campus_mimic_slots";
+    public static final String TAG_MIMIC_ACTIVE_SLOT = "corpse_campus_mimic_active_slot";
+    public static final int MIMIC_MAX_SLOTS = 3;
+    public static final int MIMIC_COPY_RANGE = 8;
+
+    public static final String TAG_IMPERMANENCE_INFECTED_LIST = "corpse_campus_impermanence_infected_list";
+    public static final String TAG_IMPERMANENCE_INFECTOR_UUID = "corpse_campus_impermanence_infector_uuid";
+    public static final int IMPERMANENCE_MAX_TARGETS = 3;
+    public static final int IMPERMANENCE_INFECTION_RANGE = 10;
+
     public static final String TAG_DANGER_RECENT_ATTACKERS = "corpse_campus_danger_recent_attackers";
     public static final String TAG_OLFACTION_TRAIL = "corpse_campus_olfaction_trail";
     public static final String TAG_OLFACTION_LAST_TRAIL_TICK = "corpse_campus_olfaction_last_trail_tick";

@@ -93,6 +93,8 @@ public final class AbilityEventHandler {
         MarkRuntime.tick(player, data, gameTime);
         clearExpiredInstinct(player, data, gameTime);
         clearLifeThiefTargetIfInvalid(player);
+        clearMimicSlotsIfInactive(player, data);
+        clearImpermanenceIfInactive(player, data);
     }
 
     @SubscribeEvent
@@ -133,6 +135,16 @@ public final class AbilityEventHandler {
             if (mob.getTarget() == player) {
                 mob.setTarget(null);
             }
+            return;
+        }
+
+        // 无常僧：被感染的玩家无法对自己的感染源施法者造成伤害
+        Entity attackerEntity = event.getSource().getEntity();
+        if (attackerEntity instanceof LivingEntity attackerLiving
+                && entity instanceof Player possibleInfector
+                && com.mifan.spell.runtime.ImpermanenceMonkRuntime
+                        .isInfectedBy(attackerLiving, possibleInfector.getUUID())) {
+            event.setCanceled(true);
             return;
         }
 
@@ -532,6 +544,24 @@ public final class AbilityEventHandler {
             return;
         }
         AbilityRuntime.clearLifeThief(player.getPersistentData());
+    }
+
+    private static void clearMimicSlotsIfInactive(Player player, CompoundTag data) {
+        if (player.hasEffect(ModMobEffects.MIMIC.get())) {
+            return;
+        }
+        if (data.contains(AbilityRuntime.TAG_MIMIC_SLOTS) || data.contains(AbilityRuntime.TAG_MIMIC_ACTIVE_SLOT)) {
+            com.mifan.spell.runtime.MimicRuntime.clearAllSlots(data);
+        }
+    }
+
+    private static void clearImpermanenceIfInactive(Player player, CompoundTag data) {
+        if (player.hasEffect(ModMobEffects.IMPERMANENCE_MONK.get())) {
+            return;
+        }
+        if (data.contains(AbilityRuntime.TAG_IMPERMANENCE_INFECTED_LIST)) {
+            com.mifan.spell.runtime.ImpermanenceMonkRuntime.clearAllInfections(player);
+        }
     }
 
     private static void tickDangerSense(Player player, CompoundTag data, long gameTime) {

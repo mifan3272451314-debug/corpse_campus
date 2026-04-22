@@ -3,12 +3,14 @@ package com.mifan.registry;
 import com.mifan.corpsecampus;
 import com.mifan.spell.dongyue.DaiyueSpell;
 import com.mifan.spell.dongyue.ExecutionerSpell;
+import com.mifan.spell.dongyue.ImpermanenceMonkSpell;
 import com.mifan.spell.dongyue.InstinctSpell;
 import com.mifan.spell.dongyue.ManiaSpell;
 import com.mifan.spell.dongyue.NecroticRebirthSpell;
 import com.mifan.spell.rizhao.AffinitySpell;
 import com.mifan.spell.rizhao.MidasTouchSpell;
 import com.mifan.spell.shengqi.ApothecarySpell;
+import com.mifan.spell.shengqi.GrafterSpell;
 import com.mifan.spell.shengqi.HealingSpell;
 import com.mifan.spell.shengqi.HuihunSpell;
 import com.mifan.spell.shengqi.StaminaSpell;
@@ -21,6 +23,7 @@ import com.mifan.spell.xujing.SonicSenseSpell;
 import com.mifan.spell.yuzhe.DominanceSpell;
 import com.mifan.spell.yuzhe.LifeThiefSpell;
 import com.mifan.spell.yuzhe.MagneticClingSpell;
+import com.mifan.spell.yuzhe.MimicSpell;
 import com.mifan.spell.yuzhe.TelekinesisSpell;
 import com.mifan.spell.yuzhe.WanxiangSpell;
 import io.redspace.ironsspellbooks.api.spells.AbstractSpell;
@@ -70,6 +73,12 @@ public final class ModSpells {
         public static final RegistryObject<AbstractSpell> HUIHUN = SPELLS.register("huihun", HuihunSpell::new);
         public static final RegistryObject<AbstractSpell> APOTHECARY = SPELLS.register("apothecary",
                         ApothecarySpell::new);
+        public static final RegistryObject<AbstractSpell> MIMIC = SPELLS.register("mimic",
+                        MimicSpell::new);
+        public static final RegistryObject<AbstractSpell> IMPERMANENCE_MONK = SPELLS.register("impermanence_monk",
+                        ImpermanenceMonkSpell::new);
+        public static final RegistryObject<AbstractSpell> GRAFTER = SPELLS.register("grafter",
+                        GrafterSpell::new);
 
         private ModSpells() {
         }
