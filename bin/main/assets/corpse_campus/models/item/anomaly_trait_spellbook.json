@@ -1,6 +1,0 @@
-{
-  "parent": "item/generated",
-  "textures": {
-    "layer0": "corpse_campus:item/anomaly_trait_spellbook"
-  }
-}
