@@ -138,18 +138,42 @@ public final class AbilityRuntime {
     public static final String TAG_NECROMANCER_OWNER = "corpse_campus_necromancer_owner";
     public static final String TAG_NECROMANCER_BUFFED = "corpse_campus_necromancer_buffed";
     public static final String TAG_NECROMANCER_BUFF_HEAL_EXPIRE = "corpse_campus_necromancer_buff_heal_expire";
+    public static final String TAG_NECROMANCER_ENHANCEMENT = "corpse_campus_necromancer_enhancement";
+    public static final String TAG_NECROMANCER_MODE = "corpse_campus_necromancer_mode";
+    public static final String TAG_NECROMANCER_LAST_AGGRESSOR = "corpse_campus_necromancer_last_aggressor";
+    public static final String TAG_NECROMANCER_LAST_AGGRESSOR_TICK = "corpse_campus_necromancer_last_aggressor_tick";
+    public static final String TAG_NECROMANCER_ASSIGN_TARGET = "corpse_campus_necromancer_assign_target";
+    public static final String TAG_NECROMANCER_ASSIGN_TICK = "corpse_campus_necromancer_assign_tick";
+    public static final String TAG_NECROMANCER_ASSIGN_ALLOW_PLAYER = "corpse_campus_necromancer_assign_allow_player";
 
     public static final int NECROMANCER_PATROL_RADIUS = 30;
     public static final int NECROMANCER_TELEPORT_RADIUS = 50;
     public static final float NECROMANCER_BUFF_NATURAL_CHANCE = 0.15F;
     public static final int NECROMANCER_ENHANCE_MANA_COST = 120;
     public static final long NECROMANCER_ATTACK_FOCUS_TICKS = 200L;
+    public static final long NECROMANCER_AGGRESSOR_FOCUS_TICKS = 300L;
+    public static final long NECROMANCER_ASSIGN_FOCUS_TICKS = 600L;
+    public static final double NECROMANCER_ASSIGN_PICK_RANGE = 64.0D;
+    public static final double NECROMANCER_AGGRESSIVE_RADIUS = 24.0D;
+
     public static final float NECROMANCER_BUFF_HEALTH_MULT = 1.5F;
     public static final float NECROMANCER_BUFF_SPEED_MULT = 1.3F;
     public static final int NECROMANCER_BUFF_ABSORPTION_AMP = 1;
     public static final int NECROMANCER_BUFF_ABSORPTION_DURATION_TICKS = 2400;
     public static final String NECROMANCER_HEALTH_BUFF_UUID = "b3e8d10c-2e9f-45a2-9b7d-1c0a2ad7be10";
     public static final String NECROMANCER_SPEED_BUFF_UUID = "7c2f4a81-8a10-4ed2-9a10-51df00d91c90";
+    public static final String NECROMANCER_ATTACK_BUFF_UUID = "2f1c8a90-3d55-4b11-90b1-2cf98e5b7a22";
+    public static final String NECROMANCER_ARMOR_BUFF_UUID = "9ab4d210-fc22-4f9e-8d31-7c4619a2c3b5";
+    public static final String NECROMANCER_ARMOR_TOUGH_UUID = "d30e1f55-0a84-4f27-b311-8a9f44c6b1a0";
+    public static final String NECROMANCER_KB_RES_UUID = "c5a12e00-b7ef-4a88-9e11-d4c632fb51e0";
+
+    // 分型增强参数
+    public static final float NECROMANCER_TYPE_SPEED_MULT = 1.6F;
+    public static final float NECROMANCER_TYPE_ATTACK_MULT = 1.8F;
+    public static final float NECROMANCER_TYPE_DEFENSE_ARMOR_ADD = 8.0F;
+    public static final float NECROMANCER_TYPE_DEFENSE_TOUGH_ADD = 4.0F;
+    public static final float NECROMANCER_TYPE_DEFENSE_KB_RES = 0.6F;
+    public static final float NECROMANCER_TYPE_HEALTH_MULT = 2.5F;
 
     public static final String TAG_AUTHORITY_GRASP_EXPIRE_TICK = "corpse_campus_authority_grasp_expire";
     public static final String TAG_AUTHORITY_GRASP_SUMMON_COUNT = "corpse_campus_authority_grasp_summon_count";

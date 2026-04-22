@@ -3,6 +3,7 @@ package com.mifan.spell.dongyue;
 import com.mifan.network.ModNetwork;
 import com.mifan.registry.ModSchools;
 import com.mifan.spell.AbilityRuntime;
+import com.mifan.spell.runtime.EnhancementType;
 import com.mifan.spell.runtime.NecromancerRuntime;
 import io.redspace.ironsspellbooks.api.config.DefaultConfig;
 import io.redspace.ironsspellbooks.api.magic.MagicData;
@@ -131,7 +132,8 @@ public class GreatNecromancerSpell extends AbstractSpell {
             return false;
         }
 
-        NecromancerRuntime.SummonResult result = NecromancerRuntime.summon(caster, lastKill, forceEnhanced, manaCost);
+        EnhancementType enhancement = forceEnhanced ? EnhancementType.HEALTH : EnhancementType.NONE;
+        NecromancerRuntime.SummonResult result = NecromancerRuntime.summon(caster, lastKill, enhancement, manaCost);
         if (!result.success()) {
             caster.displayClientMessage(Component.translatable(result.failKey()), true);
             return false;
@@ -140,9 +142,13 @@ public class GreatNecromancerSpell extends AbstractSpell {
         EntityType<?> type = result.type();
         ResourceLocation id = BuiltInRegistries.ENTITY_TYPE.getKey(type);
         Component name = type != null ? type.getDescription() : Component.literal(String.valueOf(id));
-        String messageKey = result.enhanced()
-                ? "message.corpse_campus.necromancer_summoned_enhanced"
-                : "message.corpse_campus.necromancer_summoned";
+        String messageKey = switch (result.enhancement()) {
+            case SPEED -> "message.corpse_campus.necromancer_summoned_speed";
+            case ATTACK -> "message.corpse_campus.necromancer_summoned_attack";
+            case DEFENSE -> "message.corpse_campus.necromancer_summoned_defense";
+            case HEALTH -> "message.corpse_campus.necromancer_summoned_health";
+            default -> "message.corpse_campus.necromancer_summoned";
+        };
         caster.displayClientMessage(Component.translatable(messageKey, name), false);
         caster.level().playSound(null, caster.blockPosition(), SoundEvents.WITHER_SPAWN,
                 SoundSource.PLAYERS, 0.35F, result.enhanced() ? 1.4F : 1.0F);

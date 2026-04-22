@@ -40,6 +40,8 @@ import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.item.ItemStack;
 import io.redspace.ironsspellbooks.item.SpellBook;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.EntityHitResult;
+import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.ArrayList;
@@ -167,7 +169,8 @@ public final class NecromancerRuntime {
                 mana,
                 AbilityRuntime.NECROMANCER_ENHANCE_MANA_COST,
                 mana + 1.0E-4F >= session.normalCost,
-                mana + 1.0E-4F >= session.enhancedCost);
+                mana + 1.0E-4F >= session.enhancedCost,
+                getMode(player).toByte());
     }
 
     public static UpdateNecromancerScreenPacket buildUpdatePacket(ServerPlayer player, Session session) {
@@ -179,7 +182,8 @@ public final class NecromancerRuntime {
                 mana,
                 AbilityRuntime.NECROMANCER_ENHANCE_MANA_COST,
                 mana + 1.0E-4F >= session.normalCost,
-                mana + 1.0E-4F >= session.enhancedCost);
+                mana + 1.0E-4F >= session.enhancedCost,
+                getMode(player).toByte());
     }
 
     private static List<OpenNecromancerScreenPacket.SoulEntry> collectSoulEntries(Player player) {
@@ -319,7 +323,7 @@ public final class NecromancerRuntime {
         return true;
     }
 
-    public static SummonResult summon(ServerPlayer caster, ResourceLocation typeId, boolean forceEnhanced,
+    public static SummonResult summon(ServerPlayer caster, ResourceLocation typeId, EnhancementType enhancement,
             int manaCost) {
         if (typeId == null) {
             return SummonResult.fail("message.corpse_campus.necromancer_no_soul");
@@ -341,7 +345,11 @@ public final class NecromancerRuntime {
             }
         }
 
-        boolean enhanced = forceEnhanced || caster.getRandom().nextFloat() < AbilityRuntime.NECROMANCER_BUFF_NATURAL_CHANCE;
+        EnhancementType resolved = enhancement != null ? enhancement : EnhancementType.NONE;
+        if (resolved == EnhancementType.NONE
+                && caster.getRandom().nextFloat() < AbilityRuntime.NECROMANCER_BUFF_NATURAL_CHANCE) {
+            resolved = rollRandomEnhancement(caster);
+        }
 
         Entity created;
         try {
@@ -374,9 +382,9 @@ public final class NecromancerRuntime {
         } catch (Exception ignored) {
         }
 
-        tagMinion(mob, caster, enhanced);
-        if (enhanced) {
-            applyEnhancement(mob, caster.level().getGameTime());
+        tagMinion(mob, caster, resolved);
+        if (resolved.isEnhanced()) {
+            applyEnhancement(mob, resolved, caster.level().getGameTime());
         }
 
         caster.serverLevel().addFreshEntity(mob);
@@ -395,7 +403,17 @@ public final class NecromancerRuntime {
             session.summonedAtLeastOnce = true;
         }
 
-        return SummonResult.success(enhanced, type);
+        return SummonResult.success(resolved, type);
+    }
+
+    private static EnhancementType rollRandomEnhancement(ServerPlayer caster) {
+        EnhancementType[] pool = {
+                EnhancementType.SPEED,
+                EnhancementType.ATTACK,
+                EnhancementType.DEFENSE,
+                EnhancementType.HEALTH
+        };
+        return pool[caster.getRandom().nextInt(pool.length)];
     }
 
     private static Vec3 pickSpawnPosition(Player caster) {
@@ -407,39 +425,103 @@ public final class NecromancerRuntime {
         return new Vec3(x, y, z);
     }
 
-    private static void tagMinion(Mob mob, Player owner, boolean enhanced) {
+    private static void tagMinion(Mob mob, Player owner, EnhancementType enhancement) {
         CompoundTag tag = mob.getPersistentData();
         tag.putUUID(AbilityRuntime.TAG_NECROMANCER_OWNER, owner.getUUID());
-        tag.putBoolean(AbilityRuntime.TAG_NECROMANCER_BUFFED, enhanced);
+        tag.putBoolean(AbilityRuntime.TAG_NECROMANCER_BUFFED, enhancement.isEnhanced());
+        tag.putByte(AbilityRuntime.TAG_NECROMANCER_ENHANCEMENT, enhancement.toByte());
         mob.setPersistenceRequired();
     }
 
-    private static void applyEnhancement(Mob mob, long gameTime) {
-        AttributeInstance healthAttr = mob.getAttribute(Attributes.MAX_HEALTH);
-        if (healthAttr != null) {
-            AttributeModifier mod = new AttributeModifier(
-                    UUID.fromString(AbilityRuntime.NECROMANCER_HEALTH_BUFF_UUID),
-                    "corpse_campus_necromancer_buff_health",
-                    AbilityRuntime.NECROMANCER_BUFF_HEALTH_MULT - 1.0D,
-                    AttributeModifier.Operation.MULTIPLY_TOTAL);
-            if (!healthAttr.hasModifier(mod)) {
-                healthAttr.addPermanentModifier(mod);
-            }
-            mob.setHealth(mob.getMaxHealth());
+    public static EnhancementType getEnhancement(Mob mob) {
+        CompoundTag tag = mob.getPersistentData();
+        if (!tag.contains(AbilityRuntime.TAG_NECROMANCER_ENHANCEMENT)) {
+            return tag.getBoolean(AbilityRuntime.TAG_NECROMANCER_BUFFED)
+                    ? EnhancementType.HEALTH
+                    : EnhancementType.NONE;
         }
+        return EnhancementType.fromByte(tag.getByte(AbilityRuntime.TAG_NECROMANCER_ENHANCEMENT));
+    }
 
+    private static void applyEnhancement(Mob mob, EnhancementType type, long gameTime) {
+        switch (type) {
+            case SPEED -> applySpeedEnhancement(mob);
+            case ATTACK -> applyAttackEnhancement(mob);
+            case DEFENSE -> applyDefenseEnhancement(mob);
+            case HEALTH -> applyHealthEnhancement(mob, gameTime);
+            default -> {
+            }
+        }
+    }
+
+    private static void applySpeedEnhancement(Mob mob) {
         AttributeInstance speedAttr = mob.getAttribute(Attributes.MOVEMENT_SPEED);
         if (speedAttr != null) {
             AttributeModifier mod = new AttributeModifier(
                     UUID.fromString(AbilityRuntime.NECROMANCER_SPEED_BUFF_UUID),
-                    "corpse_campus_necromancer_buff_speed",
-                    AbilityRuntime.NECROMANCER_BUFF_SPEED_MULT - 1.0D,
+                    "corpse_campus_necromancer_type_speed",
+                    AbilityRuntime.NECROMANCER_TYPE_SPEED_MULT - 1.0D,
                     AttributeModifier.Operation.MULTIPLY_TOTAL);
-            if (!speedAttr.hasModifier(mod)) {
-                speedAttr.addPermanentModifier(mod);
-            }
+            replaceModifier(speedAttr, mod);
         }
+        mob.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, Integer.MAX_VALUE, 1, false, false, true));
+    }
 
+    private static void applyAttackEnhancement(Mob mob) {
+        AttributeInstance attackAttr = mob.getAttribute(Attributes.ATTACK_DAMAGE);
+        if (attackAttr != null) {
+            AttributeModifier mod = new AttributeModifier(
+                    UUID.fromString(AbilityRuntime.NECROMANCER_ATTACK_BUFF_UUID),
+                    "corpse_campus_necromancer_type_attack",
+                    AbilityRuntime.NECROMANCER_TYPE_ATTACK_MULT - 1.0D,
+                    AttributeModifier.Operation.MULTIPLY_TOTAL);
+            replaceModifier(attackAttr, mod);
+        }
+        mob.addEffect(new MobEffectInstance(MobEffects.DAMAGE_BOOST, Integer.MAX_VALUE, 1, false, false, true));
+    }
+
+    private static void applyDefenseEnhancement(Mob mob) {
+        AttributeInstance armorAttr = mob.getAttribute(Attributes.ARMOR);
+        if (armorAttr != null) {
+            AttributeModifier mod = new AttributeModifier(
+                    UUID.fromString(AbilityRuntime.NECROMANCER_ARMOR_BUFF_UUID),
+                    "corpse_campus_necromancer_type_armor",
+                    AbilityRuntime.NECROMANCER_TYPE_DEFENSE_ARMOR_ADD,
+                    AttributeModifier.Operation.ADDITION);
+            replaceModifier(armorAttr, mod);
+        }
+        AttributeInstance toughAttr = mob.getAttribute(Attributes.ARMOR_TOUGHNESS);
+        if (toughAttr != null) {
+            AttributeModifier mod = new AttributeModifier(
+                    UUID.fromString(AbilityRuntime.NECROMANCER_ARMOR_TOUGH_UUID),
+                    "corpse_campus_necromancer_type_toughness",
+                    AbilityRuntime.NECROMANCER_TYPE_DEFENSE_TOUGH_ADD,
+                    AttributeModifier.Operation.ADDITION);
+            replaceModifier(toughAttr, mod);
+        }
+        AttributeInstance kbAttr = mob.getAttribute(Attributes.KNOCKBACK_RESISTANCE);
+        if (kbAttr != null) {
+            AttributeModifier mod = new AttributeModifier(
+                    UUID.fromString(AbilityRuntime.NECROMANCER_KB_RES_UUID),
+                    "corpse_campus_necromancer_type_kb_resist",
+                    AbilityRuntime.NECROMANCER_TYPE_DEFENSE_KB_RES,
+                    AttributeModifier.Operation.ADDITION);
+            replaceModifier(kbAttr, mod);
+        }
+        mob.addEffect(new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE, Integer.MAX_VALUE, 0, false, false, true));
+    }
+
+    private static void applyHealthEnhancement(Mob mob, long gameTime) {
+        AttributeInstance healthAttr = mob.getAttribute(Attributes.MAX_HEALTH);
+        if (healthAttr != null) {
+            AttributeModifier mod = new AttributeModifier(
+                    UUID.fromString(AbilityRuntime.NECROMANCER_HEALTH_BUFF_UUID),
+                    "corpse_campus_necromancer_type_health",
+                    AbilityRuntime.NECROMANCER_TYPE_HEALTH_MULT - 1.0D,
+                    AttributeModifier.Operation.MULTIPLY_TOTAL);
+            replaceModifier(healthAttr, mod);
+            mob.setHealth(mob.getMaxHealth());
+        }
         mob.addEffect(new MobEffectInstance(
                 MobEffects.ABSORPTION,
                 AbilityRuntime.NECROMANCER_BUFF_ABSORPTION_DURATION_TICKS,
@@ -448,6 +530,14 @@ public final class NecromancerRuntime {
         mob.getPersistentData().putLong(
                 AbilityRuntime.TAG_NECROMANCER_BUFF_HEAL_EXPIRE,
                 gameTime + AbilityRuntime.NECROMANCER_BUFF_ABSORPTION_DURATION_TICKS);
+    }
+
+    private static void replaceModifier(AttributeInstance attr, AttributeModifier mod) {
+        AttributeModifier existing = attr.getModifier(mod.getId());
+        if (existing != null) {
+            attr.removeModifier(existing);
+        }
+        attr.addPermanentModifier(mod);
     }
 
     private static void spawnSummonEffects(ServerLevel level, Mob mob) {
@@ -519,6 +609,107 @@ public final class NecromancerRuntime {
         return mobs;
     }
 
+    public static MinionMode getMode(Player player) {
+        CompoundTag data = player.getPersistentData();
+        if (!data.contains(AbilityRuntime.TAG_NECROMANCER_MODE)) {
+            return MinionMode.FOLLOW;
+        }
+        return MinionMode.fromByte(data.getByte(AbilityRuntime.TAG_NECROMANCER_MODE));
+    }
+
+    public static void setMode(Player player, MinionMode mode) {
+        CompoundTag data = player.getPersistentData();
+        data.putByte(AbilityRuntime.TAG_NECROMANCER_MODE, mode.toByte());
+        // 切模式时清掉指派/aggressor 旧状态，避免串味
+        if (mode == MinionMode.RETREAT || mode == MinionMode.STAND) {
+            data.remove(AbilityRuntime.TAG_NECROMANCER_ASSIGN_TARGET);
+            data.remove(AbilityRuntime.TAG_NECROMANCER_ASSIGN_TICK);
+            data.remove(AbilityRuntime.TAG_NECROMANCER_ASSIGN_ALLOW_PLAYER);
+        }
+        for (Mob mob : getMinions(player)) {
+            if (mode == MinionMode.RETREAT || mode == MinionMode.STAND) {
+                mob.setTarget(null);
+                mob.setLastHurtByMob(null);
+            }
+        }
+    }
+
+    public static MinionMode cycleMode(Player player) {
+        MinionMode next = getMode(player).cycleNext();
+        setMode(player, next);
+        return next;
+    }
+
+    public static boolean assignLookedTarget(ServerPlayer player) {
+        LivingEntity target = pickLookedLiving(player);
+        if (target == null) {
+            player.displayClientMessage(
+                    Component.translatable("message.corpse_campus.necromancer_assign_no_target"), true);
+            return false;
+        }
+        if (target == player) {
+            return false;
+        }
+        assignTarget(player, target);
+        Component name = target.getDisplayName();
+        player.displayClientMessage(
+                Component.translatable("message.corpse_campus.necromancer_assign_set", name), true);
+        return true;
+    }
+
+    public static void assignTarget(Player owner, LivingEntity target) {
+        if (target == null || target == owner) {
+            return;
+        }
+        CompoundTag data = owner.getPersistentData();
+        data.putUUID(AbilityRuntime.TAG_NECROMANCER_ASSIGN_TARGET, target.getUUID());
+        data.putLong(AbilityRuntime.TAG_NECROMANCER_ASSIGN_TICK, owner.level().getGameTime());
+        data.putBoolean(AbilityRuntime.TAG_NECROMANCER_ASSIGN_ALLOW_PLAYER, target instanceof Player);
+        for (Mob mob : getMinions(owner)) {
+            mob.setTarget(target);
+        }
+    }
+
+    public static void clearAssignedTarget(Player owner) {
+        CompoundTag data = owner.getPersistentData();
+        data.remove(AbilityRuntime.TAG_NECROMANCER_ASSIGN_TARGET);
+        data.remove(AbilityRuntime.TAG_NECROMANCER_ASSIGN_TICK);
+        data.remove(AbilityRuntime.TAG_NECROMANCER_ASSIGN_ALLOW_PLAYER);
+        for (Mob mob : getMinions(owner)) {
+            if (mob.getTarget() instanceof Player) {
+                mob.setTarget(null);
+            }
+        }
+    }
+
+    private static LivingEntity pickLookedLiving(ServerPlayer player) {
+        Vec3 eyes = player.getEyePosition();
+        Vec3 look = player.getLookAngle();
+        double range = AbilityRuntime.NECROMANCER_ASSIGN_PICK_RANGE;
+        Vec3 end = eyes.add(look.scale(range));
+        AABB search = player.getBoundingBox().expandTowards(look.scale(range)).inflate(1.0D);
+        EntityHitResult hit = net.minecraft.world.entity.projectile.ProjectileUtil.getEntityHitResult(
+                player.level(), player, eyes, end, search,
+                e -> e.isAlive() && e != player
+                        && (e instanceof LivingEntity living)
+                        && !isMinionOrSame(living, player));
+        if (hit == null || hit.getType() != HitResult.Type.ENTITY) {
+            return null;
+        }
+        Entity target = hit.getEntity();
+        return target instanceof LivingEntity living ? living : null;
+    }
+
+    private static boolean isMinionOrSame(LivingEntity candidate, Player owner) {
+        if (candidate == owner) {
+            return true;
+        }
+        if (candidate instanceof Mob mob && isMinionOf(mob, owner)) {
+            return true;
+        }
+        return false;
+    }
+
     public static void tick(Player player) {
         if (!(player.level() instanceof ServerLevel serverLevel)) {
             return;
@@ -530,33 +721,82 @@ public final class NecromancerRuntime {
 
         long gameTime = serverLevel.getGameTime();
         CompoundTag data = player.getPersistentData();
-        LivingEntity focusedTarget = resolveFocusedTarget(serverLevel, data, gameTime);
-        LivingEntity aggressor = findAggressorTargetingOwner(serverLevel, player);
+        MinionMode mode = getMode(player);
+
+        LivingEntity assigned = resolveAssignedTarget(serverLevel, data, gameTime);
+        LivingEntity focusedTarget = assigned != null
+                ? assigned
+                : resolveFocusedTarget(serverLevel, data, gameTime);
+        LivingEntity aggressor = resolveAggressor(serverLevel, data, gameTime, player);
 
         for (Mob mob : minions) {
             guardMinionAgainstOwner(mob, player);
 
+            if (mode == MinionMode.RETREAT) {
+                driveRetreat(serverLevel, mob, player);
+                continue;
+            }
+            if (mode == MinionMode.STAND) {
+                driveStand(mob, player);
+                continue;
+            }
+
             LivingEntity currentTarget = mob.getTarget();
             boolean currentValid = currentTarget != null && currentTarget.isAlive()
-                    && !isInvalidMinionTarget(currentTarget, player);
+                    && !isInvalidMinionTarget(currentTarget, player, focusedTarget, aggressor);
             if (!currentValid) {
                 mob.setTarget(null);
                 currentTarget = null;
             }
 
-            LivingEntity desired = null;
-            if (focusedTarget != null && !isInvalidMinionTarget(focusedTarget, player)) {
-                desired = focusedTarget;
-            } else if (aggressor != null && !isInvalidMinionTarget(aggressor, player)) {
-                desired = aggressor;
-            }
+            LivingEntity desired = pickDesiredTarget(mode, serverLevel, player, focusedTarget, aggressor);
 
             if (desired != null && currentTarget != desired) {
                 mob.setTarget(desired);
             } else if (desired == null && currentTarget == null) {
-                pacifyAndRecall(serverLevel, mob, player);
+                pacifyAndRecall(serverLevel, mob, player, mode);
             }
         }
+    }
+
+    private static LivingEntity pickDesiredTarget(MinionMode mode, ServerLevel level, Player owner,
+            LivingEntity focusedTarget, LivingEntity aggressor) {
+        if (focusedTarget != null) {
+            return focusedTarget;
+        }
+        if (aggressor != null) {
+            return aggressor;
+        }
+        if (mode == MinionMode.AGGRESSIVE) {
+            return findAggressiveHuntTarget(level, owner);
+        }
+        return null;
+    }
+
+    private static LivingEntity findAggressiveHuntTarget(ServerLevel level, Player owner) {
+        AABB area = owner.getBoundingBox().inflate(AbilityRuntime.NECROMANCER_AGGRESSIVE_RADIUS);
+        LivingEntity best = null;
+        double bestDistSqr = Double.MAX_VALUE;
+        for (LivingEntity candidate : level.getEntitiesOfClass(LivingEntity.class, area,
+                e -> e.isAlive() && e != owner && !(e instanceof Mob m && isMinionOf(m, owner))
+                        && !isAlly(e, owner))) {
+            double d = candidate.distanceToSqr(owner);
+            if (d < bestDistSqr) {
+                bestDistSqr = d;
+                best = candidate;
+            }
+        }
+        return best;
+    }
+
+    private static boolean isAlly(LivingEntity candidate, Player owner) {
+        if (candidate == owner) {
+            return true;
+        }
+        if (candidate instanceof Player) {
+            return false;
+        }
+        return owner.isAlliedTo(candidate);
     }
 
     private static LivingEntity resolveFocusedTarget(ServerLevel level, CompoundTag data, long gameTime) {
@@ -578,7 +818,43 @@ public final class NecromancerRuntime {
         return null;
     }
 
-    private static LivingEntity findAggressorTargetingOwner(ServerLevel level, Player owner) {
+    private static LivingEntity resolveAssignedTarget(ServerLevel level, CompoundTag data, long gameTime) {
+        if (!data.hasUUID(AbilityRuntime.TAG_NECROMANCER_ASSIGN_TARGET)) {
+            return null;
+        }
+        long lastTick = data.getLong(AbilityRuntime.TAG_NECROMANCER_ASSIGN_TICK);
+        if (gameTime - lastTick > AbilityRuntime.NECROMANCER_ASSIGN_FOCUS_TICKS) {
+            data.remove(AbilityRuntime.TAG_NECROMANCER_ASSIGN_TARGET);
+            data.remove(AbilityRuntime.TAG_NECROMANCER_ASSIGN_TICK);
+            data.remove(AbilityRuntime.TAG_NECROMANCER_ASSIGN_ALLOW_PLAYER);
+            return null;
+        }
+        Entity candidate = level.getEntity(data.getUUID(AbilityRuntime.TAG_NECROMANCER_ASSIGN_TARGET));
+        if (candidate instanceof LivingEntity living && living.isAlive()) {
+            return living;
+        }
+        data.remove(AbilityRuntime.TAG_NECROMANCER_ASSIGN_TARGET);
+        data.remove(AbilityRuntime.TAG_NECROMANCER_ASSIGN_TICK);
+        data.remove(AbilityRuntime.TAG_NECROMANCER_ASSIGN_ALLOW_PLAYER);
+        return null;
+    }
+
+    private static LivingEntity resolveAggressor(ServerLevel level, CompoundTag data, long gameTime, Player owner) {
+        if (data.hasUUID(AbilityRuntime.TAG_NECROMANCER_LAST_AGGRESSOR)) {
+            long lastTick = data.getLong(AbilityRuntime.TAG_NECROMANCER_LAST_AGGRESSOR_TICK);
+            if (gameTime - lastTick <= AbilityRuntime.NECROMANCER_AGGRESSOR_FOCUS_TICKS) {
+                Entity candidate = level.getEntity(data.getUUID(AbilityRuntime.TAG_NECROMANCER_LAST_AGGRESSOR));
+                if (candidate instanceof LivingEntity living && living.isAlive() && living != owner) {
+                    return living;
+                }
+            }
+            data.remove(AbilityRuntime.TAG_NECROMANCER_LAST_AGGRESSOR);
+            data.remove(AbilityRuntime.TAG_NECROMANCER_LAST_AGGRESSOR_TICK);
+        }
+        return findMobTargetingOwner(level, owner);
+    }
+
+    private static LivingEntity findMobTargetingOwner(ServerLevel level, Player owner) {
         AABB area = owner.getBoundingBox().inflate(AbilityRuntime.NECROMANCER_PATROL_RADIUS);
         return level.getEntitiesOfClass(Mob.class, area,
                         candidate -> candidate.isAlive()
@@ -589,17 +865,22 @@ public final class NecromancerRuntime {
                 .orElse(null);
     }
 
-    private static boolean isInvalidMinionTarget(LivingEntity candidate, Player owner) {
+    private static boolean isInvalidMinionTarget(LivingEntity candidate, Player owner,
+            LivingEntity focusedTarget, LivingEntity aggressor) {
         if (candidate == owner) {
             return true;
         }
-        if (candidate instanceof Player) {
+        if (!candidate.isAlive()) {
             return true;
         }
         if (candidate instanceof Mob mob && isMinionOf(mob, owner)) {
             return true;
         }
-        return !candidate.isAlive();
+        if (candidate instanceof Player) {
+            // 仅当玩家是被指派目标 / aggressor 时允许
+            return candidate != focusedTarget && candidate != aggressor;
+        }
+        return false;
     }
 
     private static void guardMinionAgainstOwner(Mob mob, Player owner) {
@@ -611,8 +892,11 @@ public final class NecromancerRuntime {
         }
     }
 
-    private static void pacifyAndRecall(ServerLevel level, Mob mob, Player owner) {
+    private static void pacifyAndRecall(ServerLevel level, Mob mob, Player owner, MinionMode mode) {
         double distance = mob.distanceTo(owner);
+        double patrolRadius = mode == MinionMode.PATROL
+                ? AbilityRuntime.NECROMANCER_PATROL_RADIUS
+                : Math.min(AbilityRuntime.NECROMANCER_PATROL_RADIUS, 12.0D);
         if (distance > AbilityRuntime.NECROMANCER_TELEPORT_RADIUS) {
             Vec3 recall = pickSpawnPosition(owner);
             mob.teleportTo(recall.x, recall.y, recall.z);
@@ -621,13 +905,38 @@ public final class NecromancerRuntime {
                     10, 0.3D, 0.5D, 0.3D, 0.08D);
             return;
         }
-        if (distance > AbilityRuntime.NECROMANCER_PATROL_RADIUS) {
+        if (distance > patrolRadius) {
             mob.getNavigation().moveTo(owner.getX(), owner.getY(), owner.getZ(), 1.1D);
         }
     }
 
+    private static void driveStand(Mob mob, Player owner) {
+        mob.setTarget(null);
+        mob.setLastHurtByMob(null);
+        if (!mob.getNavigation().isDone()) {
+            mob.getNavigation().stop();
+        }
+    }
+
+    private static void driveRetreat(ServerLevel level, Mob mob, Player owner) {
+        mob.setTarget(null);
+        mob.setLastHurtByMob(null);
+        double distance = mob.distanceTo(owner);
+        if (distance > AbilityRuntime.NECROMANCER_TELEPORT_RADIUS * 0.4D) {
+            Vec3 recall = pickSpawnPosition(owner);
+            mob.teleportTo(recall.x, recall.y, recall.z);
+            level.sendParticles(ParticleTypes.PORTAL,
+                    mob.getX(), mob.getY() + mob.getBbHeight() * 0.5D, mob.getZ(),
+                    8, 0.3D, 0.5D, 0.3D, 0.06D);
+            return;
+        }
+        if (distance > 3.0D) {
+            mob.getNavigation().moveTo(owner.getX(), owner.getY(), owner.getZ(), 1.25D);
+        }
+    }
+
     public static void onCasterAttackedTarget(Player caster, Entity target) {
-        if (!(target instanceof LivingEntity living) || living == caster || living instanceof Player) {
+        if (!(target instanceof LivingEntity living) || living == caster) {
             return;
         }
         CompoundTag data = caster.getPersistentData();
@@ -638,12 +947,31 @@ public final class NecromancerRuntime {
         }
     }
 
+    public static void onOwnerAttackedBy(Player owner, LivingEntity attacker) {
+        if (attacker == null || attacker == owner) {
+            return;
+        }
+        MinionMode mode = getMode(owner);
+        if (mode == MinionMode.RETREAT || mode == MinionMode.STAND) {
+            return;
+        }
+        CompoundTag data = owner.getPersistentData();
+        data.putUUID(AbilityRuntime.TAG_NECROMANCER_LAST_AGGRESSOR, attacker.getUUID());
+        data.putLong(AbilityRuntime.TAG_NECROMANCER_LAST_AGGRESSOR_TICK, owner.level().getGameTime());
+        for (Mob mob : getMinions(owner)) {
+            if (mob.getTarget() == null || !mob.getTarget().isAlive()) {
+                mob.setTarget(attacker);
+            }
+        }
+    }
+
     public static void release(Player player) {
         for (Mob mob : getMinions(player)) {
             CompoundTag tag = mob.getPersistentData();
             tag.remove(AbilityRuntime.TAG_NECROMANCER_OWNER);
             tag.remove(AbilityRuntime.TAG_NECROMANCER_BUFFED);
             tag.remove(AbilityRuntime.TAG_NECROMANCER_BUFF_HEAL_EXPIRE);
+            tag.remove(AbilityRuntime.TAG_NECROMANCER_ENHANCEMENT);
             if (mob.getTarget() == player) {
                 mob.setTarget(null);
             }
@@ -652,15 +980,24 @@ public final class NecromancerRuntime {
         data.remove(AbilityRuntime.TAG_NECROMANCER_MINIONS);
         data.remove(AbilityRuntime.TAG_NECROMANCER_LAST_ATTACK_TARGET);
         data.remove(AbilityRuntime.TAG_NECROMANCER_LAST_ATTACK_TICK);
+        data.remove(AbilityRuntime.TAG_NECROMANCER_LAST_AGGRESSOR);
+        data.remove(AbilityRuntime.TAG_NECROMANCER_LAST_AGGRESSOR_TICK);
+        data.remove(AbilityRuntime.TAG_NECROMANCER_ASSIGN_TARGET);
+        data.remove(AbilityRuntime.TAG_NECROMANCER_ASSIGN_TICK);
+        data.remove(AbilityRuntime.TAG_NECROMANCER_ASSIGN_ALLOW_PLAYER);
     }
 
-    public record SummonResult(boolean success, boolean enhanced, EntityType<?> type, String failKey) {
+    public record SummonResult(boolean success, EnhancementType enhancement, EntityType<?> type, String failKey) {
         public static SummonResult fail(String translationKey) {
-            return new SummonResult(false, false, null, translationKey);
+            return new SummonResult(false, EnhancementType.NONE, null, translationKey);
         }
 
-        public static SummonResult success(boolean enhanced, EntityType<?> type) {
-            return new SummonResult(true, enhanced, type, null);
+        public static SummonResult success(EnhancementType enhancement, EntityType<?> type) {
+            return new SummonResult(true, enhancement, type, null);
+        }
+
+        public boolean enhanced() {
+            return enhancement != null && enhancement.isEnhanced();
         }
     }
 }

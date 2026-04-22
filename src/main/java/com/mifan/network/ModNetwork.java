@@ -14,12 +14,14 @@ import com.mifan.network.clientbound.OpenNecromancerScreenPacket;
 import com.mifan.network.clientbound.OpenPlayerStatusScreenPacket;
 import com.mifan.network.clientbound.OpenRecorderOfficerScreenPacket;
 import com.mifan.network.clientbound.UpdateNecromancerScreenPacket;
+import com.mifan.network.serverbound.AssignNecromancerTargetPacket;
 import com.mifan.network.serverbound.CloseNecromancerScreenPacket;
 import com.mifan.network.serverbound.MimicAbsorbPacket;
 import com.mifan.network.serverbound.MimicReleasePacket;
 import com.mifan.network.serverbound.SetDominanceTargetPacket;
 import com.mifan.network.serverbound.SetFerrymanTargetPacket;
 import com.mifan.network.serverbound.SetMidasTouchTimerPacket;
+import com.mifan.network.serverbound.SetNecromancerModePacket;
 import com.mifan.network.serverbound.SetRecorderOfficerTimerPacket;
 import com.mifan.network.serverbound.SummonNecromancerMinionPacket;
 import com.mifan.network.serverbound.UpgradeAnomalySpellPacket;
@@ -181,6 +183,18 @@ public final class ModNetwork {
                 .encoder(CloseNecromancerScreenPacket::encode)
                 .decoder(CloseNecromancerScreenPacket::decode)
                 .consumerMainThread(CloseNecromancerScreenPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(SetNecromancerModePacket.class, packetId++, NetworkDirection.PLAY_TO_SERVER)
+                .encoder(SetNecromancerModePacket::encode)
+                .decoder(SetNecromancerModePacket::decode)
+                .consumerMainThread(SetNecromancerModePacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(AssignNecromancerTargetPacket.class, packetId++, NetworkDirection.PLAY_TO_SERVER)
+                .encoder(AssignNecromancerTargetPacket::encode)
+                .decoder(AssignNecromancerTargetPacket::decode)
+                .consumerMainThread(AssignNecromancerTargetPacket::handle)
                 .add();
     }
 

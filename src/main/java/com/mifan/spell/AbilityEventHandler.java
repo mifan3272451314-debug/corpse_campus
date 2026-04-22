@@ -430,6 +430,39 @@ public final class AbilityEventHandler {
         NecromancerRuntime.onCasterAttackedTarget(player, livingTarget);
     }
 
+    // 冥司仇恨：覆盖远程/法术伤害 —— 只要主人造成伤害，就把目标登记为最近攻击目标
+    @SubscribeEvent
+    public static void onNecromancerHurtDealt(LivingHurtEvent event) {
+        if (event.getEntity().level().isClientSide) {
+            return;
+        }
+        Entity attacker = event.getSource().getEntity();
+        LivingEntity victim = event.getEntity();
+        if (attacker instanceof Player owner && victim != owner
+                && NecromancerRuntime.playerOwnsNecromancer(owner)) {
+            NecromancerRuntime.onCasterAttackedTarget(owner, victim);
+        }
+        if (victim instanceof Player ownerHit && attacker instanceof LivingEntity aggressorLiving
+                && aggressorLiving != ownerHit
+                && NecromancerRuntime.playerOwnsNecromancer(ownerHit)) {
+            NecromancerRuntime.onOwnerAttackedBy(ownerHit, aggressorLiving);
+        }
+    }
+
+    @SubscribeEvent
+    public static void onNecromancerAttackDealt(LivingAttackEvent event) {
+        if (event.getEntity().level().isClientSide) {
+            return;
+        }
+        Entity attacker = event.getSource().getEntity();
+        LivingEntity victim = event.getEntity();
+        if (victim instanceof Player ownerHit && attacker instanceof LivingEntity aggressorLiving
+                && aggressorLiving != ownerHit
+                && NecromancerRuntime.playerOwnsNecromancer(ownerHit)) {
+            NecromancerRuntime.onOwnerAttackedBy(ownerHit, aggressorLiving);
+        }
+    }
+
     @SubscribeEvent
     public static void onRightClickItem(PlayerInteractEvent.RightClickItem event) {
         if (event.getLevel().isClientSide) {

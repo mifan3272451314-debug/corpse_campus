@@ -16,14 +16,16 @@ public class UpdateNecromancerScreenPacket {
     private final int enhanceCost;
     private final boolean canCastNormal;
     private final boolean canCastEnhanced;
+    private final byte currentMode;
 
     public UpdateNecromancerScreenPacket(List<OpenNecromancerScreenPacket.SoulEntry> souls, float currentMana,
-            int enhanceCost, boolean canCastNormal, boolean canCastEnhanced) {
+            int enhanceCost, boolean canCastNormal, boolean canCastEnhanced, byte currentMode) {
         this.souls = souls;
         this.currentMana = currentMana;
         this.enhanceCost = enhanceCost;
         this.canCastNormal = canCastNormal;
         this.canCastEnhanced = canCastEnhanced;
+        this.currentMode = currentMode;
     }
 
     public List<OpenNecromancerScreenPacket.SoulEntry> getSouls() {
@@ -46,6 +48,10 @@ public class UpdateNecromancerScreenPacket {
         return canCastEnhanced;
     }
 
+    public byte getCurrentMode() {
+        return currentMode;
+    }
+
     public static void encode(UpdateNecromancerScreenPacket packet, FriendlyByteBuf buffer) {
         buffer.writeVarInt(packet.souls.size());
         for (OpenNecromancerScreenPacket.SoulEntry entry : packet.souls) {
@@ -56,6 +62,7 @@ public class UpdateNecromancerScreenPacket {
         buffer.writeVarInt(packet.enhanceCost);
         buffer.writeBoolean(packet.canCastNormal);
         buffer.writeBoolean(packet.canCastEnhanced);
+        buffer.writeByte(packet.currentMode);
     }
 
     public static UpdateNecromancerScreenPacket decode(FriendlyByteBuf buffer) {
@@ -70,7 +77,8 @@ public class UpdateNecromancerScreenPacket {
         int enhanceCost = buffer.readVarInt();
         boolean canCastNormal = buffer.readBoolean();
         boolean canCastEnhanced = buffer.readBoolean();
-        return new UpdateNecromancerScreenPacket(souls, mana, enhanceCost, canCastNormal, canCastEnhanced);
+        byte mode = buffer.readByte();
+        return new UpdateNecromancerScreenPacket(souls, mana, enhanceCost, canCastNormal, canCastEnhanced, mode);
     }
 
     public static void handle(UpdateNecromancerScreenPacket packet, Supplier<NetworkEvent.Context> contextSupplier) {
