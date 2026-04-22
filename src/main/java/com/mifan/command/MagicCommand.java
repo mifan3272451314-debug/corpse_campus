@@ -2,7 +2,9 @@ package com.mifan.command;
 
 import com.mifan.anomaly.AnomalyBookService;
 import com.mifan.anomaly.AnomalyLimitService;
+import com.mifan.spell.runtime.EndlessLifeRuntime;
 import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import io.redspace.ironsspellbooks.api.spells.AbstractSpell;
@@ -106,6 +108,14 @@ public final class MagicCommand {
                         .then(Commands.literal("disable")
                                 .requires(source -> source.hasPermission(3))
                                 .executes(context -> limitSetEnabled(context.getSource(), false))))
+                .then(Commands.literal("seal")
+                        .then(Commands.literal("endless_life")
+                                .requires(source -> source.hasPermission(4))
+                                .executes(context -> sealStatus(context.getSource()))
+                                .then(Commands.argument("sealed", BoolArgumentType.bool())
+                                        .executes(context -> sealEndlessLife(
+                                                context.getSource(),
+                                                BoolArgumentType.getBool(context, "sealed"))))))
                 .then(Commands.literal("help")
                         .executes(context -> showHelp(context.getSource()))));
     }
@@ -114,6 +124,14 @@ public final class MagicCommand {
         ResourceLocation spellId = AnomalyBookService.resolveSpellId(spellInput);
         if (spellId == null) {
             source.sendFailure(Component.literal("未知异常法术：" + spellInput));
+            return 0;
+        }
+
+        if (EndlessLifeRuntime.ENDLESS_LIFE_ID.equals(spellId)
+                && EndlessLifeRuntime.isSealed(source.getServer())) {
+            source.sendFailure(Component.literal(
+                    "【生生不息】当前处于全局封锁状态，没有任何玩家能再获得它。"
+                            + "如需解封请使用：/magic seal endless_life false （需要权限 4）"));
             return 0;
         }
 
@@ -278,6 +296,27 @@ public final class MagicCommand {
         return 1;
     }
 
+    private static int sealStatus(CommandSourceStack source) {
+        boolean sealed = EndlessLifeRuntime.isSealed(source.getServer());
+        source.sendSuccess(() -> Component.literal(
+                "【生生不息】当前封锁状态：" + (sealed ? "§c已封锁§r（无人可获得）" : "§a未封锁§r（可正常获得）")), false);
+        return 1;
+    }
+
+    private static int sealEndlessLife(CommandSourceStack source, boolean sealed) {
+        boolean before = EndlessLifeRuntime.isSealed(source.getServer());
+        EndlessLifeRuntime.setSealed(source.getServer(), sealed);
+        if (before == sealed) {
+            source.sendSuccess(() -> Component.literal(
+                    "【生生不息】封锁状态未变化，仍为：" + (sealed ? "已封锁" : "未封锁")), false);
+        } else {
+            source.sendSuccess(() -> Component.literal(
+                    "【生生不息】封锁状态已切换：" + (before ? "已封锁" : "未封锁")
+                            + " → " + (sealed ? "§c已封锁§r" : "§a未封锁§r")), true);
+        }
+        return 1;
+    }
+
     private static int showHelp(CommandSourceStack source) {
         String[] lines = {
             "§6§l══════════ /magic 全部指令文档 ══════════",
@@ -315,7 +354,14 @@ public final class MagicCommand {
             "§7    关闭上限检测（B 级掉落不再受限）。",
             "§f  /magic limit recount §c（权限 3）",
             "§7    重扫所有在线玩家书内法术状态，更新觉醒计数；离线记录保留。",
-            "§a§l▌ §e§l五、P1 推荐指令 §8（尚未实现，规划中）",
+            "§a§l▌ §e§l五、生生不息封锁 §8（权限 4）",
+            "§f  /magic seal endless_life",
+            "§7    查看【生生不息】当前的全局封锁状态。",
+            "§f  /magic seal endless_life <true|false>",
+            "§7    手动开启或解除【生生不息】的全局封锁。",
+            "§7    施法者一旦释放过【生生不息】，封锁会自动开启，从此再无人可获得；",
+            "§7    若需要让某个玩家重新拥有该能力，需要先用本指令解封。",
+            "§a§l▌ §e§l六、P1 推荐指令 §8（尚未实现，规划中）",
             "§8  /magic setsequence <玩家> <序列>     §7手动修正主序列   §c[权限 3]",
             "§8  /magic setrank <玩家> <B|A|S>        §7手动修正最高阶   §c[权限 3]",
             "§8  /magic recalc <玩家>                 §7重算法力与流派强化 §7[权限 2]",
@@ -324,8 +370,7 @@ public final class MagicCommand {
             "§8  /magic trait give <玩家> <序列> <阶> <数>  §7发放异常吞噬物 §7[权限 2]",
             "§8  /magic promote <玩家> <目标阶>       §7强制晋升校验/调试 §c[权限 3]",
             "§8  /magic grafter unlock|lock <玩家>    §7嫁接师权限管理    §c[权限 3]",
-            "§8  /magic seal endless_life <true|false> §7生生不息封号     §c[权限 4]",
-            "§a§l▌ §e§l六、P2 高危/调试指令 §8（尚未实现）§c[权限 3/4]",
+            "§a§l▌ §e§l七、P2 高危/调试指令 §8（尚未实现）§c[权限 3/4]",
             "§8  /magic rewind backup create <槽位>   §7创建回溯之虫备份",
             "§8  /magic rewind backup enter <槽位>    §7进入镜像备份维度",
             "§8  /magic rewind backup info            §7查看备份状态",

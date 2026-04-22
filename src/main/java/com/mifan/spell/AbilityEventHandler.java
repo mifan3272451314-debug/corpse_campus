@@ -162,7 +162,7 @@ public final class AbilityEventHandler {
             return;
         }
 
-        // 万权一手：施法者每次实际命中目标时，对目标施加抽能 + 减速（持续到万权结束）
+        // 万权一手：施法者命中任何目标时，对目标施加抽能 + 减速（持续到万权一手本体结束）
         if (directEntity instanceof LivingEntity authorityCaster
                 && authorityCaster != entity
                 && authorityCaster.hasEffect(ModMobEffects.AUTHORITY_GRASP_CASTER.get())) {
@@ -184,7 +184,7 @@ public final class AbilityEventHandler {
             return;
         }
 
-        // 万权一手：施法者每次受到实际伤害时，从已有支配列表拉一只到身边，本次施法最多 5 只
+        // 万权一手：施法者在持续期间每次实际受到伤害，就从已有支配列表中把一只拉到身边，最多 5 只
         if (entity instanceof Player authorityCaster
                 && authorityCaster.hasEffect(ModMobEffects.AUTHORITY_GRASP_CASTER.get())
                 && event.getAmount() > 0.0F) {
@@ -296,10 +296,7 @@ public final class AbilityEventHandler {
                 AbilityRuntime.TAG_IMPERMANENCE_GRANTED_SPELL,
                 AbilityRuntime.TAG_IMPERMANENCE_GRANTED_LEVEL,
                 AbilityRuntime.TAG_FERRYMAN_TARGET,
-                AbilityRuntime.TAG_FERRYMAN_LEVEL,
-                AbilityRuntime.TAG_AUTHORITY_GRASP_EXPIRE_TICK,
-                AbilityRuntime.TAG_AUTHORITY_GRASP_SUMMON_COUNT,
-                AbilityRuntime.TAG_AUTHORITY_GRASP_DRAINED_EXPIRE);
+                AbilityRuntime.TAG_FERRYMAN_LEVEL);
         if (oldData.getBoolean(AbilityRuntime.TAG_NECROTIC_REVIVE_USED)) {
             newData.putBoolean(AbilityRuntime.TAG_NECROTIC_REVIVE_USED, true);
         }
@@ -1295,5 +1292,105 @@ public final class AbilityEventHandler {
         }
 
         return dangerousWeapon;
+    }
+
+    // ──────────────────────────────────────────────────────────────────
+    // 万权一手（authority_grasp）：愚者 S 级终阶
+    // 核心链路：
+    //   1. tick 扫描 1.5 格内的敌对实体，自动施加抽能（与攻击命中同效果）。
+    //   2. 攻击命中时，在 onLivingAttack 里调用 applyAuthorityDrain。
+    //   3. 施法者受到实际伤害时（onLivingHurt），从已有支配列表拉 1 只到身边，
+    //      本次施法最多 5 只。
+    //   4. 被抽能者尝试施法时，SpellPreCastEvent 订阅者会取消施法。
+    // ──────────────────────────────────────────────────────────────────
+    @SubscribeEvent
+    public static void onSpellPreCast(SpellPreCastEvent event) {
+        Player caster = event.getEntity();
+        if (caster == null || caster.level().isClientSide) {
+            return;
+        }
+        if (caster.hasEffect(ModMobEffects.AUTHORITY_GRASP_DRAINED.get())) {
+            event.setCanceled(true);
+            caster.displayClientMessage(
+                    Component.translatable("message.corpse_campus.authority_grasp_drained"),
+                    true);
+        }
+    }
+
+    private static void tickAuthorityGrasp(Player player, CompoundTag data, long gameTime) {
+        if (!player.hasEffect(ModMobEffects.AUTHORITY_GRASP_CASTER.get())) {
+            AbilityRuntime.clear(data,
+                    AbilityRuntime.TAG_AUTHORITY_GRASP_EXPIRE_TICK,
+                    AbilityRuntime.TAG_AUTHORITY_GRASP_SUMMON_COUNT);
+            return;
+        }
+
+        double range = AbilityRuntime.AUTHORITY_GRASP_PROXIMITY_RANGE;
+        AABB box = player.getBoundingBox().inflate(range);
+        for (LivingEntity target : player.level().getEntitiesOfClass(LivingEntity.class, box,
+                entity -> entity != player
+                        && entity.isAlive()
+                        && !player.isAlliedTo(entity))) {
+            applyAuthorityDrain(player, target, gameTime);
+        }
+    }
+
+    private static void applyAuthorityDrain(LivingEntity caster, LivingEntity target, long gameTime) {
+        long casterExpire = caster.getPersistentData().getLong(AbilityRuntime.TAG_AUTHORITY_GRASP_EXPIRE_TICK);
+        if (casterExpire <= gameTime) {
+            return;
+        }
+        int remainingTicks = (int) Math.max(20L, casterExpire - gameTime);
+
+        target.addEffect(new MobEffectInstance(
+                ModMobEffects.AUTHORITY_GRASP_DRAINED.get(),
+                remainingTicks,
+                0,
+                false,
+                false,
+                true));
+        target.addEffect(new MobEffectInstance(
+                MobEffects.MOVEMENT_SLOWDOWN,
+                remainingTicks,
+                AbilityRuntime.AUTHORITY_GRASP_SLOW_AMPLIFIER,
+                false,
+                false,
+                true));
+        target.getPersistentData().putLong(AbilityRuntime.TAG_AUTHORITY_GRASP_DRAINED_EXPIRE, casterExpire);
+    }
+
+    private static void triggerAuthorityHurtSummon(Player caster) {
+        CompoundTag data = caster.getPersistentData();
+        int count = data.getInt(AbilityRuntime.TAG_AUTHORITY_GRASP_SUMMON_COUNT);
+        if (count >= AbilityRuntime.AUTHORITY_GRASP_MAX_SUMMONS) {
+            return;
+        }
+
+        List<Mob> dominated = AbilityRuntime.getDominatedMobs(caster);
+        if (dominated.isEmpty()) {
+            return;
+        }
+
+        List<Mob> candidates = new ArrayList<>();
+        for (Mob mob : dominated) {
+            if (mob.isAlive() && mob.distanceTo(caster) > 2.0D) {
+                candidates.add(mob);
+            }
+        }
+        if (candidates.isEmpty()) {
+            return;
+        }
+
+        Mob chosen = candidates.get(caster.getRandom().nextInt(candidates.size()));
+        chosen.teleportTo(caster.getX(), caster.getY(), caster.getZ());
+        if (caster.level() instanceof ServerLevel serverLevel) {
+            serverLevel.sendParticles(ParticleTypes.PORTAL,
+                    chosen.getX(), chosen.getY() + chosen.getBbHeight() * 0.5D, chosen.getZ(),
+                    12, 0.3D, 0.5D, 0.3D, 0.15D);
+        }
+        caster.level().playSound(null, caster.blockPosition(), SoundEvents.ENDERMAN_TELEPORT,
+                SoundSource.PLAYERS, 0.6F, 0.9F);
+
+        data.putInt(AbilityRuntime.TAG_AUTHORITY_GRASP_SUMMON_COUNT, count + 1);
     }
 }

@@ -130,6 +130,15 @@ public final class AbilityRuntime {
     public static final String TAG_DOMINANCE_OWNER = "corpse_campus_dominance_owner";
     public static final String TAG_DOMINANCE_LEVEL = "corpse_campus_dominance_level";
 
+    public static final String TAG_AUTHORITY_GRASP_EXPIRE_TICK = "corpse_campus_authority_grasp_expire";
+    public static final String TAG_AUTHORITY_GRASP_SUMMON_COUNT = "corpse_campus_authority_grasp_summon_count";
+    public static final String TAG_AUTHORITY_GRASP_DRAINED_EXPIRE = "corpse_campus_authority_grasp_drained_expire";
+    public static final int AUTHORITY_GRASP_DURATION_TICKS = 20 * 60 * 5;
+    public static final int AUTHORITY_GRASP_COOLDOWN_SECONDS = 60 * 60;
+    public static final int AUTHORITY_GRASP_MAX_SUMMONS = 5;
+    public static final double AUTHORITY_GRASP_PROXIMITY_RANGE = 1.5D;
+    public static final int AUTHORITY_GRASP_SLOW_AMPLIFIER = 1;
+
     public static final String TAG_FERRYMAN_TARGET = "corpse_campus_ferryman_target";
     public static final String TAG_FERRYMAN_LEVEL = "corpse_campus_ferryman_level";
 

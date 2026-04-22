@@ -69,6 +69,12 @@ public final class ModMobEffects {
     public static final RegistryObject<MobEffect> LIGHT_PRAYER = MOB_EFFECTS.register("light_prayer",
             LightPrayerEffect::new);
 
+    public static final RegistryObject<MobEffect> AUTHORITY_GRASP_CASTER = MOB_EFFECTS.register("authority_grasp_caster",
+            () -> new AbilityMarkerEffect(0x6A1F8C));
+
+    public static final RegistryObject<MobEffect> AUTHORITY_GRASP_DRAINED = MOB_EFFECTS.register("authority_grasp_drained",
+            () -> new AbilityMarkerEffect(0x3A0F55));
+
     private ModMobEffects() {
     }
 

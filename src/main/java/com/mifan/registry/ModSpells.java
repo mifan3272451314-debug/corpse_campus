@@ -63,6 +63,8 @@ public final class ModSpells {
                         SunlightSpell::new);
         public static final RegistryObject<AbstractSpell> FERTILE_LAND = SPELLS.register("fertile_land",
                         FertileLandSpell::new);
+        public static final RegistryObject<AbstractSpell> LIGHT_PRAYER = SPELLS.register("light_prayer",
+                        LightPrayerSpell::new);
         public static final RegistryObject<AbstractSpell> TELEKINESIS = SPELLS.register("telekinesis",
                         TelekinesisSpell::new);
         public static final RegistryObject<AbstractSpell> DOMINANCE = SPELLS.register("dominance", DominanceSpell::new);
