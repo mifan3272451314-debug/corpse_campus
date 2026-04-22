@@ -172,18 +172,18 @@ public final class AnomalyBookService {
         }
 
         String ownerName = player.getGameProfile().getName();
-        String ownerAbilitySummary = summarizeAllAbilities(progressMap);
         List<ItemStack> drops = new ArrayList<>();
         for (var entry : progressMap.entrySet()) {
             ResourceLocation schoolId = entry.getKey();
             SchoolTraitProgress progress = entry.getValue();
-            for (AnomalySpellRank rank : progress.unlockedRanks()) {
+            for (var spellEntry : progress.individualEntries()) {
+                AnomalySpellRank rank = spellEntry.getKey();
+                String spellName = spellEntry.getValue();
                 ItemStack stack = new ItemStack(ModItems.getTraitItem(schoolId, rank));
                 CompoundTag tag = stack.getOrCreateTag();
                 tag.putString(AnomalyTraitItem.TAG_OWNER_NAME, ownerName);
-                tag.putString(AnomalyTraitItem.TAG_OWNER_ABILITY_SUMMARY, ownerAbilitySummary);
                 tag.putString(AnomalyTraitItem.TAG_STAGE_LABEL, buildStageLabel(schoolId, rank));
-                tag.putString(AnomalyTraitItem.TAG_STAGE_ABILITIES, progress.describeRank(rank));
+                tag.putString(AnomalyTraitItem.TAG_STAGE_ABILITIES, spellName);
                 drops.add(stack);
             }
         }
@@ -781,16 +781,6 @@ public final class AnomalyBookService {
         return left.ordinal() >= right.ordinal() ? left : right;
     }
 
-    private static String summarizeAllAbilities(Map<ResourceLocation, SchoolTraitProgress> progressMap) {
-        List<String> chunks = new ArrayList<>();
-        for (var entry : progressMap.entrySet()) {
-            String schoolName = localizeSchool(entry.getKey());
-            String abilities = entry.getValue().describeAllRanks();
-            chunks.add(schoolName + "（" + abilities + "）");
-        }
-        return String.join("；", chunks);
-    }
-
     private static String buildStageLabel(ResourceLocation schoolId, AnomalySpellRank rank) {
         return localizeSchool(schoolId) + "·" + rank.name() + "级";
     }
@@ -888,36 +878,15 @@ public final class AnomalyBookService {
             highestRank = highestRank == null ? spec.rank() : maxRank(highestRank, spec.rank());
         }
 
-        private List<AnomalySpellRank> unlockedRanks() {
-            if (highestRank == null) {
-                return List.of();
+        private List<Map.Entry<AnomalySpellRank, String>> individualEntries() {
+            List<Map.Entry<AnomalySpellRank, String>> list = new ArrayList<>();
+            for (var entry : abilitiesByRank.entrySet()) {
+                for (String name : entry.getValue()) {
+                    list.add(Map.entry(entry.getKey(), name));
+                }
             }
-
-            List<AnomalySpellRank> ranks = new ArrayList<>();
-            ranks.add(AnomalySpellRank.B);
-            if (highestRank.ordinal() >= AnomalySpellRank.A.ordinal()) {
-                ranks.add(AnomalySpellRank.A);
-            }
-            if (highestRank.ordinal() >= AnomalySpellRank.S.ordinal()) {
-                ranks.add(AnomalySpellRank.S);
-            }
-            return List.copyOf(ranks);
+            return list;
         }
 
-        private String describeRank(AnomalySpellRank rank) {
-            List<String> names = abilitiesByRank.get(rank);
-            if (names == null || names.isEmpty()) {
-                return "该阶段暂无已记录异能";
-            }
-            return String.join("、", names);
-        }
-
-        private String describeAllRanks() {
-            List<String> lines = new ArrayList<>();
-            for (AnomalySpellRank rank : unlockedRanks()) {
-                lines.add(rank.name() + "级：" + describeRank(rank));
-            }
-            return String.join(" / ", lines);
-        }
     }
 }

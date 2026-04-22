@@ -13,7 +13,6 @@ import java.util.List;
 
 public class AnomalyTraitItem extends Item {
     public static final String TAG_OWNER_NAME = "TraitOwnerName";
-    public static final String TAG_OWNER_ABILITY_SUMMARY = "TraitOwnerAbilitySummary";
     public static final String TAG_STAGE_LABEL = "TraitStageLabel";
     public static final String TAG_STAGE_ABILITIES = "TraitStageAbilities";
 
@@ -31,10 +30,6 @@ public class AnomalyTraitItem extends Item {
         if (tag.contains(TAG_OWNER_NAME)) {
             tooltip.add(Component.translatable("tooltip.corpse_campus.trait_former_owner", tag.getString(TAG_OWNER_NAME))
                     .withStyle(ChatFormatting.GRAY));
-        }
-        if (tag.contains(TAG_OWNER_ABILITY_SUMMARY)) {
-            tooltip.add(Component.translatable("tooltip.corpse_campus.trait_former_abilities",
-                    tag.getString(TAG_OWNER_ABILITY_SUMMARY)).withStyle(ChatFormatting.DARK_GRAY));
         }
         if (tag.contains(TAG_STAGE_LABEL)) {
             tooltip.add(Component.translatable("tooltip.corpse_campus.trait_stage", tag.getString(TAG_STAGE_LABEL))
