@@ -102,6 +102,7 @@ public final class AbilityEventHandler {
         MarkRuntime.tick(player, data, gameTime);
         tickNinghe(player, gameTime);
         tickSunlight(player, gameTime);
+        tickLightPrayer(player, gameTime);
         clearExpiredInstinct(player, data, gameTime);
         clearLifeThiefTargetIfInvalid(player);
         clearMimicSlotsIfInactive(player, data);
@@ -1405,6 +1406,88 @@ public final class AbilityEventHandler {
                 } else {
                     target.setSecondsOnFire(AbilityRuntime.SUNLIGHT_BURN_DURATION_SECONDS);
                 }
+            }
+        }
+    }
+
+    private static void tickLightPrayer(Player player, long gameTime) {
+        MobEffectInstance effect = player.getEffect(ModMobEffects.LIGHT_PRAYER.get());
+        if (effect == null) {
+            return;
+        }
+
+        boolean knockTick = gameTime % AbilityRuntime.LIGHT_PRAYER_KNOCKBACK_INTERVAL_TICKS == 0L;
+        boolean burnTick = gameTime % AbilityRuntime.LIGHT_PRAYER_BURN_INTERVAL_TICKS == 0L;
+        if (!knockTick && !burnTick) {
+            return;
+        }
+
+        double radius = AbilityRuntime.LIGHT_PRAYER_RADIUS;
+        double radiusSqr = radius * radius;
+        AABB area = player.getBoundingBox().inflate(radius, 4.0D, radius);
+        long markExpire = gameTime + 40L;
+
+        for (Mob mob : player.level().getEntitiesOfClass(Mob.class, area,
+                candidate -> candidate.isAlive()
+                        && !player.isAlliedTo(candidate)
+                        && isHostileMob(candidate)
+                        && candidate.distanceToSqr(player) <= radiusSqr)) {
+            if (burnTick) {
+                mob.setSecondsOnFire(2);
+                mob.getPersistentData().putLong(AbilityRuntime.TAG_LIGHT_PRAYER_BURN_MARK, markExpire);
+            }
+            if (knockTick) {
+                pushLightPrayerTarget(player, mob);
+            }
+        }
+    }
+
+    private static void pushLightPrayerTarget(Player caster, LivingEntity target) {
+        double dx = target.getX() - caster.getX();
+        double dz = target.getZ() - caster.getZ();
+        double length = Math.sqrt(dx * dx + dz * dz);
+        if (length < 1.0E-3D) {
+            Vec3 look = caster.getLookAngle();
+            dx = look.x;
+            dz = look.z;
+            length = Math.max(1.0E-3D, Math.sqrt(dx * dx + dz * dz));
+        }
+        double horiz = AbilityRuntime.LIGHT_PRAYER_KNOCKBACK_STRENGTH;
+        target.push(dx / length * horiz,
+                AbilityRuntime.LIGHT_PRAYER_KNOCKBACK_VERTICAL,
+                dz / length * horiz);
+        target.hurtMarked = true;
+    }
+
+    @SubscribeEvent
+    public static void onLightPrayerHurtDealt(LivingHurtEvent event) {
+        LivingEntity target = event.getEntity();
+        if (target.level().isClientSide) {
+            return;
+        }
+
+        DamageSource source = event.getSource();
+        Entity attackerEntity = source.getEntity();
+
+        if (attackerEntity instanceof Player caster
+                && caster != target
+                && caster.hasEffect(ModMobEffects.LIGHT_PRAYER.get())) {
+            target.setSecondsOnFire(AbilityRuntime.LIGHT_PRAYER_WEAPON_IGNITE_SECONDS);
+            if (target instanceof Mob hostile && isHostileMob(hostile)) {
+                long markExpire = target.level().getGameTime()
+                        + AbilityRuntime.LIGHT_PRAYER_WEAPON_IGNITE_SECONDS * 20L;
+                target.getPersistentData().putLong(AbilityRuntime.TAG_LIGHT_PRAYER_BURN_MARK, markExpire);
+            }
+        }
+
+        if (target instanceof Mob hostileMob && isHostileMob(hostileMob)) {
+            boolean fromLightPrayerCaster = attackerEntity instanceof Player p
+                    && p.hasEffect(ModMobEffects.LIGHT_PRAYER.get());
+            boolean fromLightPrayerFire = source.is(net.minecraft.tags.DamageTypeTags.IS_FIRE)
+                    && target.getPersistentData().getLong(AbilityRuntime.TAG_LIGHT_PRAYER_BURN_MARK)
+                            > target.level().getGameTime();
+            if (fromLightPrayerCaster || fromLightPrayerFire) {
+                event.setAmount(event.getAmount() * AbilityRuntime.LIGHT_PRAYER_MONSTER_BONUS_MULTIPLIER);
             }
         }
     }

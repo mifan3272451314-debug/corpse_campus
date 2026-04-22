@@ -242,6 +242,7 @@ public final class AbilityRuntime {
     public static final double LIGHT_PRAYER_SPELL_RESIST_BONUS = 0.25D;
     public static final String LIGHT_PRAYER_SPELL_RESIST_UUID =
             "c0d4b1a3-1c07-11ee-9fa1-0002b3c1ee01";
+    public static final String TAG_LIGHT_PRAYER_BURN_MARK = "corpse_campus_light_prayer_burn_mark";
 
     public static final String TAG_GOLDEN_CROW_ACTIVE = "corpse_campus_golden_crow_active";
     public static final String TAG_GOLDEN_CROW_ENTITY_UUID = "corpse_campus_golden_crow_entity_uuid";
