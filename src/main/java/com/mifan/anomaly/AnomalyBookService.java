@@ -56,6 +56,7 @@ public final class AnomalyBookService {
     private static final String BOOK_AWAKENED = "AnomalyAwakened";
     private static final String BOOK_MAIN_SEQUENCE = "AnomalyMainSequence";
     private static final String BOOK_HIGHEST_RANK = "AnomalyHighestRank";
+    private static final String BOOK_NATURAL_AWAKENING_DONE = "NaturalAwakeningDone";
 
     private static final DecimalFormat PERCENT_FORMAT = new DecimalFormat("0.##");
 
@@ -182,6 +183,12 @@ public final class AnomalyBookService {
         tag.putBoolean(BOOK_AWAKENED, false);
         tag.remove(BOOK_MAIN_SEQUENCE);
         tag.remove(BOOK_HIGHEST_RANK);
+        tag.remove(BOOK_NATURAL_AWAKENING_DONE);
+    }
+
+    public static boolean isNaturalAwakeningDone(ItemStack book) {
+        CompoundTag tag = book.getTag();
+        return tag != null && tag.getBoolean(BOOK_NATURAL_AWAKENING_DONE);
     }
 
     public record AbsorbResult(boolean success, Component message) {
@@ -276,9 +283,46 @@ public final class AnomalyBookService {
         }
 
         SpellSpec picked = candidates.get(player.getRandom().nextInt(candidates.size()));
-        AbstractSpell spell = getRegisteredSpell(picked.spellId());
+        return applyAwakening(player, schoolId, picked.spellId(), false, "message.corpse_campus.awakened");
+    }
+
+    /**
+     * 共享的 B 级觉醒落地实现：吞噬 B 通道与自然觉醒通道共用。
+     *
+     * 调用方应已做完"挑选 spellId"的工作。本方法负责剩余全部步骤：
+     *   - 书/觉醒状态/40 席位三项前置校验
+     *   - 装入法术、写主序列/最高阶绑定
+     *   - 按 markNatural 可选写 NaturalAwakeningDone
+     *   - 刷新 Curio、返回本地化成功消息
+     *
+     * 自然觉醒通道的 40 席位语义与吞噬通道一致（§7.1）：满员 → 返回 anomaly_cap_reached，
+     * 调用方负责保留进度不清零。
+     */
+    public static AbsorbResult applyAwakening(ServerPlayer player, ResourceLocation schoolId,
+            ResourceLocation spellId, boolean markNatural, String successMessageKey) {
+        ItemStack book = ensureBookPresent(player);
+        if (book.isEmpty() || !isAnomalyBook(book)) {
+            return AbsorbResult.failure("message.corpse_campus.absorb_no_book");
+        }
+        if (isAwakened(book)) {
+            return AbsorbResult.failure("message.corpse_campus.sequence_locked");
+        }
+
+        net.minecraft.server.MinecraftServer server = player.getServer();
+        if (server != null
+                && AnomalyConfig.globalCapEnabled
+                && AnomalyLimitService.get(server).isCapReached()) {
+            return AbsorbResult.failure("message.corpse_campus.anomaly_cap_reached");
+        }
+
+        SpellSpec spec = SPELL_SPECS.get(spellId);
+        if (spec == null) {
+            return AbsorbResult.failure("message.corpse_campus.absorb_spell_missing", spellId.toString());
+        }
+
+        AbstractSpell spell = getRegisteredSpell(spellId);
         if (spell == null) {
-            return AbsorbResult.failure("message.corpse_campus.absorb_spell_missing", picked.zhName());
+            return AbsorbResult.failure("message.corpse_campus.absorb_spell_missing", spec.zhName());
         }
 
         boolean added = addSpell(player, book, spell, 1, 1);
@@ -286,12 +330,15 @@ public final class AnomalyBookService {
             return AbsorbResult.failure("message.corpse_campus.absorb_write_failed");
         }
 
-        writeSequenceBinding(book, schoolId, AnomalySpellRank.B);
+        writeSequenceBinding(book, schoolId, spec.rank());
+        if (markNatural) {
+            book.getOrCreateTag().putBoolean(BOOK_NATURAL_AWAKENING_DONE, true);
+        }
         updateBookSnapshot(player, book);
         refreshCurioState(player);
 
         String schoolName = localizeSchool(schoolId);
-        return AbsorbResult.success("message.corpse_campus.awakened", schoolName, picked.zhName());
+        return AbsorbResult.success(successMessageKey, schoolName, spec.zhName());
     }
 
     public static double getStoredSchoolBonusPercent(ItemStack stack, ResourceLocation schoolId) {
