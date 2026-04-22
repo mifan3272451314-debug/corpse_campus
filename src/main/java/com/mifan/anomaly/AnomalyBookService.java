@@ -323,6 +323,114 @@ public final class AnomalyBookService {
         return drops;
     }
 
+    /**
+     * 取消玩家觉醒状态：清空书内全部法术、清除觉醒/序列/阶级字段、从全服觉醒统计里移除、重算书上 NBT 缓存。
+     * 返回被清掉的法术数量（0 表示书里本来就没东西，但觉醒字段依然会被清）。
+     */
+    public static int unawakenPlayer(ServerPlayer player) {
+        ItemStack book = ensureBookPresent(player);
+        int removed = clearAllSpells(player, book);
+        clearSequenceBinding(book);
+        recalculateBookBonuses(book);
+        updateBookSnapshot(player, book);
+        refreshCurioState(player);
+        clampCurrentManaToMax(player);
+
+        net.minecraft.server.MinecraftServer server = player.getServer();
+        if (server != null) {
+            AnomalyLimitService.get(server).clearAwakened(player.getUUID());
+        }
+        return removed;
+    }
+
+    /**
+     * 仅修正玩家异常书上的主序列字段（不改法术、不改最高阶）。
+     * 传入 null 表示清除主序列字段（等价于未觉醒的序列归属）。
+     * 若书不存在或没觉醒，会自动把书上的 AnomalyAwakened 标记设为 true（否则锁流派校验没意义）。
+     */
+    public static boolean setMainSequence(ServerPlayer player, @Nullable ResourceLocation schoolId) {
+        ItemStack book = ensureBookPresent(player);
+        if (book.isEmpty()) {
+            return false;
+        }
+        CompoundTag tag = book.getOrCreateTag();
+        if (schoolId == null) {
+            tag.remove(BOOK_MAIN_SEQUENCE);
+        } else {
+            tag.putBoolean(BOOK_AWAKENED, true);
+            tag.putString(BOOK_MAIN_SEQUENCE, schoolId.getPath());
+        }
+        updateBookSnapshot(player, book);
+        refreshCurioState(player);
+        return true;
+    }
+
+    /**
+     * 仅修正玩家异常书上的最高阶字段。传入 null 表示清除（未觉醒）。
+     */
+    public static boolean setHighestRank(ServerPlayer player, @Nullable AnomalySpellRank rank) {
+        ItemStack book = ensureBookPresent(player);
+        if (book.isEmpty()) {
+            return false;
+        }
+        CompoundTag tag = book.getOrCreateTag();
+        if (rank == null) {
+            tag.remove(BOOK_HIGHEST_RANK);
+        } else {
+            tag.putBoolean(BOOK_AWAKENED, true);
+            tag.putString(BOOK_HIGHEST_RANK, rank.name());
+        }
+        updateBookSnapshot(player, book);
+        refreshCurioState(player);
+        return true;
+    }
+
+    /**
+     * 强制重算当前书上的法力加成与流派强化缓存（NBT），并刷新 Curios 以推送属性修饰符更新。
+     */
+    public static void forceRecalc(ServerPlayer player) {
+        ItemStack book = ensureBookPresent(player);
+        if (book.isEmpty()) {
+            return;
+        }
+        recalculateBookBonuses(book);
+        updateBookSnapshot(player, book);
+        refreshCurioState(player);
+        clampCurrentManaToMax(player);
+    }
+
+    /**
+     * 直接覆盖书上存储的额外法力值（绕过按已搭载法术的自动计算）。运维调试用。
+     */
+    public static void overrideManaBonus(ServerPlayer player, int value) {
+        ItemStack book = ensureBookPresent(player);
+        if (book.isEmpty()) {
+            return;
+        }
+        book.getOrCreateTag().putInt(BOOK_MANA_BONUS, Math.max(0, value));
+        updateBookSnapshot(player, book);
+        refreshCurioState(player);
+        clampCurrentManaToMax(player);
+    }
+
+    /**
+     * 直接覆盖书上存储的指定流派强化百分比（绕过按已搭载法术的自动计算）。运维调试用。
+     */
+    public static void overrideSchoolBonus(ServerPlayer player, ResourceLocation schoolId, double percent) {
+        ItemStack book = ensureBookPresent(player);
+        if (book.isEmpty()) {
+            return;
+        }
+        CompoundTag tag = book.getOrCreateTag();
+        CompoundTag bonuses = tag.contains(BOOK_SCHOOL_BONUSES, Tag.TAG_COMPOUND)
+                ? tag.getCompound(BOOK_SCHOOL_BONUSES)
+                : new CompoundTag();
+        bonuses.putDouble(schoolId.getPath(), Math.max(0.0D, percent));
+        tag.put(BOOK_SCHOOL_BONUSES, bonuses);
+        updateBookSnapshot(player, book);
+        refreshCurioState(player);
+    }
+
     @Nullable
     public static ResourceLocation resolveSpellId(String rawInput) {
         String normalized = rawInput.trim().toLowerCase(Locale.ROOT);
@@ -343,6 +451,47 @@ public final class AnomalyBookService {
     @Nullable
     public static SpellSpec getSpellSpec(ResourceLocation spellId) {
         return SPELL_SPECS.get(spellId);
+    }
+
+    /**
+     * 将字符串（注册路径 / 中文名 / 完整 ID）归一化为一个合法的 School ResourceLocation。
+     * 支持："xujing"/"虚境"/"rizhao"/"日兆"/"dongyue"/"东岳"/"yuzhe"/"愚者"/"shengqi"/"圣祈"。
+     */
+    @Nullable
+    public static ResourceLocation resolveSchoolId(String rawInput) {
+        if (rawInput == null) {
+            return null;
+        }
+        String n = rawInput.trim().toLowerCase(Locale.ROOT);
+        return switch (n) {
+            case "xujing", "虚境", "corpse_campus:xujing" -> ModSchools.XUJING_RESOURCE;
+            case "rizhao", "日兆", "corpse_campus:rizhao" -> ModSchools.RIZHAO_RESOURCE;
+            case "dongyue", "东岳", "corpse_campus:dongyue" -> ModSchools.DONGYUE_RESOURCE;
+            case "yuzhe", "愚者", "corpse_campus:yuzhe" -> ModSchools.YUZHE_RESOURCE;
+            case "shengqi", "圣祈", "corpse_campus:shengqi" -> ModSchools.SHENGQI_RESOURCE;
+            default -> null;
+        };
+    }
+
+    /**
+     * 将字符串归一化为 AnomalySpellRank。"NONE"/"none"/"无" 返回 null（表示未觉醒）。
+     * 无法识别时返回 Optional.empty()；可识别但为 none 时返回一个只包含 null 的 Optional 结果：
+     * 用 {@code Object holder} 包装以避免 Optional<Optional<...>> 之类的歧义。
+     */
+    public record RankResolution(boolean valid, @Nullable AnomalySpellRank rank) {}
+
+    public static RankResolution resolveRank(String rawInput) {
+        if (rawInput == null) {
+            return new RankResolution(false, null);
+        }
+        String n = rawInput.trim().toLowerCase(Locale.ROOT);
+        return switch (n) {
+            case "none", "无", "clear", "0" -> new RankResolution(true, null);
+            case "b", "一级", "1" -> new RankResolution(true, AnomalySpellRank.B);
+            case "a", "二级", "2" -> new RankResolution(true, AnomalySpellRank.A);
+            case "s", "三级", "3" -> new RankResolution(true, AnomalySpellRank.S);
+            default -> new RankResolution(false, null);
+        };
     }
 
     @Nullable

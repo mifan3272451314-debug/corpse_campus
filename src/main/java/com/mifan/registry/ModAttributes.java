@@ -43,8 +43,11 @@ public final class ModAttributes {
     }
 
     private static RegistryObject<Attribute> register(String name) {
+        // default 1.0 对齐 ISS 原生 *_SPELL_POWER（fire/blood/holy...），否则 AbstractSpell.getSpellPower
+        // 的 entitySchoolPowerModifier = 0，base × 0 = 0，所有自定义流派法术伤害都会被归零；
+        // 而 MAX 设成 1024 保留一个宽松的强化上限（ISS 原生 100）。
         return ATTRIBUTES.register(name,
-                () -> new RangedAttribute("attribute.name." + corpsecampus.MODID + "." + name, 0.0D, 0.0D, 1024.0D)
+                () -> new RangedAttribute("attribute.name." + corpsecampus.MODID + "." + name, 1.0D, 0.0D, 1024.0D)
                         .setSyncable(true));
     }
 
