@@ -6,6 +6,7 @@ import com.mifan.anomaly.AnomalyLimitService;
 import com.mifan.anomaly.AnomalySpellRank;
 import com.mifan.registry.ModItems;
 import com.mifan.spell.runtime.EndlessLifeRuntime;
+import com.mifan.spell.runtime.RewindBackupService;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.DoubleArgumentType;
@@ -207,6 +208,24 @@ public final class MagicCommand {
                                         .executes(context -> sealEndlessLife(
                                                 context.getSource(),
                                                 BoolArgumentType.getBool(context, "sealed"))))))
+                .then(Commands.literal("rewind")
+                        .requires(source -> source.hasPermission(3))
+                        .then(Commands.literal("backup")
+                                .then(Commands.literal("create")
+                                        .then(Commands.argument("player", EntityArgument.player())
+                                                .executes(context -> rewindBackupCreate(
+                                                        context.getSource(),
+                                                        EntityArgument.getPlayer(context, "player"),
+                                                        RewindBackupService.DEFAULT_RADIUS_BLOCKS))
+                                                .then(Commands.argument("radius", IntegerArgumentType.integer(16, 10000))
+                                                        .executes(context -> rewindBackupCreate(
+                                                                context.getSource(),
+                                                                EntityArgument.getPlayer(context, "player"),
+                                                                IntegerArgumentType.getInteger(context, "radius"))))))
+                                .then(Commands.literal("status")
+                                        .executes(context -> rewindBackupStatus(context.getSource())))
+                                .then(Commands.literal("cancel")
+                                        .executes(context -> rewindBackupCancel(context.getSource())))))
                 .then(Commands.literal("config")
                         .executes(context -> showConfig(context.getSource())))
                 .then(Commands.literal("list")
@@ -894,6 +913,59 @@ public final class MagicCommand {
             source.sendSuccess(() -> Component.literal("§7" + chunk), false);
         }
         source.sendSuccess(() -> Component.literal("§8（上方为原始 NBT 字符串，可复制用于 /data modify 调试）"), false);
+        return 1;
+    }
+
+    private static int rewindBackupCreate(CommandSourceStack source, ServerPlayer target, int radiusBlocks) {
+        net.minecraft.server.level.ServerLevel sourceLevel = target.serverLevel();
+        net.minecraft.core.BlockPos center = target.blockPosition();
+        RewindBackupService.StartResult result = RewindBackupService.startBackup(
+                source.getServer(), sourceLevel, center, radiusBlocks);
+        switch (result) {
+            case STARTED -> {
+                int radiusChunks = Math.max(1, (radiusBlocks + 15) >> 4);
+                int totalChunks = RewindBackupService.getState(source.getServer()).totalChunks;
+                long estMin = (long) totalChunks / Math.max(1, RewindBackupService.CHUNKS_PER_TICK) / 20L / 60L;
+                source.sendSuccess(() -> Component.literal("§a已启动回溯之虫镜像备份 §7→ 玩家 "
+                        + target.getGameProfile().getName() + "，中心维度 "
+                        + sourceLevel.dimension().location() + "，中心方块 ("
+                        + center.getX() + "," + center.getY() + "," + center.getZ()
+                        + ")，半径 " + radiusBlocks + " 格 (" + radiusChunks + " chunks)"
+                        + "，待扫描 " + totalChunks + " chunks，按每 tick "
+                        + RewindBackupService.CHUNKS_PER_TICK + " chunks 估计约需 "
+                        + estMin + " 分钟。"), true);
+                return 1;
+            }
+            case BUSY -> {
+                source.sendFailure(Component.literal("已有备份任务在进行中。可用 /magic rewind backup status 查看进度，或 /magic rewind backup cancel 取消后重新启动。"));
+                return 0;
+            }
+            case MIRROR_MISSING -> {
+                source.sendFailure(Component.literal("镜像维度 corpse_campus:rewind_mirror 未加载。"
+                        + "请确认 data/corpse_campus/dimension/rewind_mirror.json 随模组一起部署，"
+                        + "并且服务器此次启动后至少执行过一次 /execute in corpse_campus:rewind_mirror run tp @s 0 80 0 触发维度创建。"));
+                return 0;
+            }
+            case SOURCE_IS_MIRROR -> {
+                source.sendFailure(Component.literal("玩家当前就在镜像维度，无法把镜像再备份进镜像。"
+                        + "让玩家先离开 rewind_mirror 再试。"));
+                return 0;
+            }
+        }
+        return 0;
+    }
+
+    private static int rewindBackupStatus(CommandSourceStack source) {
+        for (Component line : RewindBackupService.buildStatusLines(source.getServer())) {
+            source.sendSuccess(() -> line, false);
+        }
+        return 1;
+    }
+
+    private static int rewindBackupCancel(CommandSourceStack source) {
+        RewindBackupService.cancel(source.getServer());
+        source.sendSuccess(() -> Component.literal("§e已取消当前回溯之虫镜像备份任务，镜像维度已有方块不会被清除；"
+                + "下次使用 /magic rewind backup create 会重新扫描并覆盖。"), true);
         return 1;
     }
 

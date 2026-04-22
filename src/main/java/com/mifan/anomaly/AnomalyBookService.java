@@ -1242,6 +1242,7 @@ public final class AnomalyBookService {
         register(map, "mark", "印记", AnomalySpellRank.B, ModSchools.XUJING_RESOURCE);
         register(map, "recorder_officer", "记录官", AnomalySpellRank.A, ModSchools.XUJING_RESOURCE);
         register(map, "elementalist", "元素使", AnomalySpellRank.A, ModSchools.XUJING_RESOURCE);
+        register(map, "rewind_worm", "回溯之虫", AnomalySpellRank.S, ModSchools.XUJING_RESOURCE);
 
         register(map, "affinity", "亲和", AnomalySpellRank.B, ModSchools.RIZHAO_RESOURCE);
         register(map, "ninghe", "宁禾", AnomalySpellRank.B, ModSchools.RIZHAO_RESOURCE);
