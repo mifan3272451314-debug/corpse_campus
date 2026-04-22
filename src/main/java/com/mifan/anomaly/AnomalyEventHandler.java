@@ -79,6 +79,8 @@ public final class AnomalyEventHandler {
         if (server != null) {
             AnomalyLimitService.get(server).clearAwakened(player.getUUID());
         }
+        // 自然觉醒进度全量清零（§8.2）：死亡重置序列时连带清掉进度，防止重生后一击觉醒。
+        NaturalAwakeningService.clearProgress(player);
         player.displayClientMessage(
                 net.minecraft.network.chat.Component.translatable("message.corpse_campus.sequence_reset_on_death"),
                 false);
