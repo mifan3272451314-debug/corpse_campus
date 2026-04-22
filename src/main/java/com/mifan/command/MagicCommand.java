@@ -1,6 +1,7 @@
 package com.mifan.command;
 
 import com.mifan.anomaly.AnomalyBookService;
+import com.mifan.anomaly.AnomalyLimitService;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
@@ -10,6 +11,7 @@ import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
 import net.minecraft.world.item.ItemStack;
@@ -85,7 +87,13 @@ public final class MagicCommand {
                                 .executes(context -> showState(context.getSource(), EntityArgument.getPlayer(context, "player")))))
                 .then(Commands.literal("fixbook")
                         .then(Commands.argument("player", EntityArgument.player())
-                                .executes(context -> fixBook(context.getSource(), EntityArgument.getPlayer(context, "player"))))));
+                                .executes(context -> fixBook(context.getSource(), EntityArgument.getPlayer(context, "player")))))
+                .then(Commands.literal("limit")
+                        .then(Commands.literal("info")
+                                .executes(context -> limitInfo(context.getSource())))
+                        .then(Commands.literal("recount")
+                                .requires(source -> source.hasPermission(3))
+                                .executes(context -> limitRecount(context.getSource())))));
     }
 
     private static int addSpell(CommandSourceStack source, ServerPlayer target, String spellInput, int level, int count) {
@@ -212,6 +220,24 @@ public final class MagicCommand {
         ItemStack book = AnomalyBookService.ensureBookPresent(target);
         source.sendSuccess(() -> Component.literal("已修复并强制佩戴 " + target.getGameProfile().getName()
                 + " 的异常法术书，当前绑定书 ID：" + AnomalyBookService.getBookId(book)), false);
+        return 1;
+    }
+
+    private static int limitInfo(CommandSourceStack source) {
+        MinecraftServer server = source.getServer();
+        AnomalyLimitService service = AnomalyLimitService.get(server);
+        for (Component line : service.buildInfoLines()) {
+            source.sendSuccess(() -> line, false);
+        }
+        return 1;
+    }
+
+    private static int limitRecount(CommandSourceStack source) {
+        MinecraftServer server = source.getServer();
+        AnomalyLimitService service = AnomalyLimitService.get(server);
+        int count = service.recountFromServer(server);
+        source.sendSuccess(() -> Component.literal(
+                "已重新统计全服异常者计数（在线玩家重算，离线保留原值），当前: " + count + " 人"), false);
         return 1;
     }
 }
