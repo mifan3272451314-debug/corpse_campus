@@ -127,6 +127,7 @@
   "message.corpse_campus.sequence_locked": "Main sequence is locked; no other trait can be absorbed",
   "message.corpse_campus.anomaly_cap_reached": "Server anomaly cap reached; cannot awaken",
   "message.corpse_campus.awakened": "You awakened to the %s sequence and gained the ability \"%s\"",
+  "message.corpse_campus.awakened.natural": "Natural awakening: you stepped into the %s sequence without noticing and learned the ability \"%s\"",
   "message.corpse_campus.sequence_reset_on_death": "Death has reset your anomaly identity; you may awaken again by absorbing a B-rank trait",
   "message.corpse_campus.trait_only_b_supported": "Only B-rank traits can currently be absorbed for awakening",
   "message.corpse_campus.absorb_no_book": "Anomaly spellbook not detected",

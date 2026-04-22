@@ -147,6 +147,7 @@
   "message.corpse_campus.sequence_locked": "主序列已锁定，无法再吞噬其他异常特性",
   "message.corpse_campus.anomaly_cap_reached": "全服异常者已满额，无法觉醒",
   "message.corpse_campus.awakened": "你觉醒了 %s 序列，获得异能「%s」",
+  "message.corpse_campus.awakened.natural": "自然觉醒：你在不知不觉间踏入了 %s 序列，习得异能「%s」",
   "message.corpse_campus.sequence_reset_on_death": "死亡已重置你的异常身份，可以重新吞噬 B 级异常特性觉醒",
   "message.corpse_campus.trait_only_b_supported": "目前只支持吞噬 B 级异常特性觉醒",
   "message.corpse_campus.absorb_no_book": "未检测到异常法术书",
