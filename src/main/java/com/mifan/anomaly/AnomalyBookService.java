@@ -622,6 +622,37 @@ public final class AnomalyBookService {
         NOT_ENOUGH_XP
     }
 
+    private static boolean bookContainsSpell(ItemStack book, ResourceLocation spellId) {
+        if (book.isEmpty() || !isAnomalyBook(book)) {
+            return false;
+        }
+        ensureSpellContainer(book);
+        for (SpellSlot slot : ISpellContainer.getOrCreate(book).getActiveSpells()) {
+            if (slot.getSpell().getSpellResource().equals(spellId)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static ItemStack findAnomalyBookContaining(ServerPlayer player, ResourceLocation spellId) {
+        ItemStack curio = getCurioSpellbookStack(player);
+        if (isAnomalyBook(curio) && ownerMatches(curio, player) && bookContainsSpell(curio, spellId)) {
+            return curio;
+        }
+        for (ItemStack stack : player.getInventory().items) {
+            if (isAnomalyBook(stack) && ownerMatches(stack, player) && bookContainsSpell(stack, spellId)) {
+                return stack;
+            }
+        }
+        for (ItemStack stack : player.getInventory().offhand) {
+            if (isAnomalyBook(stack) && ownerMatches(stack, player) && bookContainsSpell(stack, spellId)) {
+                return stack;
+            }
+        }
+        return ItemStack.EMPTY;
+    }
+
     public static int getUpgradeXpCost(AnomalySpellRank rank) {
         if (rank == null) {
             return Integer.MAX_VALUE;
@@ -634,12 +665,24 @@ public final class AnomalyBookService {
     }
 
     public static UpgradeOutcome upgradeLoadedSpell(ServerPlayer player, ResourceLocation spellId) {
-        // 与 UI 同源：先用 findBookForRead（owner 匹配即可），确保客户端 UI 可见的那本就是被升级的那本；
-        // 找不到时再 fallback 到 ensureBookPresent。升级前把玩家的 BoundBookId 同步到这本书的 BookId，
-        // 避免后续调用 ensureBookPresent 又用 snapshot 替换它。
+        // 先按 UI 同源的方式取书（findBookForRead / ensureBookPresent）。
         ItemStack book = findBookForRead(player);
         if (book.isEmpty() || !isAnomalyBook(book)) {
             book = ensureBookPresent(player);
+        }
+        // 兜底：若查找策略没命中玩家真正使用的那本（客户端/服务端 Curio 同步时序、
+        // 多本异常书并存等场景），直接跟着 spellId 扫描玩家所有可达位置，
+        // 找到"确实包含该 spell 的那本"作为升级目标。
+        if (!book.isEmpty() && isAnomalyBook(book) && !bookContainsSpell(book, spellId)) {
+            ItemStack alt = findAnomalyBookContaining(player, spellId);
+            if (!alt.isEmpty()) {
+                book = alt;
+            }
+        } else if (book.isEmpty()) {
+            ItemStack alt = findAnomalyBookContaining(player, spellId);
+            if (!alt.isEmpty()) {
+                book = alt;
+            }
         }
         if (book.isEmpty() || !isAnomalyBook(book)) {
             return UpgradeOutcome.NO_BOOK;
