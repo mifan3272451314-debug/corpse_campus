@@ -219,7 +219,7 @@ public final class AbilityRuntime {
     public static final String TAG_GOLDEN_CROW_ACTIVE = "corpse_campus_golden_crow_active";
     public static final String TAG_GOLDEN_CROW_ENTITY_UUID = "corpse_campus_golden_crow_entity_uuid";
     public static final String TAG_GOLDEN_CROW_EXPIRE_TICK = "corpse_campus_golden_crow_expire_tick";
-    public static final String TAG_GOLDEN_CROW_LAST_DAY = "corpse_campus_golden_crow_last_day";
+    public static final String TAG_GOLDEN_CROW_USED_GEN = "corpse_campus_golden_crow_used_gen";
     public static final String TAG_GOLDEN_CROW_MANA_SPENT = "corpse_campus_golden_crow_mana_spent";
     public static final String GOLDEN_CROW_STUN_UUID = "7C1F5B3A-8D4E-4B3A-B5C0-2D1F6A9E3B7C";
 
@@ -230,13 +230,13 @@ public final class AbilityRuntime {
     public static final double GOLDEN_CROW_ORB_RADIUS_MIN = 3.0D;
     public static final double GOLDEN_CROW_ORB_RADIUS_MAX = 30.0D;
     public static final double GOLDEN_CROW_EXPLOSION_RADIUS_MIN = 5.0D;
-    public static final double GOLDEN_CROW_EXPLOSION_RADIUS_MAX = 50.0D;
+    public static final double GOLDEN_CROW_EXPLOSION_RADIUS_MAX = 100.0D;
     public static final double GOLDEN_CROW_STUN_RADIUS_MIN = 10.0D;
     public static final double GOLDEN_CROW_STUN_RADIUS_MAX = 60.0D;
     public static final float GOLDEN_CROW_PARTICLE_SCALE_MIN = 0.3F;
     public static final float GOLDEN_CROW_PARTICLE_SCALE_MAX = 3.0F;
     // 达到极限所需法力的软门槛：mana / SOFT_CAP 取 0~1 后映射到上述线性区间
-    public static final float GOLDEN_CROW_MANA_SOFT_CAP = 900.0F;
+    public static final float GOLDEN_CROW_MANA_SOFT_CAP = 5000.0F;
 
     public static final float GOLDEN_CROW_DAMAGE_PER_MANA = 0.5F;
     public static final float GOLDEN_CROW_THROW_SPEED = 5.0F;

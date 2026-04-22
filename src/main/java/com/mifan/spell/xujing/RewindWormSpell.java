@@ -28,7 +28,8 @@ import java.util.Optional;
  * <ul>
  *   <li>施法瞬间完成（INSTANT），不需引导。</li>
  *   <li>镜像维度必须由管理员通过 {@code /magic rewind backup create} 预先扫描，否则施法直接拒绝。</li>
- *   <li>30 分钟共享 CD：去/回共用同一个冷却；进入镜像后等 CD 走完才能回程。</li>
+ *   <li>30 分钟共享 CD：去/回共用同一个冷却，由 ISS 法术自身的 {@code defaultConfig.setCooldownSeconds(...)} 管理；
+ *       Runtime 不再维护任何内置 NBT 冷却。</li>
  *   <li>不消耗法力（S 级终阶语义）。</li>
  * </ul>
  */
@@ -40,7 +41,7 @@ public class RewindWormSpell extends AbstractSpell {
             .setMinRarity(SpellRarity.LEGENDARY)
             .setSchoolResource(ModSchools.XUJING_RESOURCE)
             .setMaxLevel(1)
-            .setCooldownSeconds(1800) // 30min，与 Runtime 的 NBT CD 双保险
+            .setCooldownSeconds(1800) // 30 min，唯一的冷却来源（ISS 内置）
             .build();
 
     public RewindWormSpell() {
@@ -95,9 +96,6 @@ public class RewindWormSpell extends AbstractSpell {
                         Component.translatable("message.corpse_campus.rewind_mirror_not_ready"), false);
                 case MIRROR_LEVEL_MISSING -> caster.displayClientMessage(
                         Component.translatable("message.corpse_campus.rewind_mirror_missing"), false);
-                case ON_COOLDOWN -> caster.displayClientMessage(
-                        Component.translatable("message.corpse_campus.rewind_on_cooldown",
-                                RewindWormRuntime.formatRemaining(result.remainingCooldownTicks())), false);
                 case ANCHOR_LOST -> caster.displayClientMessage(
                         Component.translatable("message.corpse_campus.rewind_anchor_lost"), false);
                 case INTO_MIRROR -> {

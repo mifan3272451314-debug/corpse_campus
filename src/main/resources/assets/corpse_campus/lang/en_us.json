@@ -406,12 +406,11 @@
   "spell.corpse_campus.rewind_worm": "Rewind Worm",
   "spell.corpse_campus.rewind_worm.guide_description": "Xujing tier-3 ultimate. After acquiring this spell, the world is backed up into a mirror dimension (an admin must trigger the scan via /magic rewind backup create). The first cast teleports you into the saved mirror world; after a 30-minute cooldown a second cast returns you to the exact dimension and coordinates where you left. The outbound and return casts share one 30-minute cooldown.",
   "tooltip.corpse_campus.rewind_worm_toggle": "First cast: travel into the mirror backup dimension. Second cast: return to the dimension and coordinates you left.",
-  "tooltip.corpse_campus.rewind_worm_cooldown": "Outbound and return share one 30-minute cooldown",
+  "tooltip.corpse_campus.rewind_worm_cooldown": "Outbound and return share one 30-minute cooldown, fully managed by the ISS spell system (no separate NBT cooldown)",
   "tooltip.corpse_campus.rewind_worm_require_backup": "An admin must first run /magic rewind backup create <player> [radius] to scan the world into the mirror dimension",
   "tooltip.corpse_campus.rewind_worm_mirror_semantics": "The mirror dimension block states reflect the admin's most recent backup; block entities and entities are not copied",
   "message.corpse_campus.rewind_mirror_not_ready": "Rewind Worm: the mirror dimension is not ready. Ask an admin to run /magic rewind backup create <player> to start the backup scan.",
   "message.corpse_campus.rewind_mirror_missing": "Rewind Worm: dimension corpse_campus:rewind_mirror is not loaded. Check that the data pack deployed correctly.",
-  "message.corpse_campus.rewind_on_cooldown": "Rewind Worm is still on cooldown. Remaining: %s",
   "message.corpse_campus.rewind_anchor_lost": "Rewind Worm: the return anchor was lost (possibly due to death or a cross-save event), you cannot return to the original location.",
   "message.corpse_campus.rewind_into_mirror": "Rewind Worm engaged: you have crossed into the mirror backup dimension.",
   "message.corpse_campus.rewind_out_of_mirror": "Rewind Worm closed: you have returned to the backup anchor in your original dimension."

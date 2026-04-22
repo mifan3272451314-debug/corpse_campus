@@ -3,6 +3,7 @@ package com.mifan.spell.rizhao;
 import com.mifan.entity.GoldenCrowSunEntity;
 import com.mifan.registry.ModSchools;
 import com.mifan.spell.AbilityRuntime;
+import com.mifan.spell.runtime.DailyAbilityRefreshState;
 import io.redspace.ironsspellbooks.api.config.DefaultConfig;
 import io.redspace.ironsspellbooks.api.magic.MagicData;
 import io.redspace.ironsspellbooks.api.spells.AbstractSpell;
@@ -16,11 +17,11 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
-import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
@@ -28,7 +29,6 @@ import net.minecraft.world.phys.Vec3;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 @AutoSpellConfig
 public class GoldenCrowSunSpell extends AbstractSpell {
@@ -108,10 +108,6 @@ public class GoldenCrowSunSpell extends AbstractSpell {
     public void onServerCastTick(Level level, int spellLevel, LivingEntity entity, MagicData playerMagicData) {
         super.onServerCastTick(level, spellLevel, entity, playerMagicData);
         if (!(level instanceof ServerLevel server) || !(entity instanceof Player player)) {
-            return;
-        }
-        // 若此次施法是「投掷」（已有太阳），就不绘制构建粒子，以免和球本身视觉冲突
-        if (player.getPersistentData().getBoolean(AbilityRuntime.TAG_GOLDEN_CROW_ACTIVE)) {
             return;
         }
 
@@ -204,22 +200,12 @@ public class GoldenCrowSunSpell extends AbstractSpell {
     private void handleCast(Level level, Player player, MagicData magicData) {
         CompoundTag data = player.getPersistentData();
 
-        GoldenCrowSunEntity existing = resolveExistingSun(level, data);
-        if (existing != null) {
-            if (!existing.isThrown()) {
-                existing.throwTowards(player);
-                player.displayClientMessage(
-                        Component.translatable("message.corpse_campus.golden_crow_thrown"), true);
-            } else {
-                player.displayClientMessage(
-                        Component.translatable("message.corpse_campus.golden_crow_already_thrown"), true);
-            }
-            return;
-        }
-
-        long currentDay = level.getDayTime() / 24000L;
-        if (data.contains(AbilityRuntime.TAG_GOLDEN_CROW_LAST_DAY)
-                && data.getLong(AbilityRuntime.TAG_GOLDEN_CROW_LAST_DAY) == currentDay) {
+        // 锁定判定：只要玩家"上次使用时记录的 generation" >= 当前 generation，就视为"已用过且未被刷新"。
+        // 管理员通过 /magic refresh all 让 generation++ 即可放行所有玩家（含离线）。
+        MinecraftServer server = player.getServer();
+        long currentGen = server == null ? 0L : DailyAbilityRefreshState.currentGeneration(server);
+        if (data.contains(AbilityRuntime.TAG_GOLDEN_CROW_USED_GEN)
+                && data.getLong(AbilityRuntime.TAG_GOLDEN_CROW_USED_GEN) >= currentGen) {
             player.displayClientMessage(
                     Component.translatable("message.corpse_campus.golden_crow_daily_limit"), true);
             return;
@@ -239,7 +225,7 @@ public class GoldenCrowSunSpell extends AbstractSpell {
         data.putLong(AbilityRuntime.TAG_GOLDEN_CROW_EXPIRE_TICK,
                 level.getGameTime() + AbilityRuntime.GOLDEN_CROW_DURATION_TICKS);
         data.putFloat(AbilityRuntime.TAG_GOLDEN_CROW_MANA_SPENT, manaSpent);
-        data.putLong(AbilityRuntime.TAG_GOLDEN_CROW_LAST_DAY, currentDay);
+        data.putLong(AbilityRuntime.TAG_GOLDEN_CROW_USED_GEN, currentGen);
 
         level.playSound(null, player.blockPosition(), SoundEvents.BEACON_ACTIVATE, SoundSource.PLAYERS,
                 1.6F, 0.5F);
@@ -257,28 +243,13 @@ public class GoldenCrowSunSpell extends AbstractSpell {
             serverLevel.sendParticles(ParticleTypes.FLAME, ax, ay, az, 300, 4.0D, 4.0D, 4.0D, 0.1D);
         }
 
+        // 不再保留"召唤态等待二次右键投掷"的语义：召唤完成立刻自动甩出。
+        sun.throwTowards(player);
+
         player.displayClientMessage(
                 Component.translatable("message.corpse_campus.golden_crow_summoned",
                         String.format("%.0f", manaSpent)),
                 true);
-    }
-
-    private GoldenCrowSunEntity resolveExistingSun(Level level, CompoundTag data) {
-        if (!data.getBoolean(AbilityRuntime.TAG_GOLDEN_CROW_ACTIVE)) {
-            return null;
-        }
-        if (!(level instanceof ServerLevel serverLevel)) {
-            return null;
-        }
-        if (!data.hasUUID(AbilityRuntime.TAG_GOLDEN_CROW_ENTITY_UUID)) {
-            return null;
-        }
-        UUID uuid = data.getUUID(AbilityRuntime.TAG_GOLDEN_CROW_ENTITY_UUID);
-        Entity entity = serverLevel.getEntity(uuid);
-        if (entity instanceof GoldenCrowSunEntity sun && !sun.isRemoved()) {
-            return sun;
-        }
-        return null;
     }
 
     @Override

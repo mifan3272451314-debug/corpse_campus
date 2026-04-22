@@ -5,6 +5,7 @@ import com.mifan.anomaly.AnomalyConfig;
 import com.mifan.anomaly.AnomalyLimitService;
 import com.mifan.anomaly.AnomalySpellRank;
 import com.mifan.registry.ModItems;
+import com.mifan.spell.runtime.DailyAbilityRefreshState;
 import com.mifan.spell.runtime.EndlessLifeRuntime;
 import com.mifan.spell.runtime.RewindBackupService;
 import com.mojang.brigadier.CommandDispatcher;
@@ -226,6 +227,10 @@ public final class MagicCommand {
                                         .executes(context -> rewindBackupStatus(context.getSource())))
                                 .then(Commands.literal("cancel")
                                         .executes(context -> rewindBackupCancel(context.getSource())))))
+                .then(Commands.literal("refresh")
+                        .requires(source -> source.hasPermission(3))
+                        .then(Commands.literal("all")
+                                .executes(context -> refreshDailyAll(context.getSource()))))
                 .then(Commands.literal("config")
                         .executes(context -> showConfig(context.getSource())))
                 .then(Commands.literal("list")
@@ -585,6 +590,7 @@ public final class MagicCommand {
     private static int showConfig(CommandSourceStack source) {
         MinecraftServer server = source.getServer();
         AnomalyLimitService service = AnomalyLimitService.get(server);
+        long dailyGen = DailyAbilityRefreshState.currentGeneration(server);
         String[] lines = {
                 "§6§l══════════ corpse_campus 当前运行时配置 ══════════",
                 "§a§l▌ §e§l上限系统",
@@ -604,7 +610,9 @@ public final class MagicCommand {
                 "§f  异常法术书槽位上限: " + AnomalyBookService.MAX_SPELL_SLOTS,
                 "§a§l▌ §e§l其它",
                 "§f  已觉醒玩家数: §e" + service.getAnomalyCount(),
-                "§f  生生不息封锁: §e" + EndlessLifeRuntime.isSealed(server)
+                "§f  生生不息封锁: §e" + EndlessLifeRuntime.isSealed(server),
+                "§f  每日限定法术 generation: §e" + dailyGen
+                        + "§7（/magic refresh all 让所有用过的玩家重新可用）"
         };
         for (String s : lines) {
             source.sendSuccess(() -> Component.literal(s), false);
@@ -970,6 +978,14 @@ public final class MagicCommand {
         return 1;
     }
 
+    private static int refreshDailyAll(CommandSourceStack source) {
+        long newGen = DailyAbilityRefreshState.bumpGeneration(source.getServer());
+        source.sendSuccess(() -> Component.literal(
+                "§a已刷新全服「每日限定」法术使用次数§r§7（当前 generation = §f" + newGen + "§7）。"
+                        + "§r所有曾用过日轮金乌的玩家（含离线）下一次施法都会被重新放行。"), true);
+        return 1;
+    }
+
     private static int showHelp(CommandSourceStack source) {
         String[] lines = {
             "§6§l══════════ /magic 全部指令文档 ══════════",
@@ -1038,6 +1054,12 @@ public final class MagicCommand {
             "§7    查看【生生不息】当前的全局封锁状态。",
             "§f  /magic seal endless_life <true|false>",
             "§7    手动开启或解除【生生不息】的全局封锁。",
+            "§a§l▌ §e§l十、每日限定法术刷新 §8（权限 3）",
+            "§f  /magic refresh all §c[权限 3]",
+            "§7    全服刷新「每日限定」法术（当前仅日轮金乌 golden_crow_sun）。",
+            "§7    实现机制：递增一个全局 generation；所有用过的玩家（含离线）下一次施法都会被放行。",
+            "§7    注意：日轮金乌不再做游戏日检测，每次施放即被锁定，必须管理员调用本指令才能再次使用。",
+            "§7    当前 generation 可在 /magic config 中查看。",
             "§6§l══════════ 法术 ID 对照表（共 35 个） ══════════",
             "§b虚境序列§7（B×4 A×2 S×1）",
             "§7  B: §fsonic_sense§7=音波  §fdanger_sense§7=危机  §folfaction§7=嗅觉  §fmark§7=印记",
@@ -1069,6 +1091,7 @@ public final class MagicCommand {
             "§8  /magic schoolbonus Steve xujing 75",
             "§8  /magic trait give Steve shengqi B 2",
             "§8  /magic config",
+            "§8  /magic refresh all",
             "§8§l[待] = 法术已规划但尚未实现，命令写入会报错。"
         };
         for (String line : lines) {
