@@ -130,6 +130,9 @@ public class corpsecampus {
         // Register our mod's ForgeConfigSpec so that Forge can create and load the
         // config file for us
         ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, Config.SPEC);
+        // Anomaly system config (corpse_campus-anomaly.toml)
+        ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, com.mifan.anomaly.AnomalyConfig.SPEC,
+                "corpse_campus-anomaly.toml");
     }
 
     private void commonSetup(final FMLCommonSetupEvent event) {
