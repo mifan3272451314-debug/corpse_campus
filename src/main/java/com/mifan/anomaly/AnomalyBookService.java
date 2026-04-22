@@ -31,6 +31,7 @@ import top.theillusivec4.curios.api.type.inventory.IDynamicStackHandler;
 
 import java.text.DecimalFormat;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -73,6 +74,19 @@ public final class AnomalyBookService {
 
     public static List<ResourceLocation> getTrackedSchoolIds() {
         return TRACKED_SCHOOLS;
+    }
+
+    /** 返回全部已登记的异常法术规格（只读快照）。供 /magic list 等查询指令使用。 */
+    public static Collection<SpellSpec> getAllSpellSpecs() {
+        return SPELL_SPECS.values();
+    }
+
+    /**
+     * 返回玩家当前已绑定的异常书 ItemStack；若未持有则返回 ItemStack.EMPTY。
+     * 与 ensureBookPresent 不同：本方法仅做"只读查找"，不会修复、重建或装备书。
+     */
+    public static ItemStack getPlayerBook(ServerPlayer player) {
+        return findExistingBook(player);
     }
 
     public static boolean hasLoadedSpells(ServerPlayer player) {

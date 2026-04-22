@@ -11,6 +11,7 @@ import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraft.world.level.storage.DimensionDataStorage;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -113,6 +114,11 @@ public final class AnomalyLimitService extends SavedData {
 
     public boolean isAwakened(UUID uuid) {
         return awakenedPlayers.contains(uuid);
+    }
+
+    /** 返回当前所有已觉醒玩家 UUID 的不可变快照，供 /magic who 等查询指令遍历。 */
+    public Set<UUID> getAwakenedPlayerUUIDs() {
+        return Collections.unmodifiableSet(new HashSet<>(awakenedPlayers));
     }
 
     /** 将玩家标记为已觉醒，首次加入返回 true。 */

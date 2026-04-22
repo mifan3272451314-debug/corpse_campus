@@ -14,9 +14,12 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import io.redspace.ironsspellbooks.api.magic.MagicData;
 import io.redspace.ironsspellbooks.api.registry.AttributeRegistry;
 import io.redspace.ironsspellbooks.api.spells.AbstractSpell;
+import io.redspace.ironsspellbooks.api.spells.ISpellContainer;
+import io.redspace.ironsspellbooks.api.spells.SpellSlot;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.EntityArgument;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
@@ -28,6 +31,15 @@ import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import com.mifan.corpsecampus;
+
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 
 @Mod.EventBusSubscriber(modid = corpsecampus.MODID)
 public final class MagicCommand {
@@ -197,6 +209,33 @@ public final class MagicCommand {
                                                 BoolArgumentType.getBool(context, "sealed"))))))
                 .then(Commands.literal("config")
                         .executes(context -> showConfig(context.getSource())))
+                .then(Commands.literal("list")
+                        .then(Commands.literal("schools")
+                                .executes(context -> listSchools(context.getSource())))
+                        .then(Commands.literal("spells")
+                                .executes(context -> listSpells(context.getSource(), null))
+                                .then(Commands.argument("school", StringArgumentType.word())
+                                        .executes(context -> listSpells(
+                                                context.getSource(),
+                                                StringArgumentType.getString(context, "school"))))))
+                .then(Commands.literal("lookup")
+                        .then(Commands.argument("name", StringArgumentType.greedyString())
+                                .executes(context -> lookupSpell(
+                                        context.getSource(),
+                                        StringArgumentType.getString(context, "name")))))
+                .then(Commands.literal("who")
+                        .executes(context -> listAwakened(context.getSource())))
+                .then(Commands.literal("top")
+                        .executes(context -> topPlayers(context.getSource(), "spells"))
+                        .then(Commands.argument("metric", StringArgumentType.word())
+                                .executes(context -> topPlayers(
+                                        context.getSource(),
+                                        StringArgumentType.getString(context, "metric")))))
+                .then(Commands.literal("dump")
+                        .then(Commands.argument("player", EntityArgument.player())
+                                .executes(context -> dumpBook(
+                                        context.getSource(),
+                                        EntityArgument.getPlayer(context, "player")))))
                 .then(Commands.literal("help")
                         .executes(context -> showHelp(context.getSource()))));
     }
@@ -551,6 +590,310 @@ public final class MagicCommand {
         for (String s : lines) {
             source.sendSuccess(() -> Component.literal(s), false);
         }
+        return 1;
+    }
+
+    // ────────────────────────────────────────────────────────────────────
+    //  查询类指令（权限 2，全部只读）
+    // ────────────────────────────────────────────────────────────────────
+
+    private static String localizeSchool(ResourceLocation schoolId) {
+        return Component.translatable("school." + schoolId.getNamespace() + "." + schoolId.getPath()).getString();
+    }
+
+    private static String schoolColor(ResourceLocation schoolId) {
+        return switch (schoolId.getPath()) {
+            case "xujing" -> "§b";
+            case "rizhao" -> "§e";
+            case "dongyue" -> "§2";
+            case "yuzhe" -> "§5";
+            case "shengqi" -> "§3";
+            default -> "§f";
+        };
+    }
+
+    private static String rankColor(AnomalySpellRank rank) {
+        if (rank == null) return "§7";
+        return switch (rank) {
+            case B -> "§a";
+            case A -> "§6";
+            case S -> "§c";
+        };
+    }
+
+    private static int listSchools(CommandSourceStack source) {
+        source.sendSuccess(() -> Component.literal("§6§l══════════ 异常序列（共 5 个） ══════════"), false);
+        for (ResourceLocation schoolId : AnomalyBookService.getTrackedSchoolIds()) {
+            String color = schoolColor(schoolId);
+            String zh = localizeSchool(schoolId);
+            long total = AnomalyBookService.getAllSpellSpecs().stream()
+                    .filter(spec -> spec.schoolId().equals(schoolId))
+                    .count();
+            source.sendSuccess(() -> Component.literal(
+                    color + "§l▌ §r" + color + zh + "§7 (" + schoolId.getPath() + ")"
+                            + "§8  共 §f" + total + "§8 个异常法术"), false);
+        }
+        source.sendSuccess(() -> Component.literal(
+                "§8提示：/magic list spells <序列> 可查看某序列下的全部法术。"), false);
+        return 1;
+    }
+
+    private static int listSpells(CommandSourceStack source, String schoolInput) {
+        ResourceLocation filter = null;
+        if (schoolInput != null && !schoolInput.isBlank()) {
+            filter = AnomalyBookService.resolveSchoolId(schoolInput);
+            if (filter == null) {
+                source.sendFailure(Component.literal("未知流派：" + schoolInput
+                        + "（支持 xujing/rizhao/dongyue/yuzhe/shengqi 或 虚境/日兆/东岳/愚者/圣祈）"));
+                return 0;
+            }
+        }
+
+        Map<ResourceLocation, Map<AnomalySpellRank, List<AnomalyBookService.SpellSpec>>> grouped = new LinkedHashMap<>();
+        for (ResourceLocation schoolId : AnomalyBookService.getTrackedSchoolIds()) {
+            grouped.put(schoolId, new LinkedHashMap<>());
+        }
+        for (AnomalyBookService.SpellSpec spec : AnomalyBookService.getAllSpellSpecs()) {
+            if (filter != null && !spec.schoolId().equals(filter)) {
+                continue;
+            }
+            grouped.computeIfAbsent(spec.schoolId(), ignored -> new LinkedHashMap<>())
+                    .computeIfAbsent(spec.rank(), ignored -> new ArrayList<>())
+                    .add(spec);
+        }
+
+        String title = filter == null
+                ? "§6§l══════════ 全部异常法术 ══════════"
+                : "§6§l══════════ " + localizeSchool(filter) + " 序列法术 ══════════";
+        source.sendSuccess(() -> Component.literal(title), false);
+
+        int totalPrinted = 0;
+        for (ResourceLocation schoolId : AnomalyBookService.getTrackedSchoolIds()) {
+            if (filter != null && !schoolId.equals(filter)) continue;
+            Map<AnomalySpellRank, List<AnomalyBookService.SpellSpec>> byRank = grouped.get(schoolId);
+            if (byRank == null || byRank.isEmpty()) continue;
+            String color = schoolColor(schoolId);
+            source.sendSuccess(() -> Component.literal(color + "§l▌ " + localizeSchool(schoolId)
+                    + "§7 (" + schoolId.getPath() + ")"), false);
+            for (AnomalySpellRank rank : AnomalySpellRank.values()) {
+                List<AnomalyBookService.SpellSpec> list = byRank.get(rank);
+                if (list == null || list.isEmpty()) continue;
+                StringBuilder sb = new StringBuilder();
+                sb.append("  ").append(rankColor(rank)).append(rank.name()).append("§7: ");
+                for (int i = 0; i < list.size(); i++) {
+                    AnomalyBookService.SpellSpec spec = list.get(i);
+                    sb.append("§f").append(spec.spellId().getPath())
+                            .append("§7(").append(spec.zhName()).append("§7)");
+                    if (i < list.size() - 1) sb.append("§8, ");
+                }
+                final String line = sb.toString();
+                source.sendSuccess(() -> Component.literal(line), false);
+                totalPrinted += list.size();
+            }
+        }
+        final int printed = totalPrinted;
+        source.sendSuccess(() -> Component.literal("§8共列出 §f" + printed + "§8 个法术。"), false);
+        return 1;
+    }
+
+    private static int lookupSpell(CommandSourceStack source, String rawInput) {
+        ResourceLocation spellId = AnomalyBookService.resolveSpellId(rawInput);
+        if (spellId == null) {
+            source.sendFailure(Component.literal("未找到匹配的异常法术：" + rawInput
+                    + "（支持注册名 / 中文名 / 完整 ID，如 sonic_sense / 音波 / corpse_campus:sonic_sense）"));
+            return 0;
+        }
+        AnomalyBookService.SpellSpec spec = AnomalyBookService.getSpellSpec(spellId);
+        AbstractSpell spell = AnomalyBookService.getRegisteredSpell(spellId);
+        if (spec == null) {
+            source.sendFailure(Component.literal("法术规格查询失败：" + spellId));
+            return 0;
+        }
+
+        String schoolColor = schoolColor(spec.schoolId());
+        String schoolZh = localizeSchool(spec.schoolId());
+        String rankStr = rankColor(spec.rank()) + spec.rank().name() + "§r（+"
+                + spec.rank().getManaBonus() + " 法力 / +" + spec.rank().getSchoolBonusPercent() + "% 强化）";
+        String registeredStr = spell == null
+                ? "§c未在 ISS 注册表中找到（可能是待实现法术）"
+                : "§a已注册（Max Lv." + spell.getMaxLevel() + "）";
+
+        source.sendSuccess(() -> Component.literal("§6§l══════════ 异常法术详情 ══════════"), false);
+        source.sendSuccess(() -> Component.literal("§f中文名：§r" + spec.zhName()), false);
+        source.sendSuccess(() -> Component.literal("§f注册名：§r" + spec.spellId().getPath()), false);
+        source.sendSuccess(() -> Component.literal("§f完整 ID：§r" + spec.spellId()), false);
+        source.sendSuccess(() -> Component.literal("§f序列：§r" + schoolColor + schoolZh + "§7 ("
+                + spec.schoolId().getPath() + ")"), false);
+        source.sendSuccess(() -> Component.literal("§f阶级：§r" + rankStr), false);
+        source.sendSuccess(() -> Component.literal("§f注册状态：§r" + registeredStr), false);
+
+        if (EndlessLifeRuntime.ENDLESS_LIFE_ID.equals(spellId)
+                && EndlessLifeRuntime.isSealed(source.getServer())) {
+            source.sendSuccess(() -> Component.literal(
+                    "§c⚠ 当前处于全局封锁状态，无人可再获得。可用 /magic seal endless_life false 解封。"), false);
+        }
+        return 1;
+    }
+
+    private static int listAwakened(CommandSourceStack source) {
+        MinecraftServer server = source.getServer();
+        AnomalyLimitService service = AnomalyLimitService.get(server);
+        Set<UUID> uuids = service.getAwakenedPlayerUUIDs();
+        if (uuids.isEmpty()) {
+            source.sendSuccess(() -> Component.literal("§7当前全服没有已觉醒的异常者。"), false);
+            return 1;
+        }
+
+        source.sendSuccess(() -> Component.literal("§6§l══════════ 全服已觉醒玩家 ("
+                + uuids.size() + "/" + service.getCapValue() + ") ══════════"), false);
+
+        int online = 0;
+        int offline = 0;
+        for (UUID uuid : uuids) {
+            ServerPlayer player = server.getPlayerList().getPlayer(uuid);
+            if (player != null) {
+                online++;
+                ItemStack book = AnomalyBookService.getPlayerBook(player);
+                ResourceLocation seq = book.isEmpty() ? null : AnomalyBookService.getMainSequenceId(book);
+                AnomalySpellRank rank = book.isEmpty() ? null : AnomalyBookService.getHighestRank(book);
+                int spellCount = 0;
+                if (!book.isEmpty()) {
+                    spellCount = ISpellContainer.getOrCreate(book).getActiveSpells().size();
+                }
+                int manaBonus = book.isEmpty() ? 0 : AnomalyBookService.getStoredManaBonus(book);
+                String seqStr = seq == null
+                        ? "§7[无序列]§r"
+                        : schoolColor(seq) + localizeSchool(seq) + "§r";
+                String rankStr = rank == null ? "§7[未定阶]§r" : rankColor(rank) + rank.name() + "§r";
+                final String name = player.getGameProfile().getName();
+                final int cnt = spellCount;
+                final int mana = manaBonus;
+                source.sendSuccess(() -> Component.literal(
+                        "§a● §f" + name + "§r  " + seqStr + "  " + rankStr
+                                + "§7  法术×§f" + cnt + "§7  法力+§f" + mana), false);
+            } else {
+                offline++;
+                source.sendSuccess(() -> Component.literal(
+                        "§8○ §7" + uuid + "§8  [离线]"), false);
+            }
+        }
+        final int on = online;
+        final int off = offline;
+        source.sendSuccess(() -> Component.literal("§8在线 §f" + on + "§8 人，离线 §f" + off + "§8 人。"), false);
+        return 1;
+    }
+
+    private static int topPlayers(CommandSourceStack source, String metricInput) {
+        String metric = metricInput == null ? "spells" : metricInput.trim().toLowerCase(Locale.ROOT);
+        if (!metric.equals("spells") && !metric.equals("mana") && !metric.equals("levels")) {
+            source.sendFailure(Component.literal("未知排行指标：" + metricInput
+                    + "（支持 spells=法术数 / levels=法术总等级 / mana=额外法力）"));
+            return 0;
+        }
+
+        MinecraftServer server = source.getServer();
+        List<ServerPlayer> candidates = new ArrayList<>();
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            ItemStack book = AnomalyBookService.getPlayerBook(player);
+            if (!book.isEmpty()) {
+                candidates.add(player);
+            }
+        }
+        if (candidates.isEmpty()) {
+            source.sendSuccess(() -> Component.literal("§7当前没有在线玩家持有异常书。"), false);
+            return 1;
+        }
+
+        record Row(String name, int spells, int totalLevels, int manaBonus,
+                   ResourceLocation seq, AnomalySpellRank rank) {}
+        List<Row> rows = new ArrayList<>();
+        for (ServerPlayer p : candidates) {
+            ItemStack book = AnomalyBookService.getPlayerBook(p);
+            int spellCnt = 0;
+            int levelSum = 0;
+            for (SpellSlot slot : ISpellContainer.getOrCreate(book).getActiveSpells()) {
+                spellCnt++;
+                levelSum += slot.getLevel();
+            }
+            rows.add(new Row(
+                    p.getGameProfile().getName(),
+                    spellCnt,
+                    levelSum,
+                    AnomalyBookService.getStoredManaBonus(book),
+                    AnomalyBookService.getMainSequenceId(book),
+                    AnomalyBookService.getHighestRank(book)));
+        }
+
+        Comparator<Row> cmp = switch (metric) {
+            case "mana" -> Comparator.<Row>comparingInt(r -> r.manaBonus).reversed();
+            case "levels" -> Comparator.<Row>comparingInt(r -> r.totalLevels).reversed();
+            default -> Comparator.<Row>comparingInt(r -> r.spells).reversed();
+        };
+        rows.sort(cmp);
+
+        final String metricLabel = switch (metric) {
+            case "mana" -> "额外法力";
+            case "levels" -> "法术总等级";
+            default -> "法术数";
+        };
+        source.sendSuccess(() -> Component.literal(
+                "§6§l══════════ 异常者排行（按 " + metricLabel + "） ══════════"), false);
+        int limit = Math.min(rows.size(), 10);
+        for (int i = 0; i < limit; i++) {
+            Row r = rows.get(i);
+            String medal = switch (i) {
+                case 0 -> "§6①";
+                case 1 -> "§f②";
+                case 2 -> "§c③";
+                default -> "§8" + (i + 1) + ".";
+            };
+            String seqStr = r.seq == null ? "§7[无]"
+                    : schoolColor(r.seq) + localizeSchool(r.seq);
+            String rankStr = r.rank == null ? "§7[无]" : rankColor(r.rank) + r.rank.name();
+            int value = switch (metric) {
+                case "mana" -> r.manaBonus;
+                case "levels" -> r.totalLevels;
+                default -> r.spells;
+            };
+            final String line = medal + " §f" + r.name + "§r  " + seqStr + "§r " + rankStr
+                    + "§r§7  " + metricLabel + "=§f" + value
+                    + "§7  (法术×" + r.spells + " / 总等级 " + r.totalLevels + " / 法力+" + r.manaBonus + ")";
+            source.sendSuccess(() -> Component.literal(line), false);
+        }
+        if (rows.size() > 10) {
+            final int remaining = rows.size() - 10;
+            source.sendSuccess(() -> Component.literal("§8...另有 " + remaining + " 人未进入前十。"), false);
+        }
+        return 1;
+    }
+
+    private static int dumpBook(CommandSourceStack source, ServerPlayer target) {
+        ItemStack book = AnomalyBookService.getPlayerBook(target);
+        if (book.isEmpty()) {
+            source.sendFailure(Component.literal(target.getGameProfile().getName()
+                    + " 当前没有绑定的异常书（未装备 / 未觉醒 / 书被删除）。"));
+            return 0;
+        }
+        CompoundTag tag = book.getTag();
+        source.sendSuccess(() -> Component.literal("§6§l══════════ "
+                + target.getGameProfile().getName() + " 异常书 NBT 转储 ══════════"), false);
+        source.sendSuccess(() -> Component.literal("§f书 ID：§r"
+                + AnomalyBookService.getBookId(book)), false);
+        UUID owner = AnomalyBookService.getOwnerUuid(book);
+        source.sendSuccess(() -> Component.literal("§f所属 UUID：§r"
+                + (owner == null ? "未绑定" : owner)), false);
+
+        if (tag == null) {
+            source.sendSuccess(() -> Component.literal("§7该书 ItemStack 没有 NBT tag。"), false);
+            return 1;
+        }
+        String raw = tag.toString();
+        int maxLen = 900;
+        for (int i = 0; i < raw.length(); i += maxLen) {
+            final String chunk = raw.substring(i, Math.min(raw.length(), i + maxLen));
+            source.sendSuccess(() -> Component.literal("§7" + chunk), false);
+        }
+        source.sendSuccess(() -> Component.literal("§8（上方为原始 NBT 字符串，可复制用于 /data modify 调试）"), false);
         return 1;
     }
 
