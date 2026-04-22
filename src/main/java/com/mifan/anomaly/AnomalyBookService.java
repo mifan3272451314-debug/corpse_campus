@@ -72,6 +72,11 @@ public final class AnomalyBookService {
         return TRACKED_SCHOOLS;
     }
 
+    public static boolean hasLoadedSpells(ServerPlayer player) {
+        ItemStack book = findExistingBook(player);
+        return !book.isEmpty() && !ISpellContainer.getOrCreate(book).getActiveSpells().isEmpty();
+    }
+
     public static boolean isAnomalyBook(ItemStack stack) {
         return !stack.isEmpty() && stack.is(ModItems.ANOMALY_TRAIT_SPELLBOOK.get());
     }
