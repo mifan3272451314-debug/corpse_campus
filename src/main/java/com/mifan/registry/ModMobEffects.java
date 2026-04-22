@@ -54,6 +54,15 @@ public final class ModMobEffects {
     public static final RegistryObject<MobEffect> IMPERMANENCE_MONK_INFECTED = MOB_EFFECTS.register("impermanence_monk_infected",
             () -> new AbilityMarkerEffect(0x2E5E3A));
 
+    public static final RegistryObject<MobEffect> NINGHE = MOB_EFFECTS.register("ninghe",
+            () -> new AbilityMarkerEffect(0xDFC36A));
+
+    public static final RegistryObject<MobEffect> SUNLIGHT = MOB_EFFECTS.register("sunlight",
+            () -> new AbilityMarkerEffect(0xFFC542));
+
+    public static final RegistryObject<MobEffect> SUNLIGHT_NEUTRALIZED = MOB_EFFECTS.register("sunlight_neutralized",
+            () -> new AbilityMarkerEffect(0xFFE880));
+
     private ModMobEffects() {
     }
 

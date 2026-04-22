@@ -138,6 +138,8 @@ public final class AbilityRuntime {
 
     public static final String TAG_IMPERMANENCE_INFECTED_LIST = "corpse_campus_impermanence_infected_list";
     public static final String TAG_IMPERMANENCE_INFECTOR_UUID = "corpse_campus_impermanence_infector_uuid";
+    public static final String TAG_IMPERMANENCE_GRANTED_SPELL = "corpse_campus_impermanence_granted_spell";
+    public static final String TAG_IMPERMANENCE_GRANTED_LEVEL = "corpse_campus_impermanence_granted_level";
     public static final int IMPERMANENCE_MAX_TARGETS = 3;
     public static final int IMPERMANENCE_INFECTION_RANGE = 10;
 
@@ -150,6 +152,21 @@ public final class AbilityRuntime {
     public static final String TAG_ELEMENTAL_DOMAIN_CENTER_Y = "corpse_campus_elemental_domain_center_y";
     public static final String TAG_ELEMENTAL_DOMAIN_CENTER_Z = "corpse_campus_elemental_domain_center_z";
     public static final String TAG_ELEMENTAL_DOMAIN_CLOSED = "corpse_campus_elemental_domain_closed";
+
+    public static final String TAG_RIZHAO_LAST_MANA = "corpse_campus_rizhao_last_mana";
+    public static final String TAG_RIZHAO_INITIALIZED = "corpse_campus_rizhao_initialized";
+
+    public static final float RIZHAO_REGEN_PER_SECOND = 2.0F;
+    public static final float RIZHAO_INITIAL_MANA = 0.0F;
+
+    public static final double NINGHE_RADIUS = 10.0D;
+    public static final float NINGHE_HEAL_PER_SECOND = 1.0F;
+    public static final float NINGHE_HUNGER_EXHAUSTION_PER_SECOND = 0.6F;
+
+    public static final double SUNLIGHT_RADIUS = 10.0D;
+    public static final int SUNLIGHT_NEUTRAL_DURATION_TICKS = 160;
+    public static final int SUNLIGHT_BURN_DURATION_SECONDS = 3;
+    public static final float SUNLIGHT_RIZHAO_MANA_PER_SECOND = 2.0F;
 
     public static final int EXECUTIONER_DURABILITY_COST = 5;
     public static final int RECORDER_OFFICER_DEFAULT_SECONDS = 15;

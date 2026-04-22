@@ -373,6 +373,28 @@ public final class AnomalyBookService {
         return List.copyOf(result);
     }
 
+    public static boolean hasSchoolSpellLoaded(Player player, ResourceLocation schoolId) {
+        if (!(player instanceof ServerPlayer serverPlayer)) {
+            return false;
+        }
+        ItemStack book = findExistingBook(serverPlayer);
+        if (book.isEmpty()) {
+            return false;
+        }
+        ensureSpellContainer(book);
+        for (SpellSlot slot : ISpellContainer.getOrCreate(book).getActiveSpells()) {
+            SpellSpec spec = SPELL_SPECS.get(slot.getSpell().getSpellResource());
+            if (spec != null && spec.schoolId().equals(schoolId)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public static boolean isRizhaoSequencePlayer(Player player) {
+        return hasSchoolSpellLoaded(player, ModSchools.RIZHAO_RESOURCE);
+    }
+
     public static List<SpellSlot> getPlayerLoadedSpellSlots(ServerPlayer player) {
         ItemStack book = findExistingBook(player);
         if (book.isEmpty()) {
@@ -830,6 +852,8 @@ public final class AnomalyBookService {
         register(map, "elementalist", "元素使", AnomalySpellRank.A, ModSchools.XUJING_RESOURCE);
 
         register(map, "affinity", "亲和", AnomalySpellRank.B, ModSchools.RIZHAO_RESOURCE);
+        register(map, "ninghe", "宁禾", AnomalySpellRank.B, ModSchools.RIZHAO_RESOURCE);
+        register(map, "sunlight", "日光", AnomalySpellRank.B, ModSchools.RIZHAO_RESOURCE);
         register(map, "midas_touch", "点金客", AnomalySpellRank.A, ModSchools.RIZHAO_RESOURCE);
 
         register(map, "daiyue", "岱岳", AnomalySpellRank.B, ModSchools.DONGYUE_RESOURCE);

@@ -1,5 +1,6 @@
 package com.mifan.spell;
 
+import com.mifan.anomaly.AnomalyBookService;
 import com.mifan.corpsecampus;
 import com.mifan.network.ModNetwork;
 import com.mifan.network.clientbound.DangerSensePingPacket;
@@ -11,6 +12,7 @@ import com.mifan.spell.runtime.NecroticRuntime;
 import com.mifan.spell.runtime.TelekinesisRuntime;
 import com.mifan.spell.yuzhe.LifeThiefSpell;
 import io.redspace.ironsspellbooks.api.magic.MagicData;
+import io.redspace.ironsspellbooks.api.registry.AttributeRegistry;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.core.particles.ParticleTypes;
@@ -35,6 +37,7 @@ import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.monster.Zombie;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -80,6 +83,7 @@ public final class AbilityEventHandler {
         CompoundTag data = player.getPersistentData();
         long gameTime = player.level().getGameTime();
 
+        tickRizhaoEnergy(player, data);
         tickSonicSense(player, gameTime);
         tickStamina(player, data, gameTime);
         tickDangerSense(player, data, gameTime);
@@ -91,6 +95,8 @@ public final class AbilityEventHandler {
         tickMania(player, data, gameTime);
         NecroticRuntime.tickUndead(player, data, gameTime);
         MarkRuntime.tick(player, data, gameTime);
+        tickNinghe(player, gameTime);
+        tickSunlight(player, gameTime);
         clearExpiredInstinct(player, data, gameTime);
         clearLifeThiefTargetIfInvalid(player);
         clearMimicSlotsIfInactive(player, data);
@@ -117,6 +123,12 @@ public final class AbilityEventHandler {
         AbilityRuntime.tickRecorderOfficer(entity, entity.level().getGameTime());
         TelekinesisRuntime.tickCaster(entity, entity.getPersistentData(), entity.level().getGameTime());
         updateOlfactionTrail(entity, entity.level().getGameTime());
+
+        if (entity instanceof Mob sunlightNeutralizedMob
+                && sunlightNeutralizedMob.hasEffect(ModMobEffects.SUNLIGHT_NEUTRALIZED.get())
+                && sunlightNeutralizedMob.getTarget() != null) {
+            sunlightNeutralizedMob.setTarget(null);
+        }
     }
 
     @SubscribeEvent
@@ -259,7 +271,13 @@ public final class AbilityEventHandler {
         AbilityRuntime.clear(newData,
                 AbilityRuntime.TAG_DOMINANCE_MOBS,
                 AbilityRuntime.TAG_DOMINANCE_TARGET_PLAYER,
-                AbilityRuntime.TAG_DOMINANCE_LINK_ACTIVE);
+                AbilityRuntime.TAG_DOMINANCE_LINK_ACTIVE,
+                AbilityRuntime.TAG_MIMIC_SLOTS,
+                AbilityRuntime.TAG_MIMIC_ACTIVE_SLOT,
+                AbilityRuntime.TAG_IMPERMANENCE_INFECTED_LIST,
+                AbilityRuntime.TAG_IMPERMANENCE_INFECTOR_UUID,
+                AbilityRuntime.TAG_IMPERMANENCE_GRANTED_SPELL,
+                AbilityRuntime.TAG_IMPERMANENCE_GRANTED_LEVEL);
         if (oldData.getBoolean(AbilityRuntime.TAG_NECROTIC_REVIVE_USED)) {
             newData.putBoolean(AbilityRuntime.TAG_NECROTIC_REVIVE_USED, true);
         }
@@ -1061,6 +1079,146 @@ public final class AbilityEventHandler {
                 AbilityRuntime.TAG_INSTINCT_LEVEL,
                 AbilityRuntime.TAG_INSTINCT_USED,
                 AbilityRuntime.TAG_INSTINCT_INVULNERABLE_UNTIL);
+    }
+
+    private static void tickRizhaoEnergy(Player player, CompoundTag data) {
+        if (!AnomalyBookService.isRizhaoSequencePlayer(player)) {
+            data.remove(AbilityRuntime.TAG_RIZHAO_LAST_MANA);
+            data.remove(AbilityRuntime.TAG_RIZHAO_INITIALIZED);
+            return;
+        }
+
+        MagicData magicData = MagicData.getPlayerMagicData(player);
+        if (magicData == null) {
+            return;
+        }
+
+        float maxMana = (float) player.getAttributeValue(AttributeRegistry.MAX_MANA.get());
+        float currentMana = magicData.getMana();
+
+        if (!data.getBoolean(AbilityRuntime.TAG_RIZHAO_INITIALIZED)) {
+            float initial = Math.min(AbilityRuntime.RIZHAO_INITIAL_MANA, maxMana);
+            magicData.setMana(initial);
+            data.putBoolean(AbilityRuntime.TAG_RIZHAO_INITIALIZED, true);
+            data.putFloat(AbilityRuntime.TAG_RIZHAO_LAST_MANA, initial);
+            return;
+        }
+
+        float lastMana = data.contains(AbilityRuntime.TAG_RIZHAO_LAST_MANA)
+                ? data.getFloat(AbilityRuntime.TAG_RIZHAO_LAST_MANA)
+                : currentMana;
+
+        float baseline;
+        if (currentMana > lastMana + 1.0E-4F) {
+            baseline = lastMana;
+        } else {
+            baseline = currentMana;
+        }
+
+        float regenThisTick = isDaytimeAndOpenSky(player)
+                ? AbilityRuntime.RIZHAO_REGEN_PER_SECOND / 20.0F
+                : 0.0F;
+
+        float newMana = Math.min(baseline + regenThisTick, maxMana);
+        if (Math.abs(newMana - currentMana) > 1.0E-4F) {
+            magicData.setMana(newMana);
+        }
+        data.putFloat(AbilityRuntime.TAG_RIZHAO_LAST_MANA, newMana);
+    }
+
+    public static void addRizhaoEnergy(Player player, float amount) {
+        if (amount <= 0.0F) {
+            return;
+        }
+        MagicData magicData = MagicData.getPlayerMagicData(player);
+        if (magicData == null) {
+            return;
+        }
+        float maxMana = (float) player.getAttributeValue(AttributeRegistry.MAX_MANA.get());
+        float newMana = Math.min(magicData.getMana() + amount, maxMana);
+        magicData.setMana(newMana);
+        player.getPersistentData().putFloat(AbilityRuntime.TAG_RIZHAO_LAST_MANA, newMana);
+    }
+
+    private static boolean isDaytimeAndOpenSky(Player player) {
+        Level level = player.level();
+        if (!level.dimensionType().hasSkyLight()) {
+            return false;
+        }
+        if (!level.isDay()) {
+            return false;
+        }
+        return level.canSeeSky(net.minecraft.core.BlockPos.containing(player.getX(),
+                player.getBoundingBox().maxY + 0.1D,
+                player.getZ()));
+    }
+
+    private static void tickNinghe(Player player, long gameTime) {
+        MobEffectInstance effect = player.getEffect(ModMobEffects.NINGHE.get());
+        if (effect == null) {
+            return;
+        }
+
+        if (gameTime % 20L != 0L) {
+            return;
+        }
+
+        double radius = AbilityRuntime.NINGHE_RADIUS;
+        double radiusSqr = radius * radius;
+        float healPerSecond = AbilityRuntime.NINGHE_HEAL_PER_SECOND;
+
+        AABB area = player.getBoundingBox().inflate(radius, 4.0D, radius);
+        for (Player target : player.level().getEntitiesOfClass(Player.class, area,
+                candidate -> candidate.isAlive()
+                        && !candidate.isSpectator()
+                        && candidate.distanceToSqr(player) <= radiusSqr)) {
+            if (target.getHealth() < target.getMaxHealth()) {
+                target.heal(healPerSecond);
+            }
+        }
+
+        player.addEffect(new MobEffectInstance(MobEffects.SATURATION, 40, 0, false, false, true));
+        player.causeFoodExhaustion(AbilityRuntime.NINGHE_HUNGER_EXHAUSTION_PER_SECOND);
+    }
+
+    private static void tickSunlight(Player player, long gameTime) {
+        MobEffectInstance effect = player.getEffect(ModMobEffects.SUNLIGHT.get());
+        if (effect == null) {
+            return;
+        }
+
+        double radius = AbilityRuntime.SUNLIGHT_RADIUS;
+        double radiusSqr = radius * radius;
+        AABB area = player.getBoundingBox().inflate(radius, 4.0D, radius);
+
+        if (gameTime % 10L == 0L) {
+            for (Mob mob : player.level().getEntitiesOfClass(Mob.class, area,
+                    candidate -> candidate.isAlive()
+                            && !player.isAlliedTo(candidate)
+                            && isHostileMob(candidate)
+                            && candidate.distanceToSqr(player) <= radiusSqr)) {
+                mob.setTarget(null);
+                mob.addEffect(new MobEffectInstance(ModMobEffects.SUNLIGHT_NEUTRALIZED.get(),
+                        AbilityRuntime.SUNLIGHT_NEUTRAL_DURATION_TICKS, 0, false, false, true));
+            }
+        }
+
+        if (gameTime % 20L == 0L) {
+            for (Player target : player.level().getEntitiesOfClass(Player.class, area,
+                    candidate -> candidate.isAlive()
+                            && !candidate.isSpectator()
+                            && candidate.distanceToSqr(player) <= radiusSqr)) {
+                if (AnomalyBookService.isRizhaoSequencePlayer(target)) {
+                    addRizhaoEnergy(target, AbilityRuntime.SUNLIGHT_RIZHAO_MANA_PER_SECOND);
+                } else {
+                    target.setSecondsOnFire(AbilityRuntime.SUNLIGHT_BURN_DURATION_SECONDS);
+                }
+            }
+        }
+    }
+
+    private static boolean isHostileMob(Mob mob) {
+        return mob instanceof net.minecraft.world.entity.monster.Enemy;
     }
 
     private static double getAttackReach(Player player) {

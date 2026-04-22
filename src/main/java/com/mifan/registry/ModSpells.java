@@ -9,6 +9,8 @@ import com.mifan.spell.dongyue.ManiaSpell;
 import com.mifan.spell.dongyue.NecroticRebirthSpell;
 import com.mifan.spell.rizhao.AffinitySpell;
 import com.mifan.spell.rizhao.MidasTouchSpell;
+import com.mifan.spell.rizhao.NingheSpell;
+import com.mifan.spell.rizhao.SunlightSpell;
 import com.mifan.spell.shengqi.ApothecarySpell;
 import com.mifan.spell.shengqi.GrafterSpell;
 import com.mifan.spell.shengqi.HealingSpell;
@@ -51,6 +53,10 @@ public final class ModSpells {
                         MidasTouchSpell::new);
         public static final RegistryObject<AbstractSpell> AFFINITY = SPELLS.register("affinity",
                         AffinitySpell::new);
+        public static final RegistryObject<AbstractSpell> NINGHE = SPELLS.register("ninghe",
+                        NingheSpell::new);
+        public static final RegistryObject<AbstractSpell> SUNLIGHT = SPELLS.register("sunlight",
+                        SunlightSpell::new);
         public static final RegistryObject<AbstractSpell> TELEKINESIS = SPELLS.register("telekinesis",
                         TelekinesisSpell::new);
         public static final RegistryObject<AbstractSpell> DOMINANCE = SPELLS.register("dominance", DominanceSpell::new);
