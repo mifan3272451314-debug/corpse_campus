@@ -10,6 +10,7 @@ import io.redspace.ironsspellbooks.api.spells.ISpellContainer;
 import io.redspace.ironsspellbooks.api.spells.SpellSlot;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.PlayerFaceRenderer;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.player.AbstractClientPlayer;
@@ -50,6 +51,18 @@ public class PlayerStatusScreen extends Screen {
 
     public PlayerStatusScreen() {
         super(Component.translatable("screen.corpse_campus.player_status.title"));
+    }
+
+    @Override
+    protected void init() {
+        int left = (this.width - PANEL_W) / 2;
+        int top  = (this.height - PANEL_H) / 2;
+        addRenderableWidget(Button.builder(
+                Component.translatable("screen.corpse_campus.player_status.btn_upgrade"),
+                btn -> Minecraft.getInstance().setScreen(new AbilityUpgradeScreen(this)))
+                .pos(left + PANEL_W - 94, top + PANEL_H - 21)
+                .size(84, 18)
+                .build());
     }
 
     @Override

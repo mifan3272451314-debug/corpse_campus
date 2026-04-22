@@ -600,6 +600,77 @@ public final class AnomalyBookService {
         return true;
     }
 
+    public enum UpgradeOutcome {
+        SUCCESS,
+        NO_BOOK,
+        SPELL_NOT_LOADED,
+        ALREADY_MAX_LEVEL,
+        NOT_ENOUGH_XP
+    }
+
+    public static int getUpgradeXpCost(AnomalySpellRank rank) {
+        if (rank == null) {
+            return Integer.MAX_VALUE;
+        }
+        return switch (rank) {
+            case B -> 10;
+            case A -> 20;
+            case S -> 30;
+        };
+    }
+
+    public static UpgradeOutcome upgradeLoadedSpell(ServerPlayer player, ResourceLocation spellId) {
+        ItemStack book = findExistingBook(player);
+        if (book.isEmpty()) {
+            return UpgradeOutcome.NO_BOOK;
+        }
+        ensureSpellContainer(book);
+
+        SpellSlot target = null;
+        for (SpellSlot slot : ISpellContainer.getOrCreate(book).getActiveSpells()) {
+            if (slot.getSpell().getSpellResource().equals(spellId)) {
+                target = slot;
+                break;
+            }
+        }
+        if (target == null) {
+            return UpgradeOutcome.SPELL_NOT_LOADED;
+        }
+
+        AbstractSpell spell = target.getSpell();
+        int currentLevel = target.getLevel();
+        int maxLevel = spell.getMaxLevel();
+        if (currentLevel >= maxLevel) {
+            return UpgradeOutcome.ALREADY_MAX_LEVEL;
+        }
+
+        SpellSpec spec = SPELL_SPECS.get(spellId);
+        AnomalySpellRank rank = spec != null ? spec.rank() : null;
+        int cost = getUpgradeXpCost(rank);
+
+        if (!player.isCreative() && player.experienceLevel < cost) {
+            return UpgradeOutcome.NOT_ENOUGH_XP;
+        }
+
+        ISpellContainerMutable mutable = ISpellContainer.getOrCreate(book).mutableCopy();
+        SpellData existing = mutable.getSpellAtIndex(target.index());
+        boolean written = mutable.addSpellAtIndex(spell, currentLevel + 1, target.index(), existing.isLocked());
+        if (!written) {
+            return UpgradeOutcome.SPELL_NOT_LOADED;
+        }
+        ISpellContainer.set(book, mutable.toImmutable());
+
+        if (!player.isCreative()) {
+            player.giveExperienceLevels(-cost);
+        }
+
+        recalculateBookBonuses(book);
+        updateBookSnapshot(player, book);
+        refreshCurioState(player);
+        clampCurrentManaToMax(player);
+        return UpgradeOutcome.SUCCESS;
+    }
+
     public static List<Component> buildStateLines(ServerPlayer player) {
         ItemStack book = ensureBookPresent(player);
         List<Component> lines = new ArrayList<>();

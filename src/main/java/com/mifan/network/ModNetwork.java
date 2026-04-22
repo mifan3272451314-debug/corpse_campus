@@ -17,6 +17,7 @@ import com.mifan.network.serverbound.SetDominanceTargetPacket;
 import com.mifan.network.serverbound.SetFerrymanTargetPacket;
 import com.mifan.network.serverbound.SetMidasTouchTimerPacket;
 import com.mifan.network.serverbound.SetRecorderOfficerTimerPacket;
+import com.mifan.network.serverbound.UpgradeAnomalySpellPacket;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkDirection;
@@ -139,6 +140,12 @@ public final class ModNetwork {
                 .encoder(MimicReleasePacket::encode)
                 .decoder(MimicReleasePacket::decode)
                 .consumerMainThread(MimicReleasePacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(UpgradeAnomalySpellPacket.class, packetId++, NetworkDirection.PLAY_TO_SERVER)
+                .encoder(UpgradeAnomalySpellPacket::encode)
+                .decoder(UpgradeAnomalySpellPacket::decode)
+                .consumerMainThread(UpgradeAnomalySpellPacket::handle)
                 .add();
     }
 
