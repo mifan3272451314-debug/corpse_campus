@@ -12,6 +12,7 @@ import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -42,22 +43,44 @@ public final class GrafterRuntime {
         return GRAFTER_ID.equals(id) || ENDLESS_LIFE_ID.equals(id);
     }
 
-    public static boolean absorb(ServerPlayer caster, ServerPlayer target) {
+    /**
+     * 嫁接师吸收：从 target 法术书随机抽 1 条非禁用法术写到 caster 身上，
+     * 并把这条法术从 target 自己的法术书移除（"抽走"而非"复制"）。
+     *
+     * @return 被抽走的法术，若没有候选或写入失败返回 null（失败时不会扣 target）。
+     */
+    @Nullable
+    public static EligibleSpell absorb(ServerPlayer caster, ServerPlayer target) {
         List<EligibleSpell> candidates = collectTransferableSpells(target);
         if (candidates.isEmpty()) {
-            return false;
+            return null;
         }
         EligibleSpell chosen = candidates.get(caster.getRandom().nextInt(candidates.size()));
-        return writeSpellIntoBook(caster, chosen);
+        if (!writeSpellIntoBook(caster, chosen)) {
+            return null;
+        }
+        removeSpellFromOwnedBook(target, chosen);
+        return chosen;
     }
 
-    public static boolean graft(ServerPlayer caster, ServerPlayer target) {
+    /**
+     * 嫁接师嫁接：从 caster 法术书随机抽 1 条非禁用法术写给 target，
+     * 并把这条法术从 caster 自己的法术书移除（对称语义：自己付出一条才能给出去）。
+     *
+     * @return 被嫁接出去的法术，若没有候选或写入失败返回 null（失败时不会扣 caster）。
+     */
+    @Nullable
+    public static EligibleSpell graft(ServerPlayer caster, ServerPlayer target) {
         List<EligibleSpell> candidates = collectTransferableSpells(caster);
         if (candidates.isEmpty()) {
-            return false;
+            return null;
         }
         EligibleSpell chosen = candidates.get(caster.getRandom().nextInt(candidates.size()));
-        return writeSpellIntoBook(target, chosen);
+        if (!writeSpellIntoBook(target, chosen)) {
+            return null;
+        }
+        removeSpellFromOwnedBook(caster, chosen);
+        return chosen;
     }
 
     public static boolean isGraftTargetEligible(ServerPlayer target) {
@@ -132,5 +155,17 @@ public final class GrafterRuntime {
             return false;
         }
         return AnomalyBookService.addSpell(player, book, abstractSpell, spell.level(), 1);
+    }
+
+    private static void removeSpellFromOwnedBook(ServerPlayer player, EligibleSpell spell) {
+        AbstractSpell abstractSpell = SpellRegistry.getSpell(spell.id());
+        if (abstractSpell == null) {
+            return;
+        }
+        ItemStack book = AnomalyBookService.getOwnedBook(player);
+        if (book.isEmpty()) {
+            return;
+        }
+        AnomalyBookService.clearSpell(player, book, abstractSpell);
     }
 }

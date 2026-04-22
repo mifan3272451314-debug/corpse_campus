@@ -4,6 +4,7 @@ import com.mifan.registry.ModSchools;
 import com.mifan.spell.runtime.GrafterRuntime;
 import io.redspace.ironsspellbooks.api.config.DefaultConfig;
 import io.redspace.ironsspellbooks.api.magic.MagicData;
+import io.redspace.ironsspellbooks.api.registry.SpellRegistry;
 import io.redspace.ironsspellbooks.api.spells.AbstractSpell;
 import io.redspace.ironsspellbooks.api.spells.AutoSpellConfig;
 import io.redspace.ironsspellbooks.api.spells.CastSource;
@@ -136,13 +137,15 @@ public class GrafterSpell extends AbstractSpell {
             return;
         }
 
-        if (GrafterRuntime.absorb(caster, target)) {
+        GrafterRuntime.EligibleSpell stolen = GrafterRuntime.absorb(caster, target);
+        if (stolen != null) {
+            Component spellName = spellNameOf(stolen.id());
             caster.displayClientMessage(Component.translatable(
                     "message.corpse_campus.grafter_absorbed",
-                    target.getDisplayName()), false);
+                    target.getDisplayName(), spellName), false);
             target.displayClientMessage(Component.translatable(
                     "message.corpse_campus.grafter_absorbed_victim",
-                    caster.getDisplayName()), false);
+                    caster.getDisplayName(), spellName), false);
         } else {
             caster.displayClientMessage(
                     Component.translatable("message.corpse_campus.grafter_absorb_failed"), true);
@@ -164,17 +167,27 @@ public class GrafterSpell extends AbstractSpell {
             return;
         }
 
-        if (GrafterRuntime.graft(caster, target)) {
+        GrafterRuntime.EligibleSpell given = GrafterRuntime.graft(caster, target);
+        if (given != null) {
+            Component spellName = spellNameOf(given.id());
             caster.displayClientMessage(Component.translatable(
                     "message.corpse_campus.grafter_grafted_to",
-                    target.getDisplayName()), false);
+                    spellName, target.getDisplayName()), false);
             target.displayClientMessage(Component.translatable(
                     "message.corpse_campus.grafter_grafted_received",
-                    caster.getDisplayName()), false);
+                    caster.getDisplayName(), spellName), false);
         } else {
             caster.displayClientMessage(
                     Component.translatable("message.corpse_campus.grafter_graft_failed"), true);
         }
+    }
+
+    private static Component spellNameOf(ResourceLocation id) {
+        AbstractSpell spell = SpellRegistry.getSpell(id);
+        if (spell == null) {
+            return Component.literal(id.getPath());
+        }
+        return Component.translatable(spell.getComponentId());
     }
 
     private ServerPlayer findNearbyPlayer(Level level, Player caster) {
