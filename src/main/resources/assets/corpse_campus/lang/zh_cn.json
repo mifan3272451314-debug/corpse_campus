@@ -295,5 +295,19 @@
   "message.corpse_campus.grafter_no_transferable": "你没有可供嫁接出去的异能",
   "message.corpse_campus.grafter_grafted_to": "你已将一条异能嫁接给 %s",
   "message.corpse_campus.grafter_grafted_received": "%s 将一条异能嫁接到了你身上",
-  "message.corpse_campus.grafter_graft_failed": "嫁接失败：目标的异常法术书已满或无法写入"
+  "message.corpse_campus.grafter_graft_failed": "嫁接失败：目标的异常法术书已满或无法写入",
+
+  "spell.corpse_campus.ferryman": "摆渡人",
+  "tooltip.corpse_campus.ferryman_select": "正常施法：打开玩家列表，选定一个摆渡目标",
+  "tooltip.corpse_campus.ferryman_any_death": "当该目标以任何方式死亡时触发（PVP/PVE/环境伤害都算）",
+  "tooltip.corpse_campus.ferryman_reward": "触发时，将一条随机死灵系法术（ISS 血脉学派）写入你的异常法术书",
+  "tooltip.corpse_campus.ferryman_level": "写入等级：%s",
+  "screen.corpse_campus.ferryman.title": "摆渡目标",
+  "screen.corpse_campus.ferryman.subtitle": "点击一位玩家为其点亮摆渡印记；该玩家死亡时你将获得一条随机死灵法术",
+  "message.corpse_campus.ferryman_cannot_self": "摆渡人不能对自己施法",
+  "message.corpse_campus.ferryman_no_target": "找不到选定的目标玩家",
+  "message.corpse_campus.ferryman_target_set": "已在 %s 身上点亮摆渡印记",
+  "message.corpse_campus.ferryman_granted": "%s 被摆渡到彼岸，你从其亡魂中获得了【%s】",
+  "message.corpse_campus.ferryman_granted_failed": "%s 已死亡，但摆渡奖励【%s】未能写入异常法术书",
+  "message.corpse_campus.ferryman_grant_missing": "死灵法术 %s 在当前运行环境中不存在，奖励无效"
 }

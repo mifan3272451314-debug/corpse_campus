@@ -5,10 +5,12 @@ import com.mifan.network.clientbound.DangerSensePingPacket;
 import com.mifan.network.clientbound.InstinctProcPacket;
 import com.mifan.network.clientbound.OlfactionTrailSyncPacket;
 import com.mifan.network.clientbound.OpenDominanceScreenPacket;
+import com.mifan.network.clientbound.OpenFerrymanScreenPacket;
 import com.mifan.network.clientbound.OpenMidasTouchScreenPacket;
 import com.mifan.network.clientbound.OpenPlayerStatusScreenPacket;
 import com.mifan.network.clientbound.OpenRecorderOfficerScreenPacket;
 import com.mifan.network.serverbound.SetDominanceTargetPacket;
+import com.mifan.network.serverbound.SetFerrymanTargetPacket;
 import com.mifan.network.serverbound.SetMidasTouchTimerPacket;
 import com.mifan.network.serverbound.SetRecorderOfficerTimerPacket;
 import net.minecraft.resources.ResourceLocation;
@@ -97,6 +99,18 @@ public final class ModNetwork {
                 .encoder(SetRecorderOfficerTimerPacket::encode)
                 .decoder(SetRecorderOfficerTimerPacket::decode)
                 .consumerMainThread(SetRecorderOfficerTimerPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(OpenFerrymanScreenPacket.class, packetId++, NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(OpenFerrymanScreenPacket::encode)
+                .decoder(OpenFerrymanScreenPacket::decode)
+                .consumerMainThread(OpenFerrymanScreenPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(SetFerrymanTargetPacket.class, packetId++, NetworkDirection.PLAY_TO_SERVER)
+                .encoder(SetFerrymanTargetPacket::encode)
+                .decoder(SetFerrymanTargetPacket::decode)
+                .consumerMainThread(SetFerrymanTargetPacket::handle)
                 .add();
     }
 

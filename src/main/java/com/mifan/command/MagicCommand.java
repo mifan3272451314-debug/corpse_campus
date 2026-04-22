@@ -350,7 +350,7 @@ public final class MagicCommand {
             "§7  S: §fauthority_grasp§7=万权一手  §8[待实现]",
             "§3圣祈序列§7（B×4 A×2 S×1）",
             "§7  B: §fhuihun§7=回魂  §fhealing§7=愈合  §fstamina§7=耐力  §fapothecary§7=药师",
-            "§7  A: §fgrafter§7=嫁接师§8[待]  §fferryman§7=摆渡人§8[待]",
+            "§7  A: §fgrafter§7=嫁接师§8[待]  §fferryman§7=摆渡人",
             "§7  S: §fendless_life§7=生生不息  §8[待实现]",
             "§8用法示例：",
             "§8  /magic add Steve 音波 1 1",

@@ -2,12 +2,14 @@ package com.mifan.spell;
 
 import com.mifan.corpsecampus;
 import com.mifan.client.screen.DominanceTargetScreen;
+import com.mifan.client.screen.FerrymanTargetScreen;
 import com.mifan.client.screen.MidasTouchTimerScreen;
 import com.mifan.client.screen.PlayerStatusScreen;
 import com.mifan.client.screen.RecorderOfficerTimerScreen;
 import com.mifan.network.clientbound.DangerSensePingPacket;
 import com.mifan.network.clientbound.InstinctProcPacket;
 import com.mifan.network.clientbound.OlfactionTrailSyncPacket;
+import com.mifan.network.clientbound.OpenFerrymanScreenPacket;
 import com.mifan.network.clientbound.OpenMidasTouchScreenPacket;
 import com.mifan.network.clientbound.OpenRecorderOfficerScreenPacket;
 import com.mifan.registry.ModMobEffects;
@@ -51,6 +53,14 @@ public final class AbilityClientHandler {
             return;
         }
         minecraft.setScreen(new DominanceTargetScreen());
+    }
+
+    public static void openFerrymanTargetScreen(OpenFerrymanScreenPacket packet) {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.player == null || minecraft.level == null) {
+            return;
+        }
+        minecraft.setScreen(new FerrymanTargetScreen(packet.getSpellLevel()));
     }
 
     public static void openPlayerStatusScreen() {

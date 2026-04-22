@@ -44,6 +44,7 @@ import com.mifan.spell.runtime.DominanceRuntime;
 import com.mifan.spell.runtime.DaiyueRuntime;
 import com.mifan.spell.runtime.ElementalDomainRuntime;
 import com.mifan.spell.runtime.ExecutionerRuntime;
+import com.mifan.spell.runtime.FerrymanRuntime;
 import com.mifan.spell.runtime.MarkRuntime;
 import com.mifan.spell.runtime.NecroticRuntime;
 import com.mifan.spell.runtime.RecorderOfficerRuntime;
@@ -128,6 +129,9 @@ public final class AbilityRuntime {
     public static final String TAG_DOMINANCE_LINK_ACTIVE = "corpse_campus_dominance_link_active";
     public static final String TAG_DOMINANCE_OWNER = "corpse_campus_dominance_owner";
     public static final String TAG_DOMINANCE_LEVEL = "corpse_campus_dominance_level";
+
+    public static final String TAG_FERRYMAN_TARGET = "corpse_campus_ferryman_target";
+    public static final String TAG_FERRYMAN_LEVEL = "corpse_campus_ferryman_level";
 
     public static final String TAG_LIFE_THIEF_LAST_REDIRECT_TICK = "corpse_campus_life_thief_last_redirect_tick";
 
@@ -512,6 +516,14 @@ public final class AbilityRuntime {
 
     public static void setDominanceTargetPlayer(ServerPlayer caster, UUID targetPlayerId) {
         DominanceRuntime.setTargetPlayer(caster, targetPlayerId);
+    }
+
+    public static void setFerrymanTargetPlayer(ServerPlayer caster, UUID targetPlayerId, int spellLevel) {
+        FerrymanRuntime.setTargetPlayer(caster, targetPlayerId, spellLevel);
+    }
+
+    public static void onFerrymanTargetDeath(LivingEntity dead) {
+        FerrymanRuntime.onPotentialTargetDeath(dead);
     }
 
     public static void tickDominance(Player player) {

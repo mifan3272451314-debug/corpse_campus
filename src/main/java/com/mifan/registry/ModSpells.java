@@ -12,6 +12,7 @@ import com.mifan.spell.rizhao.MidasTouchSpell;
 import com.mifan.spell.rizhao.NingheSpell;
 import com.mifan.spell.rizhao.SunlightSpell;
 import com.mifan.spell.shengqi.ApothecarySpell;
+import com.mifan.spell.shengqi.FerrymanSpell;
 import com.mifan.spell.shengqi.GrafterSpell;
 import com.mifan.spell.shengqi.HealingSpell;
 import com.mifan.spell.shengqi.HuihunSpell;
@@ -85,6 +86,8 @@ public final class ModSpells {
                         ImpermanenceMonkSpell::new);
         public static final RegistryObject<AbstractSpell> GRAFTER = SPELLS.register("grafter",
                         GrafterSpell::new);
+        public static final RegistryObject<AbstractSpell> FERRYMAN = SPELLS.register("ferryman",
+                        FerrymanSpell::new);
 
         private ModSpells() {
         }

@@ -254,6 +254,7 @@ public final class AbilityEventHandler {
 
         if (deadPlayer != null && !event.isCanceled()) {
             AbilityRuntime.releaseDominance(deadPlayer);
+            AbilityRuntime.onFerrymanTargetDeath(deadPlayer);
         }
 
         NecroticRuntime.rewardKill(event);
@@ -277,7 +278,9 @@ public final class AbilityEventHandler {
                 AbilityRuntime.TAG_IMPERMANENCE_INFECTED_LIST,
                 AbilityRuntime.TAG_IMPERMANENCE_INFECTOR_UUID,
                 AbilityRuntime.TAG_IMPERMANENCE_GRANTED_SPELL,
-                AbilityRuntime.TAG_IMPERMANENCE_GRANTED_LEVEL);
+                AbilityRuntime.TAG_IMPERMANENCE_GRANTED_LEVEL,
+                AbilityRuntime.TAG_FERRYMAN_TARGET,
+                AbilityRuntime.TAG_FERRYMAN_LEVEL);
         if (oldData.getBoolean(AbilityRuntime.TAG_NECROTIC_REVIVE_USED)) {
             newData.putBoolean(AbilityRuntime.TAG_NECROTIC_REVIVE_USED, true);
         }

@@ -875,6 +875,7 @@ public final class AnomalyBookService {
         register(map, "stamina", "耐力", AnomalySpellRank.B, ModSchools.SHENGQI_RESOURCE);
         register(map, "apothecary", "药师", AnomalySpellRank.B, ModSchools.SHENGQI_RESOURCE);
         register(map, "grafter", "嫁接师", AnomalySpellRank.A, ModSchools.SHENGQI_RESOURCE);
+        register(map, "ferryman", "摆渡人", AnomalySpellRank.A, ModSchools.SHENGQI_RESOURCE);
         return Map.copyOf(map);
     }
 

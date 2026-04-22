@@ -273,5 +273,19 @@
   "message.corpse_campus.grafter_no_transferable": "You have no abilities available to graft out",
   "message.corpse_campus.grafter_grafted_to": "Grafted one ability onto %s",
   "message.corpse_campus.grafter_grafted_received": "%s has grafted an ability onto you",
-  "message.corpse_campus.grafter_graft_failed": "Graft failed: target's anomaly book is full or cannot be written"
+  "message.corpse_campus.grafter_graft_failed": "Graft failed: target's anomaly book is full or cannot be written",
+
+  "spell.corpse_campus.ferryman": "Ferryman",
+  "tooltip.corpse_campus.ferryman_select": "Cast: open the player list and mark one player as your ferryman target",
+  "tooltip.corpse_campus.ferryman_any_death": "Triggers on any kind of death (PvP, PvE, or environmental)",
+  "tooltip.corpse_campus.ferryman_reward": "On trigger, injects one random necromancy spell (ISS blood school) into your anomaly spellbook",
+  "tooltip.corpse_campus.ferryman_level": "Inject level: %s",
+  "screen.corpse_campus.ferryman.title": "Ferryman Target",
+  "screen.corpse_campus.ferryman.subtitle": "Click a player to brand them; when they die you gain one random necromancy spell",
+  "message.corpse_campus.ferryman_cannot_self": "The Ferryman cannot target themselves",
+  "message.corpse_campus.ferryman_no_target": "Cannot locate the selected target player",
+  "message.corpse_campus.ferryman_target_set": "Ferryman mark lit on %s",
+  "message.corpse_campus.ferryman_granted": "%s has been ferried across; you harvested [%s] from their soul",
+  "message.corpse_campus.ferryman_granted_failed": "%s has died, but the ferryman reward [%s] could not be written to the anomaly spellbook",
+  "message.corpse_campus.ferryman_grant_missing": "Necromancy spell %s is not present in this runtime; reward voided"
 }
