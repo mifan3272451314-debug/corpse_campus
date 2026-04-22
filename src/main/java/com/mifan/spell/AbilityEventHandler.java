@@ -85,6 +85,7 @@ public final class AbilityEventHandler {
         long gameTime = player.level().getGameTime();
 
         tickRizhaoEnergy(player, data);
+        tickGoldenCrowSun(player, data, gameTime);
         tickSonicSense(player, gameTime);
         tickStamina(player, data, gameTime);
         tickDangerSense(player, data, gameTime);
@@ -1134,7 +1135,8 @@ public final class AbilityEventHandler {
             baseline = currentMana;
         }
 
-        float regenThisTick = isDaytimeAndOpenSky(player)
+        boolean goldenCrowActive = data.getBoolean(AbilityRuntime.TAG_GOLDEN_CROW_ACTIVE);
+        float regenThisTick = (!goldenCrowActive && isDaytimeAndOpenSky(player))
                 ? AbilityRuntime.RIZHAO_REGEN_PER_SECOND / 20.0F
                 : 0.0F;
 
@@ -1170,6 +1172,46 @@ public final class AbilityEventHandler {
         return level.canSeeSky(net.minecraft.core.BlockPos.containing(player.getX(),
                 player.getBoundingBox().maxY + 0.1D,
                 player.getZ()));
+    }
+
+    private static void tickGoldenCrowSun(Player player, CompoundTag data, long gameTime) {
+        if (!data.getBoolean(AbilityRuntime.TAG_GOLDEN_CROW_ACTIVE)) {
+            return;
+        }
+        if (!(player.level() instanceof ServerLevel serverLevel)) {
+            return;
+        }
+
+        boolean shouldClear = false;
+
+        if (data.contains(AbilityRuntime.TAG_GOLDEN_CROW_EXPIRE_TICK)
+                && gameTime > data.getLong(AbilityRuntime.TAG_GOLDEN_CROW_EXPIRE_TICK)) {
+            shouldClear = true;
+        }
+
+        if (!shouldClear && data.hasUUID(AbilityRuntime.TAG_GOLDEN_CROW_ENTITY_UUID)) {
+            java.util.UUID uuid = data.getUUID(AbilityRuntime.TAG_GOLDEN_CROW_ENTITY_UUID);
+            Entity entity = serverLevel.getEntity(uuid);
+            if (entity == null || entity.isRemoved()) {
+                shouldClear = true;
+            }
+        } else if (!shouldClear) {
+            shouldClear = true;
+        }
+
+        if (shouldClear) {
+            if (data.hasUUID(AbilityRuntime.TAG_GOLDEN_CROW_ENTITY_UUID)) {
+                java.util.UUID uuid = data.getUUID(AbilityRuntime.TAG_GOLDEN_CROW_ENTITY_UUID);
+                Entity entity = serverLevel.getEntity(uuid);
+                if (entity != null && !entity.isRemoved()) {
+                    entity.discard();
+                }
+            }
+            data.putBoolean(AbilityRuntime.TAG_GOLDEN_CROW_ACTIVE, false);
+            data.remove(AbilityRuntime.TAG_GOLDEN_CROW_ENTITY_UUID);
+            data.remove(AbilityRuntime.TAG_GOLDEN_CROW_EXPIRE_TICK);
+            data.remove(AbilityRuntime.TAG_GOLDEN_CROW_MANA_SPENT);
+        }
     }
 
     private static void tickNinghe(Player player, long gameTime) {

@@ -9,6 +9,7 @@ import com.mifan.spell.dongyue.ManiaSpell;
 import com.mifan.spell.dongyue.NecroticRebirthSpell;
 import com.mifan.spell.rizhao.AffinitySpell;
 import com.mifan.spell.rizhao.FertileLandSpell;
+import com.mifan.spell.rizhao.GoldenCrowSunSpell;
 import com.mifan.spell.rizhao.LightPrayerSpell;
 import com.mifan.spell.rizhao.MidasTouchSpell;
 import com.mifan.spell.rizhao.NingheSpell;
@@ -65,6 +66,8 @@ public final class ModSpells {
                         FertileLandSpell::new);
         public static final RegistryObject<AbstractSpell> LIGHT_PRAYER = SPELLS.register("light_prayer",
                         LightPrayerSpell::new);
+        public static final RegistryObject<AbstractSpell> GOLDEN_CROW_SUN = SPELLS.register("golden_crow_sun",
+                        GoldenCrowSunSpell::new);
         public static final RegistryObject<AbstractSpell> TELEKINESIS = SPELLS.register("telekinesis",
                         TelekinesisSpell::new);
         public static final RegistryObject<AbstractSpell> DOMINANCE = SPELLS.register("dominance", DominanceSpell::new);

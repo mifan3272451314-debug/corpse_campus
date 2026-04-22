@@ -384,7 +384,7 @@ public final class MagicCommand {
             "§eyellow日兆序列§7（B×4 A×2 S×1）",
             "§7  B: §ffertile_land§7=沃土§8[待]  §fninghe§7=宁禾§8[待]  §fsunlight§7=日光§8[待]  §faffinity§7=亲和",
             "§7  A: §flight_prayer§7=祈光人§8[待]  §fmidas_touch§7=点金客",
-            "§7  S: §fgolden_crow_sun§7=日轮金乌  §8[待实现]",
+            "§7  S: §fgolden_crow_sun§7=日轮金乌",
             "§2东岳序列§7（B×4 A×2 S×1）",
             "§7  B: §fdaiyue§7=岱岳  §fmania§7=躁狂  §finstinct§7=本能  §fnecrotic_rebirth§7=冥化",
             "§7  A: §fimpermanence_monk§7=无常僧§8[待]  §fexecutioner§7=刽子手",

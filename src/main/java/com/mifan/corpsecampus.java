@@ -2,6 +2,7 @@ package com.mifan;
 
 import com.mifan.registry.ModAttributes;
 import com.mifan.network.ModNetwork;
+import com.mifan.registry.ModEntities;
 import com.mifan.registry.ModMobEffects;
 import com.mifan.registry.ModItems;
 import com.mifan.registry.ModSchools;
@@ -118,6 +119,8 @@ public class corpsecampus {
         ModMobEffects.register(modEventBus);
         // Register custom spells for Iron's Spells 'n Spellbooks
         ModSpells.register(modEventBus);
+        // Register custom entity types
+        ModEntities.register(modEventBus);
         // Register custom network packets
         ModNetwork.register();
 
@@ -171,6 +174,13 @@ public class corpsecampus {
             // Some client setup code
             LOGGER.info("HELLO FROM CLIENT SETUP");
             LOGGER.info("MINECRAFT NAME >> {}", Minecraft.getInstance().getUser().getName());
+        }
+
+        @SubscribeEvent
+        public static void onRegisterRenderers(
+                net.minecraftforge.client.event.EntityRenderersEvent.RegisterRenderers event) {
+            event.registerEntityRenderer(ModEntities.GOLDEN_CROW_SUN.get(),
+                    net.minecraft.client.renderer.entity.NoopRenderer::new);
         }
     }
 }

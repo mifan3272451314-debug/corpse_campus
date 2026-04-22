@@ -1011,6 +1011,8 @@ public final class AnomalyBookService {
         register(map, "sunlight", "日光", AnomalySpellRank.B, ModSchools.RIZHAO_RESOURCE);
         register(map, "fertile_land", "沃土", AnomalySpellRank.B, ModSchools.RIZHAO_RESOURCE);
         register(map, "midas_touch", "点金客", AnomalySpellRank.A, ModSchools.RIZHAO_RESOURCE);
+        register(map, "light_prayer", "祈光人", AnomalySpellRank.A, ModSchools.RIZHAO_RESOURCE);
+        register(map, "golden_crow_sun", "日轮金乌", AnomalySpellRank.S, ModSchools.RIZHAO_RESOURCE);
 
         register(map, "daiyue", "岱岳", AnomalySpellRank.B, ModSchools.DONGYUE_RESOURCE);
         register(map, "mania", "躁狂", AnomalySpellRank.B, ModSchools.DONGYUE_RESOURCE);

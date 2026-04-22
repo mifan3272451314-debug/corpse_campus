@@ -22,7 +22,6 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.entity.projectile.ProjectileUtil;
-import net.minecraft.world.level.Explosion;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.EntityHitResult;
@@ -155,13 +154,51 @@ public class GoldenCrowSunEntity extends Projectile {
         double x = this.getX();
         double y = this.getY();
         double z = this.getZ();
-        server.sendParticles(ParticleTypes.FLAME, x, y, z, 12, 0.8D, 0.8D, 0.8D, 0.02D);
-        server.sendParticles(ParticleTypes.SMALL_FLAME, x, y, z, 8, 1.2D, 1.2D, 1.2D, 0.01D);
+
+        // 核心：每 tick 铺一层「日面」粒子，撑满 2.4×2.4 的实体碰撞箱
+        // 用 FLAME 大量随机分布形成球体轮廓，让玩家明显看到一个耀眼日轮
+        server.sendParticles(ParticleTypes.FLAME, x, y, z, 28, 1.6D, 1.6D, 1.6D, 0.015D);
+        server.sendParticles(ParticleTypes.SMALL_FLAME, x, y, z, 18, 1.9D, 1.9D, 1.9D, 0.01D);
+        server.sendParticles(ParticleTypes.LAVA, x, y, z, 2, 1.2D, 1.2D, 1.2D, 0.0D);
+
+        // 每 4 tick 一次「心跳脉冲」：强烈闪光 + 端棒亮点，营造日面跳动感
         if (this.tickCount % 4 == 0) {
-            server.sendParticles(ParticleTypes.LAVA, x, y, z, 1, 0.5D, 0.5D, 0.5D, 0.0D);
-        }
-        if (this.isThrown() && this.tickCount % 2 == 0) {
+            server.sendParticles(ParticleTypes.END_ROD, x, y, z, 12, 2.0D, 2.0D, 2.0D, 0.04D);
             server.sendParticles(ParticleTypes.FLASH, x, y, z, 1, 0.0D, 0.0D, 0.0D, 0.0D);
+        }
+
+        // 每 10 tick 一次「日冕环」：一圈扩散的光粒，像日冕
+        if (this.tickCount % 10 == 0) {
+            emitCoronaRing(server, x, y, z, 2.6D, 24);
+        }
+
+        // 投掷阶段：额外长拖尾
+        if (this.isThrown()) {
+            server.sendParticles(ParticleTypes.LARGE_SMOKE, x, y, z, 4, 0.4D, 0.4D, 0.4D, 0.01D);
+            if (this.tickCount % 2 == 0) {
+                server.sendParticles(ParticleTypes.FLASH, x, y, z, 1, 0.0D, 0.0D, 0.0D, 0.0D);
+            }
+        }
+    }
+
+    private static void emitCoronaRing(ServerLevel server, double cx, double cy, double cz,
+            double radius, int count) {
+        for (int i = 0; i < count; i++) {
+            double theta = (Math.PI * 2.0D * i) / count;
+            double dx = Math.cos(theta) * radius;
+            double dz = Math.sin(theta) * radius;
+            server.sendParticles(ParticleTypes.FLAME, cx + dx, cy, cz + dz, 1, 0.0D, 0.05D, 0.0D, 0.0D);
+        }
+    }
+
+    private static void emitShockwaveRing(ServerLevel server, Vec3 center, double radius, int count,
+            net.minecraft.core.particles.SimpleParticleType particle) {
+        for (int i = 0; i < count; i++) {
+            double theta = (Math.PI * 2.0D * i) / count;
+            double dx = Math.cos(theta) * radius;
+            double dz = Math.sin(theta) * radius;
+            server.sendParticles(particle, center.x + dx, center.y + 0.2D, center.z + dz,
+                    1, 0.0D, 0.0D, 0.0D, 0.0D);
         }
     }
 
@@ -230,6 +267,28 @@ public class GoldenCrowSunEntity extends Projectile {
         server.sendParticles(ParticleTypes.FLASH, pos.x, pos.y, pos.z, 8, 2.0D, 2.0D, 2.0D, 0.0D);
         server.playSound(null, BlockPos.containing(pos.x, pos.y, pos.z), SoundEvents.GENERIC_EXPLODE,
                 SoundSource.PLAYERS, 4.0F, 0.6F);
+
+        // 震撼视觉：多重爆炸发射器 + 巨型冲击波环 + 火焰飞溅
+        for (int i = 0; i < 6; i++) {
+            double ox = (server.random.nextDouble() - 0.5D) * 6.0D;
+            double oy = (server.random.nextDouble() - 0.5D) * 3.0D;
+            double oz = (server.random.nextDouble() - 0.5D) * 6.0D;
+            server.sendParticles(ParticleTypes.EXPLOSION_EMITTER,
+                    pos.x + ox, pos.y + oy, pos.z + oz, 1, 0.0D, 0.0D, 0.0D, 0.0D);
+        }
+        // 三环冲击波：小中大，营造震荡感
+        emitShockwaveRing(server, pos, 3.0D, 32, ParticleTypes.FLAME);
+        emitShockwaveRing(server, pos, 6.5D, 48, ParticleTypes.FLAME);
+        emitShockwaveRing(server, pos, 10.0D, 64, ParticleTypes.END_ROD);
+        // 向四周飞溅的火焰
+        server.sendParticles(ParticleTypes.LAVA, pos.x, pos.y, pos.z, 60, 5.0D, 3.0D, 5.0D, 0.3D);
+        server.sendParticles(ParticleTypes.FLAME, pos.x, pos.y, pos.z, 180, 6.0D, 4.0D, 6.0D, 0.4D);
+        server.sendParticles(ParticleTypes.FLASH, pos.x, pos.y, pos.z, 3, 0.0D, 0.0D, 0.0D, 0.0D);
+        // 附加额外音效层，提升听觉反馈
+        server.playSound(null, BlockPos.containing(pos.x, pos.y, pos.z), SoundEvents.LIGHTNING_BOLT_THUNDER,
+                SoundSource.PLAYERS, 2.5F, 0.7F);
+        server.playSound(null, BlockPos.containing(pos.x, pos.y, pos.z), SoundEvents.BEACON_DEACTIVATE,
+                SoundSource.PLAYERS, 2.0F, 0.5F);
 
         if (livingOwner instanceof Player playerOwner) {
             CompoundTag data = playerOwner.getPersistentData();
