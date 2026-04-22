@@ -1,7 +1,9 @@
 package com.mifan.anomaly;
 
 import com.mifan.corpsecampus;
+import com.mifan.registry.ModItems;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
@@ -9,6 +11,7 @@ import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
 import net.minecraftforge.event.entity.living.LivingDropsEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
+import net.minecraftforge.event.server.ServerStartedEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
@@ -21,6 +24,18 @@ public final class AnomalyEventHandler {
     private static final String PENDING_TRAIT_DROPS = "PendingTraitDrops";
 
     private AnomalyEventHandler() {
+    }
+
+    @SubscribeEvent
+    public static void onServerStarted(ServerStartedEvent event) {
+        if (!AnomalyConfig.autoRecountOnServerStart) {
+            return;
+        }
+        // 服务端刚启动时无在线玩家，此处仅加载已持久化的觉醒集合并记日志
+        MinecraftServer server = event.getServer();
+        int count = AnomalyLimitService.get(server).getAnomalyCount();
+        server.sendSystemMessage(net.minecraft.network.chat.Component.literal(
+                "[corpse_campus] 异常上限系统已就绪，历史已觉醒记录: " + count + " 人"));
     }
 
     @SubscribeEvent
@@ -83,9 +98,18 @@ public final class AnomalyEventHandler {
         CompoundTag persisted = player.getPersistentData().getCompound(Player.PERSISTED_NBT_TAG);
         CompoundTag anomalyData = persisted.getCompound("AnomalyP0");
         int count = anomalyData.getInt(PENDING_TRAIT_DROPS);
+
+        // 满额时 B 级特性不再掉落，避免新玩家觉醒
+        boolean blockBDrops = AnomalyConfig.globalCapEnabled
+                && AnomalyConfig.disableBDropWhenFull
+                && AnomalyLimitService.get(player.getServer()).isCapReached();
+
         for (int i = 0; i < count; i++) {
             ItemStack stack = ItemStack.of(anomalyData.getCompound("PendingTraitDrop_" + i));
             if (stack.isEmpty()) {
+                continue;
+            }
+            if (blockBDrops && ModItems.isBRankTraitItem(stack.getItem())) {
                 continue;
             }
             ItemEntity entity = new ItemEntity(player.level(), player.getX(), player.getY(), player.getZ(), stack);

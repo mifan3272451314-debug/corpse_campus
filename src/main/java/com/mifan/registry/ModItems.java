@@ -80,4 +80,12 @@ public final class ModItems {
     public static void register(IEventBus eventBus) {
         ITEMS.register(eventBus);
     }
+
+    public static boolean isBRankTraitItem(Item item) {
+        return item == TRAIT_XUJING_B.get()
+                || item == TRAIT_RIZHAO_B.get()
+                || item == TRAIT_DONGYUE_B.get()
+                || item == TRAIT_YUZHE_B.get()
+                || item == TRAIT_SHENGQI_B.get();
+    }
 }
