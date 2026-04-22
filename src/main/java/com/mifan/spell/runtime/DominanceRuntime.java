@@ -109,6 +109,23 @@ public final class DominanceRuntime {
         }
     }
 
+    public static void release(Player player) {
+        for (Mob mob : getDominatedMobs(player)) {
+            if (!isDominatedBy(mob, player)) {
+                continue;
+            }
+            if (mob.getTarget() == player) {
+                mob.setTarget(null);
+            }
+            clearDominanceTag(mob);
+        }
+
+        AbilityRuntime.clear(player.getPersistentData(),
+                AbilityRuntime.TAG_DOMINANCE_MOBS,
+                AbilityRuntime.TAG_DOMINANCE_TARGET_PLAYER,
+                AbilityRuntime.TAG_DOMINANCE_LINK_ACTIVE);
+    }
+
     public static boolean isDominatedBy(Mob mob, Player owner) {
         CompoundTag tag = mob.getPersistentData();
         return tag.hasUUID(AbilityRuntime.TAG_DOMINANCE_OWNER)
@@ -151,5 +168,11 @@ public final class DominanceRuntime {
         CompoundTag tag = mob.getPersistentData();
         tag.putUUID(AbilityRuntime.TAG_DOMINANCE_OWNER, casterId);
         tag.putInt(AbilityRuntime.TAG_DOMINANCE_LEVEL, spellLevel);
+    }
+
+    private static void clearDominanceTag(Mob mob) {
+        CompoundTag tag = mob.getPersistentData();
+        tag.remove(AbilityRuntime.TAG_DOMINANCE_OWNER);
+        tag.remove(AbilityRuntime.TAG_DOMINANCE_LEVEL);
     }
 }

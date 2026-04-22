@@ -75,7 +75,7 @@ public final class MidasBombRuntime {
         return EXPLOSION_POWER_BY_LEVEL[clampPowerLevel(powerLevel)];
     }
 
-    public static void armFromPlayerSelection(ServerPlayer player, int spellLevel, int timerSeconds, int powerLevel) {
+    public static boolean armFromPlayerSelection(ServerPlayer player, int spellLevel, int timerSeconds, int powerLevel) {
         int seconds = clampSeconds(timerSeconds);
         int clampedPowerLevel = clampPowerLevel(powerLevel);
         long endGameTime = player.level().getGameTime() + seconds * 20L;
@@ -99,7 +99,7 @@ public final class MidasBombRuntime {
 
         if (!armedAnything) {
             player.displayClientMessage(Component.translatable("message.corpse_campus.midas_touch_no_target"), true);
-            return;
+            return false;
         }
 
         player.level().playSound(null,
@@ -111,6 +111,7 @@ public final class MidasBombRuntime {
         player.displayClientMessage(
                 Component.translatable("message.corpse_campus.midas_touch_armed", seconds, clampedPowerLevel),
                 true);
+        return true;
     }
 
     public static void tickPlayerInventory(Player player) {
