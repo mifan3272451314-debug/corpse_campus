@@ -4,6 +4,7 @@ import com.mifan.anomaly.AnomalyBookService;
 import com.mifan.anomaly.AnomalyConfig;
 import com.mifan.anomaly.AnomalyLimitService;
 import com.mifan.anomaly.AnomalySpellRank;
+import com.mifan.anomaly.NaturalAwakeningService;
 import com.mifan.registry.ModItems;
 import com.mifan.spell.runtime.DailyAbilityRefreshState;
 import com.mifan.spell.runtime.EndlessLifeRuntime;
@@ -201,6 +202,16 @@ public final class MagicCommand {
                         .then(Commands.literal("disable")
                                 .requires(source -> source.hasPermission(3))
                                 .executes(context -> limitSetEnabled(context.getSource(), false))))
+                .then(Commands.literal("natural")
+                        .then(Commands.literal("progress")
+                                .executes(context -> naturalProgress(
+                                        context.getSource(),
+                                        context.getSource().getEntity() instanceof ServerPlayer self ? self : null))
+                                .then(Commands.argument("player", EntityArgument.player())
+                                        .requires(source -> source.hasPermission(2))
+                                        .executes(context -> naturalProgress(
+                                                context.getSource(),
+                                                EntityArgument.getPlayer(context, "player"))))))
                 .then(Commands.literal("seal")
                         .then(Commands.literal("endless_life")
                                 .requires(source -> source.hasPermission(4))
@@ -532,6 +543,45 @@ public final class MagicCommand {
             source.sendSuccess(() -> line, false);
         }
         return 1;
+    }
+
+    private static int naturalProgress(CommandSourceStack source, ServerPlayer target) {
+        if (target == null) {
+            source.sendFailure(Component.literal("必须指定玩家；/magic natural progress <player> 或由玩家自身执行"));
+            return 0;
+        }
+        java.util.Map<String, Integer> snapshot = NaturalAwakeningService.snapshotProgress(target);
+        source.sendSuccess(() -> Component.literal(
+                "§a[自然觉醒进度] §e" + target.getGameProfile().getName()), false);
+        for (String key : NaturalAwakeningService.ALL_KEYS) {
+            int value = snapshot.getOrDefault(key, 0);
+            int threshold = NaturalAwakeningService.getThreshold(key);
+            boolean reached = value >= threshold;
+            String valueColor = reached ? "§a" : "§e";
+            String line = String.format("§f  %s §7: %s%d§7/§e%d%s",
+                    naturalProgressLabel(key), valueColor, value, threshold,
+                    reached ? " §a✓" : "");
+            source.sendSuccess(() -> Component.literal(line), false);
+        }
+        source.sendSuccess(() -> Component.literal("§8（副本探索 / 配方合成两条原子条件本轮未实现）"), false);
+        return 1;
+    }
+
+    private static String naturalProgressLabel(String key) {
+        return switch (key) {
+            case NaturalAwakeningService.KEY_SIGN_PLACE -> "告示牌放置(印记)";
+            case NaturalAwakeningService.KEY_BLOCK_BREAK -> "破坏方块(耐力)";
+            case NaturalAwakeningService.KEY_FARMLAND_TILL -> "开垦耕地(沃土)";
+            case NaturalAwakeningService.KEY_BONEMEAL_CROP -> "催熟作物(宁禾)";
+            case NaturalAwakeningService.KEY_MELEE_ATTACK -> "平砍次数(躁狂)";
+            case NaturalAwakeningService.KEY_HIT_BY_MONSTER -> "被怪物攻击(本能)";
+            case NaturalAwakeningService.KEY_MONSTER_KILL -> "击杀怪物(冥化)";
+            case NaturalAwakeningService.KEY_CROUCH_TICK -> "连续蹲伏tick(危机)";
+            case NaturalAwakeningService.KEY_CRAWL_TICK -> "连续爬行tick(危机)";
+            case NaturalAwakeningService.KEY_WALL_TOUCH_TICK -> "累计接触墙tick(磁吸)";
+            case NaturalAwakeningService.KEY_FALL_BURST_MAX -> "历史最大单次坠落(万象)";
+            default -> key;
+        };
     }
 
     private static int limitRecount(CommandSourceStack source) {
