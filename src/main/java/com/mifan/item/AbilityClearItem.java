@@ -57,6 +57,9 @@ public class AbilityClearItem extends Item {
         // 1) 法术 + 序列 + 位阶 + LimitService 觉醒计数
         AnomalyBookService.unawakenPlayer(sp);
 
+        // 1.5) 觉醒后无敌窗口标记
+        AnomalyBookService.clearAwakeningProtection(sp);
+
         // 2) 自然觉醒进度
         clearNaturalAwakeningProgress(sp);
 

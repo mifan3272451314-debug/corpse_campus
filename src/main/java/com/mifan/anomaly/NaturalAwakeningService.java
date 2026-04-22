@@ -269,6 +269,9 @@ public final class NaturalAwakeningService {
                 "message.corpse_campus.awakened.natural");
 
         if (result.success()) {
+            // 用户 2026-04-23 口径：自然觉醒成功瞬间，给玩家 60 tick 完全无敌窗口，
+            // 避免觉醒动画/逻辑刚走完就被怪物或环境秒杀，导致刚获得的法术被死亡重置一并洗掉。
+            AnomalyBookService.grantAwakeningProtection(player, AnomalyBookService.AWAKENING_PROTECTION_TICKS);
             player.displayClientMessage(result.message(), false);
             return;
         }

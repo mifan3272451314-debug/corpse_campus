@@ -485,5 +485,6 @@
   "message.corpse_campus.designated_ability.awakened": "Awakened via Designated Ability: §b%s§r · §e%s§r · §6Lv.%d§r",
   "message.corpse_campus.designated_ability.not_holding": "Hold a Designated Ability item in your main or off hand before confirming.",
   "message.corpse_campus.designated_ability.already_configured": "This item is already configured. Use or clear it first.",
-  "message.corpse_campus.designated_ability.bad_nbt": "Designated Ability NBT is corrupt; cannot awaken."
+  "message.corpse_campus.designated_ability.bad_nbt": "Designated Ability NBT is corrupt; cannot awaken.",
+  "message.corpse_campus.awakening_invuln_save": "§bAwakening Guard§r: the 3-second invulnerability window saved you"
 }

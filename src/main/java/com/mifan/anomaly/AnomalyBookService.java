@@ -56,6 +56,14 @@ public final class AnomalyBookService {
     private static final String BOOK_AWAKENED = "AnomalyAwakened";
     private static final String BOOK_MAIN_SEQUENCE = "AnomalyMainSequence";
     private static final String BOOK_HIGHEST_RANK = "AnomalyHighestRank";
+
+    /**
+     * 觉醒后的"防死亡"窗口结束 game-tick（long，与 level.getGameTime() 同坐标系）。
+     * 仅自然觉醒通道使用：在 NaturalAwakeningService 觉醒成功瞬间写，由 AwakeningProtectionHandler 拦截
+     * LivingAttackEvent / LivingHurtEvent / LivingDeathEvent。死亡重置 / 清除核心 都会顺带清掉。
+     */
+    public static final String AWAKENING_PROTECTION_UNTIL = "AwakeningProtectionUntil";
+    public static final int AWAKENING_PROTECTION_TICKS = 60;
     private static final String BOOK_NATURAL_AWAKENING_DONE = "NaturalAwakeningDone";
 
     private static final DecimalFormat PERCENT_FORMAT = new DecimalFormat("0.##");
@@ -71,6 +79,50 @@ public final class AnomalyBookService {
     private static final Map<String, ResourceLocation> SPELL_ALIASES = createSpellAliases();
 
     private AnomalyBookService() {
+    }
+
+    /**
+     * 给玩家加 N tick 的"觉醒后无敌"窗口（仅自然觉醒通道使用）。
+     * 截止时间用 level.getGameTime() 写绝对 tick，跨重启仍可比较；
+     * 玩家下线 / 死亡 / 触发清除核心都会清掉这个标记。
+     */
+    public static void grantAwakeningProtection(ServerPlayer player, int ticks) {
+        if (ticks <= 0) {
+            return;
+        }
+        long until = player.serverLevel().getGameTime() + ticks;
+        getOrCreatePlayerData(player).putLong(AWAKENING_PROTECTION_UNTIL, until);
+    }
+
+    /** 客户端 / 服务端通用：判断玩家当前是否在"觉醒后无敌"窗口内。 */
+    public static boolean isUnderAwakeningProtection(Player player) {
+        CompoundTag persistentData = player.getPersistentData();
+        if (!persistentData.contains(Player.PERSISTED_NBT_TAG, Tag.TAG_COMPOUND)) {
+            return false;
+        }
+        CompoundTag persisted = persistentData.getCompound(Player.PERSISTED_NBT_TAG);
+        if (!persisted.contains(PLAYER_ROOT, Tag.TAG_COMPOUND)) {
+            return false;
+        }
+        CompoundTag anomalyData = persisted.getCompound(PLAYER_ROOT);
+        if (!anomalyData.contains(AWAKENING_PROTECTION_UNTIL, Tag.TAG_LONG)) {
+            return false;
+        }
+        long until = anomalyData.getLong(AWAKENING_PROTECTION_UNTIL);
+        return player.level().getGameTime() < until;
+    }
+
+    /** 立即清掉"觉醒后无敌"标记。供死亡 / 清除核心 / 玩家退出等路径调用。 */
+    public static void clearAwakeningProtection(Player player) {
+        CompoundTag persistentData = player.getPersistentData();
+        if (!persistentData.contains(Player.PERSISTED_NBT_TAG, Tag.TAG_COMPOUND)) {
+            return;
+        }
+        CompoundTag persisted = persistentData.getCompound(Player.PERSISTED_NBT_TAG);
+        if (!persisted.contains(PLAYER_ROOT, Tag.TAG_COMPOUND)) {
+            return;
+        }
+        persisted.getCompound(PLAYER_ROOT).remove(AWAKENING_PROTECTION_UNTIL);
     }
 
     public static List<ResourceLocation> getTrackedSchoolIds() {
