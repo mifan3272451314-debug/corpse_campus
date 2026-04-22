@@ -6,6 +6,7 @@ import com.mifan.network.clientbound.InstinctProcPacket;
 import com.mifan.network.clientbound.OlfactionTrailSyncPacket;
 import com.mifan.network.clientbound.OpenDominanceScreenPacket;
 import com.mifan.network.clientbound.OpenMidasTouchScreenPacket;
+import com.mifan.network.clientbound.OpenPlayerStatusScreenPacket;
 import com.mifan.network.clientbound.OpenRecorderOfficerScreenPacket;
 import com.mifan.network.serverbound.SetDominanceTargetPacket;
 import com.mifan.network.serverbound.SetMidasTouchTimerPacket;
@@ -72,6 +73,12 @@ public final class ModNetwork {
                 .encoder(OpenRecorderOfficerScreenPacket::encode)
                 .decoder(OpenRecorderOfficerScreenPacket::decode)
                 .consumerMainThread(OpenRecorderOfficerScreenPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(OpenPlayerStatusScreenPacket.class, packetId++, NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(OpenPlayerStatusScreenPacket::encode)
+                .decoder(OpenPlayerStatusScreenPacket::decode)
+                .consumerMainThread(OpenPlayerStatusScreenPacket::handle)
                 .add();
 
         CHANNEL.messageBuilder(SetDominanceTargetPacket.class, packetId++, NetworkDirection.PLAY_TO_SERVER)

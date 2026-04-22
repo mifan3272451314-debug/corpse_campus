@@ -3,6 +3,7 @@ package com.mifan.spell;
 import com.mifan.corpsecampus;
 import com.mifan.client.screen.DominanceTargetScreen;
 import com.mifan.client.screen.MidasTouchTimerScreen;
+import com.mifan.client.screen.PlayerStatusScreen;
 import com.mifan.client.screen.RecorderOfficerTimerScreen;
 import com.mifan.network.clientbound.DangerSensePingPacket;
 import com.mifan.network.clientbound.InstinctProcPacket;
@@ -50,6 +51,14 @@ public final class AbilityClientHandler {
             return;
         }
         minecraft.setScreen(new DominanceTargetScreen());
+    }
+
+    public static void openPlayerStatusScreen() {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.player == null || minecraft.level == null || minecraft.screen != null) {
+            return;
+        }
+        minecraft.setScreen(new PlayerStatusScreen());
     }
 
     public static void openMidasTouchTimerScreen(OpenMidasTouchScreenPacket packet) {

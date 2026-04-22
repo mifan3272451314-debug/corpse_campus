@@ -434,7 +434,8 @@ public final class AnomalyBookService {
 
         UUID ownerUuid = getOwnerUuid(stack);
         if (ownerUuid != null && !ownerUuid.equals(player.getUUID())) {
-            clearLocation(player, location, index);
+            // Recovery should only manage the current player's anomaly book.
+            // Foreign-owned books must be preserved in place.
             return;
         }
 
