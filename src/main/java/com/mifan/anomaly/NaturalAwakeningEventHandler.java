@@ -98,7 +98,7 @@ public final class NaturalAwakeningEventHandler {
         }
         Level level = event.getLevel();
         BlockPos pos = event.getPos();
-        if (!bmb.isValidBonemealTarget(level, pos, state)) {
+        if (!bmb.isValidBonemealTarget(level, pos, state, false)) {
             return;
         }
         NaturalAwakeningService.addAndCheck(player, NaturalAwakeningService.KEY_BONEMEAL_CROP, 1);
