@@ -10,7 +10,6 @@ import io.redspace.ironsspellbooks.api.spells.ISpellContainer;
 import io.redspace.ironsspellbooks.api.spells.SpellSlot;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.PlayerFaceRenderer;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.player.AbstractClientPlayer;
@@ -46,6 +45,9 @@ public class PlayerStatusScreen extends Screen {
     private static final int ROW_HEIGHT = 22;
     private static final int ABILITY_COLS = 3;
 
+    private static final int UPGRADE_BTN_W = 84;
+    private static final int UPGRADE_BTN_H = 18;
+
     private int scrollOffset;
     private boolean draggingScrollbar;
 
@@ -55,14 +57,8 @@ public class PlayerStatusScreen extends Screen {
 
     @Override
     protected void init() {
-        int left = (this.width - PANEL_W) / 2;
-        int top  = (this.height - PANEL_H) / 2;
-        addRenderableWidget(Button.builder(
-                Component.translatable("screen.corpse_campus.player_status.btn_upgrade"),
-                btn -> Minecraft.getInstance().setScreen(new AbilityUpgradeScreen(this)))
-                .pos(left + PANEL_W - 94, top + PANEL_H - 21)
-                .size(84, 18)
-                .build());
+        // 升级按钮改为自绘（drawUpgradeButton），在 render 里根据主序列动态变色；
+        // 点击路由在 mouseClicked 里处理。
     }
 
     @Override
@@ -93,7 +89,84 @@ public class PlayerStatusScreen extends Screen {
                 Component.translatable("screen.corpse_campus.player_status.hint"),
                 left + 14, top + PANEL_H - 14, 0x445577, false);
 
+        drawUpgradeButton(g, book,
+                left + PANEL_W - UPGRADE_BTN_W - 10,
+                top + PANEL_H - UPGRADE_BTN_H - 3,
+                mouseX, mouseY, tick);
+
         super.render(g, mouseX, mouseY, partial);
+    }
+
+    private void drawUpgradeButton(GuiGraphics g, ItemStack book, int x, int y,
+            int mouseX, int mouseY, float tick) {
+        boolean hovered = mouseX >= x && mouseX < x + UPGRADE_BTN_W
+                && mouseY >= y && mouseY < y + UPGRADE_BTN_H;
+
+        int accent = sequenceAccent(book);
+        int accentRgb = accent & 0x00FFFFFF;
+        float pulse = (float) (Math.sin(tick * 0.08) * 0.5 + 0.5);
+
+        // 底色：深蓝 → 悬停时混入一点主序列色
+        int bg = hovered
+                ? mixColor(0xFF0D1E2E, accent, 0.28f)
+                : 0xEE0A1828;
+        g.fill(x, y, x + UPGRADE_BTN_W, y + UPGRADE_BTN_H, bg);
+        // 头尾 neon 发光条（上下各 1px）：始终是主序列色，悬停时加粗一点
+        int neonTop = accentRgb | 0xFF000000;
+        int neonBot = accentRgb | (hovered ? 0xFF000000 : 0xCC000000);
+        g.fill(x, y, x + UPGRADE_BTN_W, y + 1, neonTop);
+        g.fill(x, y + UPGRADE_BTN_H - 1, x + UPGRADE_BTN_W, y + UPGRADE_BTN_H, neonBot);
+        // 左右细边：更暗的主序列色
+        int sideBorder = accentRgb | 0x80000000;
+        g.fill(x, y, x + 1, y + UPGRADE_BTN_H, sideBorder);
+        g.fill(x + UPGRADE_BTN_W - 1, y, x + UPGRADE_BTN_W, y + UPGRADE_BTN_H, sideBorder);
+        // 四角 L 型高光（与面板角落括号风格呼应）
+        int corner = accentRgb | 0xFF000000;
+        drawCornerAngle(g, x, y, 4, corner, true, true);
+        drawCornerAngle(g, x + UPGRADE_BTN_W - 1, y, 4, corner, false, true);
+        drawCornerAngle(g, x, y + UPGRADE_BTN_H - 1, 4, corner, true, false);
+        drawCornerAngle(g, x + UPGRADE_BTN_W - 1, y + UPGRADE_BTN_H - 1, 4, corner, false, false);
+        // 悬停时叠加一道脉冲扫描线
+        if (hovered) {
+            int scanAlpha = 0x30 + (int) (pulse * 0x40);
+            int scan = (accentRgb | (scanAlpha << 24));
+            int scanY = y + 1 + (int) (pulse * (UPGRADE_BTN_H - 3));
+            g.fill(x + 2, scanY, x + UPGRADE_BTN_W - 2, scanY + 1, scan);
+        }
+
+        Component label = Component.translatable("screen.corpse_campus.player_status.btn_upgrade");
+        int labelColor = hovered ? 0xFFF6FBFF : (0xFFE0E0E0 & 0x00FFFFFF) | 0xFFE0E0E0;
+        // 悬停时文字改成主序列色（亮化）
+        if (hovered) {
+            labelColor = brighten(accent, 0.35f);
+        }
+        int tx = x + (UPGRADE_BTN_W - font.width(label)) / 2;
+        int ty = y + (UPGRADE_BTN_H - 8) / 2;
+        g.drawString(font, label, tx, ty, labelColor, false);
+    }
+
+    private void drawCornerAngle(GuiGraphics g, int cx, int cy, int len, int color,
+            boolean rightward, boolean downward) {
+        int dx = rightward ? 1 : -1;
+        int dy = downward ? 1 : -1;
+        g.fill(Math.min(cx, cx + dx * len), cy, Math.max(cx + 1, cx + dx * len + 1), cy + 1, color);
+        g.fill(cx, Math.min(cy, cy + dy * len), cx + 1, Math.max(cy + 1, cy + dy * len + 1), color);
+    }
+
+    private static int mixColor(int a, int b, float t) {
+        int ar = (a >> 16) & 0xFF, ag = (a >> 8) & 0xFF, ab = a & 0xFF, aa = (a >>> 24) & 0xFF;
+        int br = (b >> 16) & 0xFF, bg = (b >> 8) & 0xFF, bb = b & 0xFF;
+        int r = Mth.clamp((int) (ar + (br - ar) * t), 0, 255);
+        int gg = Mth.clamp((int) (ag + (bg - ag) * t), 0, 255);
+        int bbb = Mth.clamp((int) (ab + (bb - ab) * t), 0, 255);
+        return (aa << 24) | (r << 16) | (gg << 8) | bbb;
+    }
+
+    private static int brighten(int color, float t) {
+        int r = Mth.clamp((int) (((color >> 16) & 0xFF) + (255 - ((color >> 16) & 0xFF)) * t), 0, 255);
+        int g = Mth.clamp((int) (((color >> 8) & 0xFF) + (255 - ((color >> 8) & 0xFF)) * t), 0, 255);
+        int b = Mth.clamp((int) ((color & 0xFF) + (255 - (color & 0xFF)) * t), 0, 255);
+        return 0xFF000000 | (r << 16) | (g << 8) | b;
     }
 
     // ── Background panel ────────────────────────────────────────────────────
@@ -386,11 +459,20 @@ public class PlayerStatusScreen extends Screen {
             g.fill(x - 2, y - 1, x + w, y + ROW_HEIGHT - 2, 0x18FFFFFF);
         }
 
-        var spec = AnomalyBookService.getSpellSpec(slot.getSpell().getSpellResource());
-        String spellName = spec == null ? slot.getSpell().getSpellName() : spec.zhName();
-        String rankStr   = spec == null ? "B" : spec.rank().name();
-
         ResourceLocation spellRL = slot.getSpell().getSpellResource();
+        var spec = AnomalyBookService.getSpellSpec(spellRL);
+        String spellName;
+        if (spec != null) {
+            spellName = spec.zhName();
+        } else {
+            String key = "spell." + spellRL.getNamespace() + "." + spellRL.getPath();
+            String translated = Component.translatable(key).getString();
+            spellName = (!translated.equals(key) && !translated.isEmpty())
+                    ? translated
+                    : slot.getSpell().getSpellName();
+        }
+        String rankStr = spec == null ? "B" : spec.rank().name();
+
         ResourceLocation iconRL  = ResourceLocation.fromNamespaceAndPath(spellRL.getNamespace(),
                 "textures/gui/spell_icons/" + spellRL.getPath() + ".png");
         int iconSize = 16;
@@ -515,6 +597,16 @@ public class PlayerStatusScreen extends Screen {
         if (button == 0) {
             int left = (this.width - PANEL_W) / 2;
             int top  = (this.height - PANEL_H) / 2;
+
+            // 升级按钮（自绘）
+            int btnX = left + PANEL_W - UPGRADE_BTN_W - 10;
+            int btnY = top + PANEL_H - UPGRADE_BTN_H - 3;
+            if (mouseX >= btnX && mouseX < btnX + UPGRADE_BTN_W
+                    && mouseY >= btnY && mouseY < btnY + UPGRADE_BTN_H) {
+                Minecraft.getInstance().setScreen(new AbilityUpgradeScreen(this));
+                return true;
+            }
+
             int scrollbarX = left + 14 + (PANEL_W - 28) - 6;
             int listTop = top + 184 + 14;
             if (mouseX >= scrollbarX && mouseX <= scrollbarX + 4

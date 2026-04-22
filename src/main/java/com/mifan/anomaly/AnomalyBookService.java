@@ -634,13 +634,25 @@ public final class AnomalyBookService {
     }
 
     public static UpgradeOutcome upgradeLoadedSpell(ServerPlayer player, ResourceLocation spellId) {
-        // 使用 ensureBookPresent 保证客户端 UI 可见的那本书与服务端校验的书一致：
-        // findExistingBook 只按 boundBookId 严格匹配，若玩家 PLAYER_BOUND_BOOK_ID 缺失/不同步会找不到书，
-        // 与 UI 侧 findBookForRead（按 owner）产生不一致，造成"该异能未搭载"的误报。
-        ItemStack book = ensureBookPresent(player);
+        // 与 UI 同源：先用 findBookForRead（owner 匹配即可），确保客户端 UI 可见的那本就是被升级的那本；
+        // 找不到时再 fallback 到 ensureBookPresent。升级前把玩家的 BoundBookId 同步到这本书的 BookId，
+        // 避免后续调用 ensureBookPresent 又用 snapshot 替换它。
+        ItemStack book = findBookForRead(player);
+        if (book.isEmpty() || !isAnomalyBook(book)) {
+            book = ensureBookPresent(player);
+        }
         if (book.isEmpty() || !isAnomalyBook(book)) {
             return UpgradeOutcome.NO_BOOK;
         }
+
+        UUID bookId = getBookId(book);
+        if (bookId == null) {
+            bookId = UUID.randomUUID();
+            bindBookToPlayer(player, book, bookId);
+        } else if (getOwnerUuid(book) == null) {
+            bindBookToPlayer(player, book, bookId);
+        }
+        setBoundBookId(player, bookId);
         ensureSpellContainer(book);
 
         SpellSlot target = null;
@@ -914,7 +926,19 @@ public final class AnomalyBookService {
         }
 
         if (!state.expectedBookId.equals(bookId)) {
-            // Preserve mismatched books in-place. Recovery only manages the currently bound book.
+            // 玩家装备槽里的书若 owner 匹配但 BookId 与绑定 ID 不一致
+            // （例：管理员重发了一本、客户端/服务端 NBT 不同步、PLAYER_BOUND_BOOK_ID 丢失后重建），
+            // 应优先信任"玩家实际装备的 Curio 那本"作为主书，将绑定 ID 回写到它，
+            // 而不是用 snapshot 替换掉它——否则会导致 UI 看到的内容与服务端操作的不是同一本，
+            // 引发"该异能未搭载"等误报。
+            if (location == BookLocation.CURIO && state.primaryStack.isEmpty()) {
+                bindBookToPlayer(player, stack, bookId);
+                setBoundBookId(player, bookId);
+                state.expectedBookId = bookId;
+                adoptPrimary(state, location, index, stack, player);
+                return;
+            }
+            // 其余位置：保留不动，避免误删玩家备份的旧书。
             return;
         }
 
@@ -1258,6 +1282,7 @@ public final class AnomalyBookService {
         register(map, "necrotic_rebirth", "冥化", AnomalySpellRank.B, ModSchools.DONGYUE_RESOURCE);
         register(map, "executioner", "刽子手", AnomalySpellRank.A, ModSchools.DONGYUE_RESOURCE);
         register(map, "impermanence_monk", "无常僧", AnomalySpellRank.A, ModSchools.DONGYUE_RESOURCE);
+        register(map, "great_necromancer", "大冥鬼师", AnomalySpellRank.S, ModSchools.DONGYUE_RESOURCE);
 
         register(map, "wanxiang", "万象", AnomalySpellRank.B, ModSchools.YUZHE_RESOURCE);
         register(map, "telekinesis", "念力", AnomalySpellRank.B, ModSchools.YUZHE_RESOURCE);
@@ -1265,6 +1290,7 @@ public final class AnomalyBookService {
         register(map, "magnetic_cling", "磁吸", AnomalySpellRank.B, ModSchools.YUZHE_RESOURCE);
         register(map, "life_thief", "盗命客", AnomalySpellRank.A, ModSchools.YUZHE_RESOURCE);
         register(map, "mimic", "模仿者", AnomalySpellRank.A, ModSchools.YUZHE_RESOURCE);
+        register(map, "authority_grasp", "万权一手", AnomalySpellRank.S, ModSchools.YUZHE_RESOURCE);
 
         register(map, "huihun", "回魂", AnomalySpellRank.B, ModSchools.SHENGQI_RESOURCE);
         register(map, "healing", "愈合", AnomalySpellRank.B, ModSchools.SHENGQI_RESOURCE);

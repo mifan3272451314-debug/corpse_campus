@@ -65,6 +65,17 @@ public class AbilityUpgradeScreen extends Screen {
         // 自绘返回按钮（不再用 vanilla Button）
     }
 
+    private static String resolveDisplayName(SpellSlot slot, ResourceLocation id) {
+        // SPELL_SPECS 未登记的法术回退到翻译键，这样 lang 文件里有 spell.<ns>.<path> 的条目就能正确本地化；
+        // 翻译键不存在时再用 ISS 默认的英文 spellName，避免直接显示原始 resource path。
+        String key = "spell." + id.getNamespace() + "." + id.getPath();
+        String translated = Component.translatable(key).getString();
+        if (!translated.equals(key) && !translated.isEmpty()) {
+            return translated;
+        }
+        return slot.getSpell().getSpellName();
+    }
+
     private List<Row> collectRows() {
         List<Row> rows = new ArrayList<>();
         Player player = Minecraft.getInstance().player;
@@ -79,7 +90,7 @@ public class AbilityUpgradeScreen extends Screen {
             ResourceLocation id = slot.getSpell().getSpellResource();
             SpellSpec spec = AnomalyBookService.getSpellSpec(id);
             AnomalySpellRank rank = spec == null ? AnomalySpellRank.B : spec.rank();
-            String name = spec == null ? slot.getSpell().getSpellName() : spec.zhName();
+            String name = spec != null ? spec.zhName() : resolveDisplayName(slot, id);
             ResourceLocation schoolId = spec == null ? null : spec.schoolId();
             rows.add(new Row(id, name, rank, schoolId,
                     slot.getLevel(),
