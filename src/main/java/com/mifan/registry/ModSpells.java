@@ -15,6 +15,7 @@ import com.mifan.spell.rizhao.MidasTouchSpell;
 import com.mifan.spell.rizhao.NingheSpell;
 import com.mifan.spell.rizhao.SunlightSpell;
 import com.mifan.spell.shengqi.ApothecarySpell;
+import com.mifan.spell.shengqi.EndlessLifeSpell;
 import com.mifan.spell.shengqi.FerrymanSpell;
 import com.mifan.spell.shengqi.GrafterSpell;
 import com.mifan.spell.shengqi.HealingSpell;
@@ -100,6 +101,8 @@ public final class ModSpells {
                         FerrymanSpell::new);
         public static final RegistryObject<AbstractSpell> AUTHORITY_GRASP = SPELLS.register("authority_grasp",
                         AuthorityGraspSpell::new);
+        public static final RegistryObject<AbstractSpell> ENDLESS_LIFE = SPELLS.register("endless_life",
+                        EndlessLifeSpell::new);
 
         private ModSpells() {
         }
