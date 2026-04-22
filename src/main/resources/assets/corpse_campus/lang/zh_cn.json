@@ -475,5 +475,16 @@
   "message.corpse_campus.rewind_mirror_missing": "回溯之虫：镜像维度 corpse_campus:rewind_mirror 未加载。请检查数据包是否正确部署",
   "message.corpse_campus.rewind_anchor_lost": "回溯之虫：回返锚点已丢失，无法回到原位置（可能是死亡或跨存档导致）",
   "message.corpse_campus.rewind_into_mirror": "回溯之虫启动：你穿越到了镜像维度",
-  "message.corpse_campus.rewind_out_of_mirror": "回溯之虫回环：你已回到原维度的备份锚点"
+  "message.corpse_campus.rewind_out_of_mirror": "回溯之虫回环：你已回到原维度的备份锚点",
+
+  "item.corpse_campus.rank_core_b": "B 级核心",
+  "item.corpse_campus.rank_core_a": "A 级核心",
+  "item.corpse_campus.rank_core_s": "S 级核心",
+  "item.corpse_campus.ability_clear_core": "清除核心",
+  "tooltip.corpse_campus.rank_core_hint": "右键将玩家位阶设为 §e%s§r 级",
+  "tooltip.corpse_campus.rank_core_warning": "仅修改位阶字段，不发法术；血量/法力加成仍按书内已搭载法术实时计算",
+  "tooltip.corpse_campus.ability_clear_hint": "右键将玩家完全重置为白板（异能/序列/位阶/经验/物品/装备/状态）",
+  "tooltip.corpse_campus.ability_clear_warning": "§c警告：会清空全部物品栏 / 装备 / Curios 槽位 / 经验，操作不可撤销",
+  "message.corpse_campus.rank_core_applied": "位阶已设为 §e%s§r 级",
+  "message.corpse_campus.ability_cleared": "已清除全部异能 / 序列 / 位阶 / 装备 / 经验 / 自然觉醒进度"
 }

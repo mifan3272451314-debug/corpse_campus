@@ -97,6 +97,11 @@ public class corpsecampus {
                         output.accept(ModItems.TRAIT_SHENGQI_B.get());
                         output.accept(ModItems.TRAIT_SHENGQI_A.get());
                         output.accept(ModItems.TRAIT_SHENGQI_S.get());
+                        // 管理员调试核心物品
+                        output.accept(ModItems.RANK_CORE_B.get());
+                        output.accept(ModItems.RANK_CORE_A.get());
+                        output.accept(ModItems.RANK_CORE_S.get());
+                        output.accept(ModItems.ABILITY_CLEAR_CORE.get());
                     }).build());
 
     public corpsecampus() {

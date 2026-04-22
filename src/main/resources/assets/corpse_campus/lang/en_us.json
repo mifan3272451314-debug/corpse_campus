@@ -439,5 +439,16 @@
   "message.corpse_campus.rewind_mirror_missing": "Rewind Worm: dimension corpse_campus:rewind_mirror is not loaded. Check that the data pack deployed correctly.",
   "message.corpse_campus.rewind_anchor_lost": "Rewind Worm: the return anchor was lost (possibly due to death or a cross-save event), you cannot return to the original location.",
   "message.corpse_campus.rewind_into_mirror": "Rewind Worm engaged: you have crossed into the mirror backup dimension.",
-  "message.corpse_campus.rewind_out_of_mirror": "Rewind Worm closed: you have returned to the backup anchor in your original dimension."
+  "message.corpse_campus.rewind_out_of_mirror": "Rewind Worm closed: you have returned to the backup anchor in your original dimension.",
+
+  "item.corpse_campus.rank_core_b": "B-Rank Core",
+  "item.corpse_campus.rank_core_a": "A-Rank Core",
+  "item.corpse_campus.rank_core_s": "S-Rank Core",
+  "item.corpse_campus.ability_clear_core": "Ability Clear Core",
+  "tooltip.corpse_campus.rank_core_hint": "Right-click to set the player rank to §e%s§r",
+  "tooltip.corpse_campus.rank_core_warning": "Only sets the rank field; no spell granted. HP/mana bonuses still come from spells loaded in the book.",
+  "tooltip.corpse_campus.ability_clear_hint": "Right-click to fully reset the player (abilities, sequence, rank, XP, inventory, gear, effects).",
+  "tooltip.corpse_campus.ability_clear_warning": "§cWarning: clears entire inventory, armor, Curios slots and XP. Cannot be undone.",
+  "message.corpse_campus.rank_core_applied": "Rank set to §e%s§r",
+  "message.corpse_campus.ability_cleared": "All abilities / sequence / rank / gear / XP / natural awakening progress cleared."
 }

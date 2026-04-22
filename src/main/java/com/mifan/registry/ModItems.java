@@ -3,8 +3,10 @@ package com.mifan.registry;
 import com.mifan.anomaly.AnomalySpellRank;
 import com.mifan.anomaly.AnomalySpellBookItem;
 import com.mifan.corpsecampus;
+import com.mifan.item.AbilityClearItem;
 import com.mifan.item.AnomalyDetectorItem;
 import com.mifan.item.AnomalyTraitItem;
+import com.mifan.item.RankBlessingItem;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraftforge.eventbus.api.IEventBus;
@@ -52,6 +54,16 @@ public final class ModItems {
             ModSchools.SHENGQI_RESOURCE, AnomalySpellRank.A);
     public static final RegistryObject<Item> TRAIT_SHENGQI_S = registerTraitItem("trait_shengqi_s",
             ModSchools.SHENGQI_RESOURCE, AnomalySpellRank.S);
+
+    // ─── 管理员调试核心物品（创造标签页可见，无 OP 权限校验） ─────────────────────────
+    public static final RegistryObject<Item> RANK_CORE_B = ITEMS.register("rank_core_b",
+            () -> new RankBlessingItem(AnomalySpellRank.B));
+    public static final RegistryObject<Item> RANK_CORE_A = ITEMS.register("rank_core_a",
+            () -> new RankBlessingItem(AnomalySpellRank.A));
+    public static final RegistryObject<Item> RANK_CORE_S = ITEMS.register("rank_core_s",
+            () -> new RankBlessingItem(AnomalySpellRank.S));
+    public static final RegistryObject<Item> ABILITY_CLEAR_CORE = ITEMS.register("ability_clear_core",
+            AbilityClearItem::new);
 
     private ModItems() {
     }

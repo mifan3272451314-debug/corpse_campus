@@ -194,6 +194,51 @@ public final class AnomalyBookService {
         }
     }
 
+    /**
+     * 管理员调试通道（指定异能核心专用）：把指定的 (school, spell, level) 直接灌进玩家异常书。
+     *
+     * 与 {@link #tryAbsorbBTrait} 的差异：
+     *   - 不从该流派 B 池随机抽，spellId 由调用方指定（可以是 B/A/S 任意阶位）；
+     *   - 不受 {@link AnomalyLimitService#isCapReached()} 拦截 —— 管理员物品应当能突破满 40 上限；
+     *   - 写入的位阶按法术 spec.rank() 决定，不强制 B 级；
+     *   - 已觉醒玩家照样会被拒绝（与吞噬通道一致，复用 sequence_locked 提示）。
+     */
+    public static AbsorbResult applyDirectAwakening(ServerPlayer player, ResourceLocation schoolId,
+            ResourceLocation spellId, int requestedSpellLevel) {
+        ItemStack book = ensureBookPresent(player);
+        if (book.isEmpty() || !isAnomalyBook(book)) {
+            return AbsorbResult.failure("message.corpse_campus.absorb_no_book");
+        }
+
+        if (isAwakened(book)) {
+            return AbsorbResult.failure("message.corpse_campus.sequence_locked");
+        }
+
+        SpellSpec spec = SPELL_SPECS.get(spellId);
+        if (spec == null) {
+            return AbsorbResult.failure("message.corpse_campus.absorb_spell_missing", spellId.toString());
+        }
+
+        AbstractSpell spell = getRegisteredSpell(spellId);
+        if (spell == null) {
+            return AbsorbResult.failure("message.corpse_campus.absorb_spell_missing", spec.zhName());
+        }
+
+        int spellLevel = Mth.clamp(requestedSpellLevel, 1, spell.getMaxLevel());
+        boolean added = addSpell(player, book, spell, spellLevel, 1);
+        if (!added) {
+            return AbsorbResult.failure("message.corpse_campus.absorb_write_failed");
+        }
+
+        writeSequenceBinding(book, schoolId, spec.rank());
+        updateBookSnapshot(player, book);
+        refreshCurioState(player);
+
+        String schoolName = localizeSchool(schoolId);
+        return AbsorbResult.success("message.corpse_campus.designated_ability.awakened",
+                schoolName, spec.zhName(), spellLevel);
+    }
+
     public static AbsorbResult tryAbsorbBTrait(ServerPlayer player, ResourceLocation schoolId) {
         ItemStack book = ensureBookPresent(player);
         if (book.isEmpty() || !isAnomalyBook(book)) {
