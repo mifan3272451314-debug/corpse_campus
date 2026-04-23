@@ -240,8 +240,7 @@ public final class AbilityRuntime {
     public static final int LIGHT_PRAYER_WEAPON_IGNITE_SECONDS = 5;
     public static final int LIGHT_PRAYER_RESISTANCE_AMPLIFIER = 1;
     public static final double LIGHT_PRAYER_SPELL_RESIST_BONUS = 0.25D;
-    public static final String LIGHT_PRAYER_SPELL_RESIST_UUID =
-            "c0d4b1a3-1c07-11ee-9fa1-0002b3c1ee01";
+    public static final String LIGHT_PRAYER_SPELL_RESIST_UUID = "c0d4b1a3-1c07-11ee-9fa1-0002b3c1ee01";
     public static final String TAG_LIGHT_PRAYER_BURN_MARK = "corpse_campus_light_prayer_burn_mark";
 
     public static final String TAG_GOLDEN_CROW_ACTIVE = "corpse_campus_golden_crow_active";
@@ -267,7 +266,7 @@ public final class AbilityRuntime {
     public static final float GOLDEN_CROW_MANA_SOFT_CAP = 5000.0F;
 
     public static final float GOLDEN_CROW_DAMAGE_PER_MANA = 0.5F;
-    public static final float GOLDEN_CROW_THROW_SPEED = 1.5F;
+    public static final float GOLDEN_CROW_THROW_SPEED = 1.0F;
     public static final double GOLDEN_CROW_HOVER_HEIGHT = 20.0D;
     public static final int GOLDEN_CROW_COOLDOWN_SECONDS = 1200;
     public static final int GOLDEN_CROW_CAST_TIME_TICKS = 80;
