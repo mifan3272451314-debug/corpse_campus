@@ -1,25 +1,16 @@
 {
   "parent": "corpse_campus:advance/shengqi",
   "display": {
-    "icon": {
-      "item": "corpse_campus:trait_shengqi_s"
-    },
-    "title": {
-      "text": "圣祈·登顶"
-    },
-    "description": {
-      "text": "获得圣祈 S 级异常特性（生生不息）。"
-    },
+    "icon": { "item": "corpse_campus:trait_shengqi_s" },
+    "title": { "text": "圣祈·登顶" },
+    "description": { "text": "异常法术书 AnomalyHighestRank 字段达到 S（圣祈·生生不息）。" },
     "frame": "goal",
     "show_toast": true,
     "announce_to_chat": false,
     "hidden": true
   },
   "criteria": {
-    "got": {
-      "trigger": "minecraft:inventory_changed",
-      "conditions": {"items": [{"items": ["corpse_campus:trait_shengqi_s"]}]}
-    }
+    "trigger": { "trigger": "minecraft:impossible" }
   },
-  "requirements": [["got"]]
+  "requirements": [["trigger"]]
 }

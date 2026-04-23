@@ -1,31 +1,16 @@
 {
   "parent": "corpse_campus:root/root",
   "display": {
-    "icon": {
-      "item": "corpse_campus:trait_shengqi_b"
-    },
-    "title": {
-      "text": "踏入圣祈"
-    },
-    "description": {
-      "text": "获得第一块圣祈 B 级异常特性。"
-    },
+    "icon": { "item": "corpse_campus:trait_shengqi_b" },
+    "title": { "text": "踏入圣祈" },
+    "description": { "text": "书内主序列字段 AnomalyMainSequence=shengqi 被写入时触发。" },
     "frame": "task",
     "show_toast": true,
     "announce_to_chat": false,
     "hidden": true
   },
   "criteria": {
-    "touch_trait": {
-      "trigger": "minecraft:inventory_changed",
-      "conditions": {
-        "items": [
-          {
-            "items": ["corpse_campus:trait_shengqi_b"]
-          }
-        ]
-      }
-    }
+    "trigger": { "trigger": "minecraft:impossible" }
   },
-  "requirements": [["touch_trait"]]
+  "requirements": [["trigger"]]
 }

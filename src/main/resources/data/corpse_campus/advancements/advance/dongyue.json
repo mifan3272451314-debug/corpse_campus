@@ -1,25 +1,16 @@
 {
   "parent": "corpse_campus:sequence/dongyue",
   "display": {
-    "icon": {
-      "item": "corpse_campus:trait_dongyue_a"
-    },
-    "title": {
-      "text": "东岳·B→A"
-    },
-    "description": {
-      "text": "获得东岳 A 级异常特性。"
-    },
+    "icon": { "item": "corpse_campus:trait_dongyue_a" },
+    "title": { "text": "东岳·B→A" },
+    "description": { "text": "异常法术书 AnomalyHighestRank 字段达到 A（东岳序列）。" },
     "frame": "task",
     "show_toast": true,
     "announce_to_chat": false,
     "hidden": true
   },
   "criteria": {
-    "got": {
-      "trigger": "minecraft:inventory_changed",
-      "conditions": {"items": [{"items": ["corpse_campus:trait_dongyue_a"]}]}
-    }
+    "trigger": { "trigger": "minecraft:impossible" }
   },
-  "requirements": [["got"]]
+  "requirements": [["trigger"]]
 }

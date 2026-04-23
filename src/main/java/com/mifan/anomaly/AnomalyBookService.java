@@ -394,6 +394,17 @@ public final class AnomalyBookService {
         updateBookSnapshot(player, book);
         refreshCurioState(player);
 
+        // 觉醒成就联动：L0 根 + L1 踏入 + L6 学习 + 按位阶上 L3/L4
+        AnomalyAdvancements.onBookGranted(player);
+        AnomalyAdvancements.onSequenceEntered(player, schoolId.getPath());
+        AnomalyAdvancements.onSpellLearned(player, spellId.getPath());
+        if (spec.rank() == AnomalySpellRank.A) {
+            AnomalyAdvancements.onRankAdvancedToA(player, schoolId.getPath());
+        } else if (spec.rank() == AnomalySpellRank.S) {
+            AnomalyAdvancements.onRankAdvancedToA(player, schoolId.getPath());
+            AnomalyAdvancements.onRankAdvancedToS(player, schoolId.getPath());
+        }
+
         String schoolName = localizeSchool(schoolId);
         return AbsorbResult.success(successMessageKey, schoolName, spec.zhName());
     }
@@ -461,12 +472,30 @@ public final class AnomalyBookService {
 
         // 按需上调 highest_rank
         AnomalySpellRank currentHighest = getHighestRank(book);
+        boolean rankBumped = false;
         if (currentHighest == null || spec.rank().ordinal() > currentHighest.ordinal()) {
             book.getOrCreateTag().putString(BOOK_HIGHEST_RANK, spec.rank().name());
+            rankBumped = true;
         }
 
         updateBookSnapshot(player, book);
         refreshCurioState(player);
+
+        // 卷轴通道成就联动：学会该法术 + 按位阶上进阶 / 登顶
+        AnomalyAdvancements.onSpellLearned(player, spellId.getPath());
+        if (rankBumped) {
+            String schoolPath = spec.schoolId().getPath();
+            if (spec.rank() == AnomalySpellRank.A) {
+                AnomalyAdvancements.onRankAdvancedToA(player, schoolPath);
+            } else if (spec.rank() == AnomalySpellRank.S) {
+                AnomalyAdvancements.onRankAdvancedToA(player, schoolPath);
+                AnomalyAdvancements.onRankAdvancedToS(player, schoolPath);
+                // 非圣祈流派登顶 S 即"未可能学到嫁接师"，视为独立登顶
+                if (!"shengqi".equals(schoolPath)) {
+                    AnomalyAdvancements.onIsolatedAscend(player);
+                }
+            }
+        }
 
         return AbsorbResult.success("message.corpse_campus.scroll_spell_granted",
                 spec.zhName(), spec.rank().name());
@@ -807,6 +836,9 @@ public final class AnomalyBookService {
         updateBookSnapshot(player, primary);
         clampCurrentManaToMax(player);
 
+        // 玩家拥有了异常特性书 → 触发 L0 根节点（已发放过则幂等无副作用）
+        AnomalyAdvancements.onBookGranted(player);
+
         ItemStack equipped = getCurioSpellbookStack(player);
         return equipped.isEmpty() ? primary : equipped;
     }
@@ -863,7 +895,15 @@ public final class AnomalyBookService {
         net.minecraft.server.MinecraftServer server = player.getServer();
         if (server != null) {
             AnomalyLimitService.get(server).markAwakened(player.getUUID());
+            // 上限达到 40 时全服 broadcast L7 见证成就
+            if (AnomalyLimitService.get(server).isCapReached()) {
+                AnomalyAdvancements.onFortyCapReached(server);
+            }
         }
+
+        // 任何路径学会法术都触发 L6 & L0
+        AnomalyAdvancements.onBookGranted(player);
+        AnomalyAdvancements.onSpellLearned(player, spell.getSpellResource().getPath());
         return true;
     }
 

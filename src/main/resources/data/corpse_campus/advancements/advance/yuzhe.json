@@ -1,25 +1,16 @@
 {
   "parent": "corpse_campus:sequence/yuzhe",
   "display": {
-    "icon": {
-      "item": "corpse_campus:trait_yuzhe_a"
-    },
-    "title": {
-      "text": "愚者·B→A"
-    },
-    "description": {
-      "text": "获得愚者 A 级异常特性。"
-    },
+    "icon": { "item": "corpse_campus:trait_yuzhe_a" },
+    "title": { "text": "愚者·B→A" },
+    "description": { "text": "异常法术书 AnomalyHighestRank 字段达到 A（愚者序列）。" },
     "frame": "task",
     "show_toast": true,
     "announce_to_chat": false,
     "hidden": true
   },
   "criteria": {
-    "got": {
-      "trigger": "minecraft:inventory_changed",
-      "conditions": {"items": [{"items": ["corpse_campus:trait_yuzhe_a"]}]}
-    }
+    "trigger": { "trigger": "minecraft:impossible" }
   },
-  "requirements": [["got"]]
+  "requirements": [["trigger"]]
 }
