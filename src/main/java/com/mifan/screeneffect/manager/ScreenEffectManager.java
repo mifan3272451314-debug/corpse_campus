@@ -80,6 +80,9 @@ public final class ScreenEffectManager {
         if (ACTIVE.isEmpty()) {
             return;
         }
+        if (player == null || player.isRemoved() || player.isDeadOrDying()) {
+            fadeOutAll();
+        }
         LocalPlayer local = Minecraft.getInstance().player;
         Iterator<ActiveEffect> it = ACTIVE.iterator();
         while (it.hasNext()) {

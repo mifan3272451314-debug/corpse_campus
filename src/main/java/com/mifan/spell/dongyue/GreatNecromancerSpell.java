@@ -88,6 +88,9 @@ public class GreatNecromancerSpell extends AbstractSpell {
     @Override
     public void onCast(Level level, int spellLevel, LivingEntity entity, CastSource castSource,
             MagicData playerMagicData) {
+        if (level.isClientSide) {
+            com.mifan.screeneffect.client.ScreenEffectClientHook.triggerIfLocalPlayer(entity, spellId);
+        }
         if (level.isClientSide || !(entity instanceof ServerPlayer caster)) {
             super.onCast(level, spellLevel, entity, castSource, playerMagicData);
             return;
