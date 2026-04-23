@@ -1,0 +1,44 @@
+{
+  "parent": "corpse_campus:sequence/xujing",
+  "display": {
+    "icon": {
+      "item": "minecraft:leather_boots"
+    },
+    "title": {
+      "text": "危机·蹲伏觉醒"
+    },
+    "description": {
+      "text": "累计蹲伏 6000 tick（5 分钟），自然觉醒虚境·危机。"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": false,
+    "hidden": true
+  },
+  "criteria": {
+    "sneak": {
+      "trigger": "minecraft:tick",
+      "conditions": {
+        "player": [
+          {
+            "condition": "minecraft:entity_properties",
+            "entity": "this",
+            "predicate": {
+              "type_specific": {
+                "type": "minecraft:player",
+                "stats": [
+                  {
+                    "type": "minecraft:custom",
+                    "stat": "minecraft:sneak_time",
+                    "value": {"min": 6000}
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [["sneak"]]
+}

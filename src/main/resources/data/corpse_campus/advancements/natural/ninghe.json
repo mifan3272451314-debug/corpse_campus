@@ -1,0 +1,44 @@
+{
+  "parent": "corpse_campus:sequence/rizhao",
+  "display": {
+    "icon": {
+      "item": "minecraft:bone_meal"
+    },
+    "title": {
+      "text": "宁禾·自然觉醒"
+    },
+    "description": {
+      "text": "使用 100 次骨粉，自然觉醒日兆·宁禾。"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": false,
+    "hidden": true
+  },
+  "criteria": {
+    "bonemeal": {
+      "trigger": "minecraft:tick",
+      "conditions": {
+        "player": [
+          {
+            "condition": "minecraft:entity_properties",
+            "entity": "this",
+            "predicate": {
+              "type_specific": {
+                "type": "minecraft:player",
+                "stats": [
+                  {
+                    "type": "minecraft:used",
+                    "stat": "minecraft:bone_meal",
+                    "value": {"min": 100}
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [["bonemeal"]]
+}

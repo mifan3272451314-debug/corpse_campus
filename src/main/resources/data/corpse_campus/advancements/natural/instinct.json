@@ -1,0 +1,44 @@
+{
+  "parent": "corpse_campus:sequence/dongyue",
+  "display": {
+    "icon": {
+      "item": "minecraft:leather_chestplate"
+    },
+    "title": {
+      "text": "本能·自然觉醒"
+    },
+    "description": {
+      "text": "累计承受 200 点伤害，自然觉醒东岳·本能。"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": false,
+    "hidden": true
+  },
+  "criteria": {
+    "damage_taken": {
+      "trigger": "minecraft:tick",
+      "conditions": {
+        "player": [
+          {
+            "condition": "minecraft:entity_properties",
+            "entity": "this",
+            "predicate": {
+              "type_specific": {
+                "type": "minecraft:player",
+                "stats": [
+                  {
+                    "type": "minecraft:custom",
+                    "stat": "minecraft:damage_taken",
+                    "value": {"min": 2000}
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [["damage_taken"]]
+}

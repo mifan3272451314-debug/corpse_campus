@@ -1,0 +1,44 @@
+{
+  "parent": "corpse_campus:sequence/shengqi",
+  "display": {
+    "icon": {
+      "item": "minecraft:crafting_table"
+    },
+    "title": {
+      "text": "合成·自然觉醒"
+    },
+    "description": {
+      "text": "与工作台交互一次，自然觉醒条件『配方合成』（嗅觉/亲和/岱岳/支配/愈合/药师，由觉醒事件细分落点）。"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": false,
+    "hidden": true
+  },
+  "criteria": {
+    "craft": {
+      "trigger": "minecraft:tick",
+      "conditions": {
+        "player": [
+          {
+            "condition": "minecraft:entity_properties",
+            "entity": "this",
+            "predicate": {
+              "type_specific": {
+                "type": "minecraft:player",
+                "stats": [
+                  {
+                    "type": "minecraft:custom",
+                    "stat": "minecraft:interact_with_crafting_table",
+                    "value": {"min": 1}
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [["craft"]]
+}

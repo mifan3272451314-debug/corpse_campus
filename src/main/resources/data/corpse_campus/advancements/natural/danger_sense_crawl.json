@@ -1,0 +1,24 @@
+{
+  "parent": "corpse_campus:sequence/xujing",
+  "display": {
+    "icon": {
+      "item": "minecraft:chainmail_helmet"
+    },
+    "title": {
+      "text": "危机·爬行觉醒"
+    },
+    "description": {
+      "text": "连续爬行 120 秒，自然觉醒虚境·危机（由觉醒事件触发）。"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": false,
+    "hidden": true
+  },
+  "criteria": {
+    "crawl": {
+      "trigger": "minecraft:impossible"
+    }
+  },
+  "requirements": [["crawl"]]
+}

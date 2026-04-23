@@ -1,0 +1,44 @@
+{
+  "parent": "corpse_campus:sequence/yuzhe",
+  "display": {
+    "icon": {
+      "item": "minecraft:cobweb"
+    },
+    "title": {
+      "text": "磁吸·自然觉醒"
+    },
+    "description": {
+      "text": "累计攀爬 500 厘米，自然觉醒愚者·磁吸。"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": false,
+    "hidden": true
+  },
+  "criteria": {
+    "climb": {
+      "trigger": "minecraft:tick",
+      "conditions": {
+        "player": [
+          {
+            "condition": "minecraft:entity_properties",
+            "entity": "this",
+            "predicate": {
+              "type_specific": {
+                "type": "minecraft:player",
+                "stats": [
+                  {
+                    "type": "minecraft:custom",
+                    "stat": "minecraft:climb_one_cm",
+                    "value": {"min": 500}
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [["climb"]]
+}

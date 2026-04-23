@@ -1,0 +1,24 @@
+{
+  "parent": "corpse_campus:sequence/xujing",
+  "display": {
+    "icon": {
+      "item": "minecraft:compass"
+    },
+    "title": {
+      "text": "副本探索·自然觉醒"
+    },
+    "description": {
+      "text": "完成副本探索（音波/日光/念力/回魂，由副本系统触发）。"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": false,
+    "hidden": true
+  },
+  "criteria": {
+    "dungeon": {
+      "trigger": "minecraft:impossible"
+    }
+  },
+  "requirements": [["dungeon"]]
+}

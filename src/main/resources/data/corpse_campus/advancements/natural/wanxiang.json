@@ -1,0 +1,44 @@
+{
+  "parent": "corpse_campus:sequence/yuzhe",
+  "display": {
+    "icon": {
+      "item": "minecraft:feather"
+    },
+    "title": {
+      "text": "万象·自然觉醒"
+    },
+    "description": {
+      "text": "累计坠落 20000 厘米（200 格），自然觉醒愚者·万象。"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": false,
+    "hidden": true
+  },
+  "criteria": {
+    "fell": {
+      "trigger": "minecraft:tick",
+      "conditions": {
+        "player": [
+          {
+            "condition": "minecraft:entity_properties",
+            "entity": "this",
+            "predicate": {
+              "type_specific": {
+                "type": "minecraft:player",
+                "stats": [
+                  {
+                    "type": "minecraft:custom",
+                    "stat": "minecraft:fall_one_cm",
+                    "value": {"min": 20000}
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [["fell"]]
+}

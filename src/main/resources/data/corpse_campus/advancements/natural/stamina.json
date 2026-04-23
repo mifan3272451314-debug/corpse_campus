@@ -1,0 +1,44 @@
+{
+  "parent": "corpse_campus:sequence/shengqi",
+  "display": {
+    "icon": {
+      "item": "minecraft:iron_pickaxe"
+    },
+    "title": {
+      "text": "耐力·自然觉醒"
+    },
+    "description": {
+      "text": "累计破坏 1000 块石头，自然觉醒圣祈·耐力。"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": false,
+    "hidden": true
+  },
+  "criteria": {
+    "mined": {
+      "trigger": "minecraft:tick",
+      "conditions": {
+        "player": [
+          {
+            "condition": "minecraft:entity_properties",
+            "entity": "this",
+            "predicate": {
+              "type_specific": {
+                "type": "minecraft:player",
+                "stats": [
+                  {
+                    "type": "minecraft:mined",
+                    "stat": "minecraft:stone",
+                    "value": {"min": 1000}
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [["mined"]]
+}

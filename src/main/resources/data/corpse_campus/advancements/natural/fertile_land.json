@@ -1,0 +1,44 @@
+{
+  "parent": "corpse_campus:sequence/rizhao",
+  "display": {
+    "icon": {
+      "item": "minecraft:iron_hoe"
+    },
+    "title": {
+      "text": "沃土·自然觉醒"
+    },
+    "description": {
+      "text": "使用铁锄 75 次，自然觉醒日兆·沃土。"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": false,
+    "hidden": true
+  },
+  "criteria": {
+    "till": {
+      "trigger": "minecraft:tick",
+      "conditions": {
+        "player": [
+          {
+            "condition": "minecraft:entity_properties",
+            "entity": "this",
+            "predicate": {
+              "type_specific": {
+                "type": "minecraft:player",
+                "stats": [
+                  {
+                    "type": "minecraft:used",
+                    "stat": "minecraft:iron_hoe",
+                    "value": {"min": 75}
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [["till"]]
+}

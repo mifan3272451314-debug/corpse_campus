@@ -1,0 +1,44 @@
+{
+  "parent": "corpse_campus:sequence/xujing",
+  "display": {
+    "icon": {
+      "item": "minecraft:oak_sign"
+    },
+    "title": {
+      "text": "印记·自然觉醒"
+    },
+    "description": {
+      "text": "放置 100 块告示牌，自然觉醒虚境·印记。"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": false,
+    "hidden": true
+  },
+  "criteria": {
+    "signs": {
+      "trigger": "minecraft:placed_block",
+      "conditions": {
+        "player": [
+          {
+            "condition": "minecraft:entity_properties",
+            "entity": "this",
+            "predicate": {
+              "type_specific": {
+                "type": "minecraft:player",
+                "stats": [
+                  {
+                    "type": "minecraft:used",
+                    "stat": "minecraft:oak_sign",
+                    "value": {"min": 100}
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [["signs"]]
+}
