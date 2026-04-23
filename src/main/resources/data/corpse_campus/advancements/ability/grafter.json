@@ -1,0 +1,24 @@
+{
+  "parent": "corpse_campus:advance/shengqi",
+  "display": {
+    "icon": {
+      "item": "minecraft:oak_sapling"
+    },
+    "title": {
+      "text": "学会·嫁接师"
+    },
+    "description": {
+      "text": "将 A 级能力『嫁接师』装入异常特性法术书（由学习事件触发）。"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": false,
+    "hidden": true
+  },
+  "criteria": {
+    "learn": {
+      "trigger": "minecraft:impossible"
+    }
+  },
+  "requirements": [["learn"]]
+}

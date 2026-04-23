@@ -1,0 +1,24 @@
+{
+  "parent": "corpse_campus:summit/xujing",
+  "display": {
+    "icon": {
+      "item": "minecraft:clock"
+    },
+    "title": {
+      "text": "学会·回溯之虫"
+    },
+    "description": {
+      "text": "将 S 级能力『回溯之虫』装入异常特性法术书（由学习事件触发）。"
+    },
+    "frame": "challenge",
+    "show_toast": true,
+    "announce_to_chat": false,
+    "hidden": true
+  },
+  "criteria": {
+    "learn": {
+      "trigger": "minecraft:impossible"
+    }
+  },
+  "requirements": [["learn"]]
+}

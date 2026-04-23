@@ -1,0 +1,24 @@
+{
+  "parent": "corpse_campus:summit/rizhao",
+  "display": {
+    "icon": {
+      "item": "minecraft:sunflower"
+    },
+    "title": {
+      "text": "学会·日轮金乌"
+    },
+    "description": {
+      "text": "将 S 级能力『日轮金乌』装入异常特性法术书（由学习事件触发）。"
+    },
+    "frame": "challenge",
+    "show_toast": true,
+    "announce_to_chat": false,
+    "hidden": true
+  },
+  "criteria": {
+    "learn": {
+      "trigger": "minecraft:impossible"
+    }
+  },
+  "requirements": [["learn"]]
+}
