@@ -5,6 +5,7 @@ import com.mifan.client.screen.PlayerStatusScreen;
 import com.mifan.network.ModNetwork;
 import com.mifan.network.serverbound.RequestAdminPanelPacket;
 import com.mifan.registry.ModItems;
+import com.mifan.screeneffect.client.ScreenEffectSettingsScreen;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.item.ItemStack;
@@ -25,6 +26,10 @@ public final class ClientKeyMappings {
             "key.corpse_campus.open_admin_panel",
             GLFW.GLFW_KEY_K,
             CATEGORY);
+    public static final KeyMapping OPEN_SCREEN_EFFECT_SETTINGS = new KeyMapping(
+            "key.corpse_campus.open_screen_effect_settings",
+            GLFW.GLFW_KEY_UNKNOWN,
+            CATEGORY);
 
     private ClientKeyMappings() {
     }
@@ -38,6 +43,7 @@ public final class ClientKeyMappings {
         public static void onRegisterKeyMappings(RegisterKeyMappingsEvent event) {
             event.register(OPEN_PLAYER_STATUS);
             event.register(OPEN_ADMIN_PANEL);
+            event.register(OPEN_SCREEN_EFFECT_SETTINGS);
         }
     }
 
@@ -67,6 +73,12 @@ public final class ClientKeyMappings {
                 if (minecraft.screen == null) {
                     // 服务端会 check op2 后回 OpenAdminPanelPacket 开屏;非 op 收到拒绝消息
                     ModNetwork.CHANNEL.sendToServer(new RequestAdminPanelPacket());
+                }
+            }
+
+            while (OPEN_SCREEN_EFFECT_SETTINGS.consumeClick()) {
+                if (minecraft.screen == null) {
+                    minecraft.setScreen(new ScreenEffectSettingsScreen());
                 }
             }
         }

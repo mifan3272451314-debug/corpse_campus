@@ -122,9 +122,12 @@ public final class ScreenEffectManager {
         float combatAlphaMult = ScreenEffectConfig.COMBAT_ALPHA_MULT.get().floatValue();
         float combatT = CombatStateTracker.combatIntensity(gameTime);
         float combatFactor = 1F - combatT * (1F - combatAlphaMult);
+        float globalAlphaMult = ScreenEffectConfig.ALPHA_MULTIPLIER.get().floatValue();
 
         for (ActiveEffect a : ACTIVE) {
-            float alpha = a.computeAlpha(gameTime, partialTick) * combatFactor;
+            float perSpell = ScreenEffectConfig.getPerSpellAlpha(a.effect.getSpellId().getPath());
+            float alpha = a.computeAlpha(gameTime, partialTick) * combatFactor
+                    * globalAlphaMult * perSpell;
             if (alpha <= 0.001F) {
                 continue;
             }
