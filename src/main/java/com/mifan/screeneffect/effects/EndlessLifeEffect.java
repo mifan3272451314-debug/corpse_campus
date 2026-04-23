@@ -122,6 +122,7 @@ public class EndlessLifeEffect extends SpellScreenEffect {
             g.fill(xTop - 1, h - len, xTop + 1, h, argb(colorBot, baseAlpha));
             if (i % 3 == 1 && len > 20) {
                 int branchY = h - len + 8;
+                int branchLen = 8;
                 g.fill(xTop - branchLen, branchY, xTop + 1, branchY + 1,
                         argb(AMBER, baseAlpha * 0.7F));
             }
