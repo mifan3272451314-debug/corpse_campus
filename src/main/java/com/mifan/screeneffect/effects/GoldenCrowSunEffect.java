@@ -8,17 +8,15 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
 
-/** 日轮金乌："日食冕"风格 — 深色底 + 水平金色扫描线 + 中心负空间日蚀环(RGB 色差) + 金色胶片小点。4s。 */
+/** 日轮金乌：中央发光的太阳 + 太阳上方扇动翅膀的乌鸦（金乌本意）。4s。 */
 public class GoldenCrowSunEffect extends SpellScreenEffect {
 
-    private static final int DARK_VOID = 0x150605;
-    private static final int DEEP_RED = 0x2A0A0A;
     private static final int DIM_GOLD = 0x8F6314;
-    private static final int HOT_GOLD = 0xD4A428;
-    private static final int SILVER = 0xF0EAD2;
-    private static final int CRIMSON = 0xA02020;
-    private static final int GHOST_R = 0xD04040;
-    private static final int GHOST_B = 0xE0C860;
+    private static final int GOLD = 0xFFD040;
+    private static final int HOT_YELLOW = 0xFFE870;
+    private static final int HOT_WHITE = 0xFFF8E6;
+    private static final int RED = 0xE0342C;
+    private static final int BIRD_BLACK = 0x0A0505;
 
     public GoldenCrowSunEffect() {
         super(ResourceLocation.fromNamespaceAndPath("corpse_campus", "golden_crow_sun"),
@@ -66,68 +64,84 @@ public class GoldenCrowSunEffect extends SpellScreenEffect {
         int cx = w / 2;
         int cy = h / 2;
 
-        // 1) 深色底调
+        // 极淡暖色调底
         if (intensity.uiDistortion) {
-            fillFullscreen(g, w, h, argb(DEEP_RED, alpha * 0.18F));
-            fillFullscreen(g, w, h, argb(DARK_VOID, alpha * 0.10F));
+            fillFullscreen(g, w, h, argb(DIM_GOLD, alpha * 0.04F));
         }
 
-        // 2) 水平金色扫描线（从上向下滚）
-        if (intensity.edgeGlow) {
-            int spacing = 18;
-            int offset = (int) ((time * 2.2F) % spacing + spacing) % spacing;
-            for (int y = offset; y < h; y += spacing) {
-                g.fill(0, y, w, y + 1, argb(DIM_GOLD, alpha * 0.15F));
-            }
-            int heavyY = (int) ((time * 1.1F) % h + h) % h;
-            g.fill(0, heavyY, w, heavyY + 2, argb(HOT_GOLD, alpha * 0.45F));
-            g.fill(0, heavyY - 1, w, heavyY, argb(SILVER, alpha * 0.22F));
-        }
-
-        // 3) 中心"日食环" + RGB 色差
+        // ─── 中央太阳 ───
         if (intensity.midground) {
-            int maxR = Math.min(w, h) / 3;
-            int ringOffset = 2 + (int) (Math.sin(time * 0.3D) * 1.5D);
-            drawHollowSquare(g, cx - ringOffset, cy, maxR, 1, argb(GHOST_R, alpha * 0.40F));
-            drawHollowSquare(g, cx + ringOffset, cy, maxR, 1, argb(GHOST_B, alpha * 0.40F));
-            drawHollowSquare(g, cx, cy, maxR, 2, argb(HOT_GOLD, alpha * 0.70F));
-
-            int step = 8;
-            for (int r = maxR - step; r > 0; r -= step) {
-                float t = r / (float) maxR;
-                float aa = alpha * 0.20F * t;
-                int color = (t > 0.6F) ? DIM_GOLD : ((t > 0.35F) ? CRIMSON : DARK_VOID);
-                drawHollowSquare(g, cx, cy, r, 1, argb(color, aa));
-            }
-
-            // 日蚀黑心
-            drawCenterSquare(g, cx, cy, 4, argb(DARK_VOID, alpha * 0.85F));
+            drawGlowingSun(g, cx, cy, time, alpha);
         }
 
-        // 4) 竖向金色胶片小点（自上而下）
-        if (intensity.particles) {
-            int count = Math.max(8, (int) (14 * intensity.particleDensity));
-            for (int i = 0; i < count; i++) {
-                float seed = i * 17.91F;
-                float fx = (float) ((Math.sin(seed * 3.7D) * 0.5D + 0.5D) * w);
-                float fy = (float) ((time * 1.4F + seed * 5F) % (h + 20)) - 10;
-                int px = (int) fx;
-                int py = (int) fy;
-                float aa = alpha * 0.55F;
-                int color = (i % 4 == 0) ? SILVER : HOT_GOLD;
-                g.fill(px, py, px + 1, py + 4, argb(color, aa));
-            }
+        // ─── 太阳上方扇翅的乌鸦 ───
+        if (intensity.midground) {
+            drawFlappingCrow(g, cx, cy - 62, time, alpha);
         }
 
-        // 5) 顶底断续金色印文扫描短条
+        // ─── 边缘暖色维涅特 ───
         if (intensity.edgeGlow) {
-            int segCount = Math.max(10, (int) (18 * intensity.particleDensity));
-            for (int i = 0; i < segCount; i++) {
-                float phase = (time * 0.7F + i * 7.3F) % w;
-                int px = (int) phase;
-                g.fill(px, 4, px + 5, 5, argb(HOT_GOLD, alpha * 0.50F));
-                g.fill(w - px, h - 5, w - px + 5, h - 4, argb(HOT_GOLD, alpha * 0.50F));
-            }
+            fillVignetteVertical(g, w, h, RED, alpha * 0.14F, 70);
         }
+    }
+
+    private static void drawGlowingSun(GuiGraphics g, int cx, int cy, float time, float alpha) {
+        // 呼吸脉动缩放
+        float pulse = 0.90F + 0.10F * (float) Math.sin(time * 0.12D);
+        int coreR = (int) (38 * pulse);
+
+        // 外光晕：4 层同心方形向外柔和扩散
+        int haloMax = coreR + 40;
+        for (int r = haloMax; r > coreR; r -= 5) {
+            float t = (r - coreR) / 40F;
+            float aa = alpha * (1F - t) * (1F - t) * 0.22F;
+            drawCenterSquare(g, cx, cy, r, argb(GOLD, aa));
+        }
+
+        // 太阳本体：外到内 暗金 -> 金 -> 亮黄 -> 炽白
+        for (int r = coreR; r > 0; r -= 3) {
+            float t = r / (float) coreR;
+            int color;
+            if (t > 0.70F) color = DIM_GOLD;
+            else if (t > 0.42F) color = GOLD;
+            else if (t > 0.20F) color = HOT_YELLOW;
+            else color = HOT_WHITE;
+            float aa = alpha * (0.35F + 0.65F * (1F - t)) * 0.88F;
+            drawCenterSquare(g, cx, cy, r, argb(color, aa));
+        }
+    }
+
+    private static void drawFlappingCrow(GuiGraphics g, int cx, int cy, float time, float alpha) {
+        // 扇翅频率：sin phase -1~+1
+        float phase = (float) Math.sin(time * 0.65D);
+
+        // 身体：4x5 椭圆近似
+        g.fill(cx - 2, cy, cx + 2, cy + 5, argb(BIRD_BLACK, alpha * 0.95F));
+        // 头部：上方一个 2x2 小点
+        g.fill(cx - 1, cy - 2, cx + 1, cy, argb(BIRD_BLACK, alpha * 0.95F));
+        // 嘴喙：头顶尖一点 1x1
+        g.fill(cx, cy - 3, cx + 1, cy - 2, argb(DIM_GOLD, alpha * 0.90F));
+
+        // 翅膀：每侧 3 节,距离身体越远摆动幅度越大
+        int wingNodes = 3;
+        for (int i = 1; i <= wingNodes; i++) {
+            int dy = (int) (-phase * i * 2.5F);  // 负号:phase=+1 时翅膀上举
+            // 左翅
+            int lx = cx - 2 - i * 2;
+            int ly = cy + 1 + dy;
+            g.fill(lx - 1, ly, lx + 1, ly + 2, argb(BIRD_BLACK, alpha * 0.90F));
+            // 右翅
+            int rx = cx + 2 + i * 2;
+            int ry = cy + 1 + dy;
+            g.fill(rx - 1, ry, rx + 1, ry + 2, argb(BIRD_BLACK, alpha * 0.90F));
+        }
+
+        // 翅尖：最外节再加一小羽尾
+        int tipOffset = (int) (-phase * (wingNodes + 1) * 2.5F);
+        int ltipX = cx - 2 - (wingNodes + 1) * 2;
+        int rtipX = cx + 2 + (wingNodes + 1) * 2;
+        int tipY = cy + 1 + tipOffset;
+        g.fill(ltipX, tipY, ltipX + 1, tipY + 1, argb(BIRD_BLACK, alpha * 0.75F));
+        g.fill(rtipX, tipY, rtipX + 1, tipY + 1, argb(BIRD_BLACK, alpha * 0.75F));
     }
 }
