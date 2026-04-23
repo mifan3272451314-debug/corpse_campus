@@ -5,10 +5,10 @@
       "item": "minecraft:dragon_head"
     },
     "title": {
-      "text": "学会·万权一手"
+      "text": "学会·诡秘侍者"
     },
     "description": {
-      "text": "将 S 级能力『万权一手』装入异常特性法术书（由学习事件触发）。"
+      "text": "将 S 级能力『诡秘侍者』装入异常特性法术书（由学习事件触发）。"
     },
     "frame": "challenge",
     "show_toast": true,

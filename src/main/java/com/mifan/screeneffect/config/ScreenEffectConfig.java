@@ -20,7 +20,6 @@ public final class ScreenEffectConfig {
     public static final ForgeConfigSpec.DoubleValue ALPHA_ENDLESS_LIFE;
     public static final ForgeConfigSpec.DoubleValue ALPHA_GOLDEN_CROW_SUN;
     public static final ForgeConfigSpec.DoubleValue ALPHA_GREAT_NECROMANCER;
-    public static final ForgeConfigSpec.DoubleValue ALPHA_AUTHORITY_GRASP;
     public static final ForgeConfigSpec.DoubleValue ALPHA_REWIND_WORM;
 
     public static final ForgeConfigSpec SPEC;
@@ -54,7 +53,6 @@ public final class ScreenEffectConfig {
         ALPHA_ENDLESS_LIFE = BUILDER.defineInRange("endless_life", 1.0D, 0.0D, 1.0D);
         ALPHA_GOLDEN_CROW_SUN = BUILDER.defineInRange("golden_crow_sun", 1.0D, 0.0D, 1.0D);
         ALPHA_GREAT_NECROMANCER = BUILDER.defineInRange("great_necromancer", 1.0D, 0.0D, 1.0D);
-        ALPHA_AUTHORITY_GRASP = BUILDER.defineInRange("authority_grasp", 1.0D, 0.0D, 1.0D);
         ALPHA_REWIND_WORM = BUILDER.defineInRange("rewind_worm", 1.0D, 0.0D, 1.0D);
         BUILDER.pop();
 
@@ -72,7 +70,6 @@ public final class ScreenEffectConfig {
             case "endless_life" -> ALPHA_ENDLESS_LIFE.get().floatValue();
             case "golden_crow_sun" -> ALPHA_GOLDEN_CROW_SUN.get().floatValue();
             case "great_necromancer" -> ALPHA_GREAT_NECROMANCER.get().floatValue();
-            case "authority_grasp" -> ALPHA_AUTHORITY_GRASP.get().floatValue();
             case "rewind_worm" -> ALPHA_REWIND_WORM.get().floatValue();
             default -> 1.0F;
         };

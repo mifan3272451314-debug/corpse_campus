@@ -47,9 +47,6 @@ public class ScreenEffectSettingsScreen extends Screen {
         addSlider(sliderX, y, Component.translatable("spell.corpse_campus.great_necromancer"),
                 ScreenEffectConfig.ALPHA_GREAT_NECROMANCER);
         y += ROW_GAP;
-        addSlider(sliderX, y, Component.translatable("spell.corpse_campus.authority_grasp"),
-                ScreenEffectConfig.ALPHA_AUTHORITY_GRASP);
-        y += ROW_GAP;
         addSlider(sliderX, y, Component.translatable("spell.corpse_campus.rewind_worm"),
                 ScreenEffectConfig.ALPHA_REWIND_WORM);
         y += ROW_GAP + 8;

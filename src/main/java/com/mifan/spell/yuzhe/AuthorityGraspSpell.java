@@ -1,6 +1,6 @@
 package com.mifan.spell.yuzhe;
 
-import com.mifan.registry.ModMobEffects;
+import com.mifan.entity.SpiritWormEntity;
 import com.mifan.registry.ModSchools;
 import com.mifan.spell.AbilityRuntime;
 import io.redspace.ironsspellbooks.api.config.DefaultConfig;
@@ -11,21 +11,24 @@ import io.redspace.ironsspellbooks.api.spells.CastSource;
 import io.redspace.ironsspellbooks.api.spells.CastType;
 import io.redspace.ironsspellbooks.api.spells.SchoolType;
 import io.redspace.ironsspellbooks.api.spells.SpellRarity;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
-import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * 注册 ID {@code authority_grasp}（历史沿用），功能为"诡秘侍者":
+ * 消耗 50 法力，在身前召唤一只不死的灵之虫；灵之虫追踪 30 格内的其他玩家并在触碰时消失，
+ * 将被触碰玩家的最高非 S 级异能法术写入施法者的法术书。无冷却。
+ */
 @AutoSpellConfig
 public class AuthorityGraspSpell extends AbstractSpell {
     private final ResourceLocation spellId = ResourceLocation.fromNamespaceAndPath("corpse_campus", "authority_grasp");
@@ -33,7 +36,7 @@ public class AuthorityGraspSpell extends AbstractSpell {
             .setMinRarity(SpellRarity.LEGENDARY)
             .setSchoolResource(ModSchools.YUZHE_RESOURCE)
             .setMaxLevel(1)
-            .setCooldownSeconds(AbilityRuntime.AUTHORITY_GRASP_COOLDOWN_SECONDS)
+            .setCooldownSeconds(0.0D)
             .build();
 
     public AuthorityGraspSpell() {
@@ -41,22 +44,20 @@ public class AuthorityGraspSpell extends AbstractSpell {
         this.baseSpellPower = 0;
         this.spellPowerPerLevel = 0;
         this.castTime = 0;
-        this.baseManaCost = 0;
+        this.baseManaCost = AbilityRuntime.MYSTIC_ATTENDANT_MANA_COST;
     }
 
     @Override
     public List<MutableComponent> getUniqueInfo(int spellLevel, LivingEntity caster) {
-        int durationSeconds = AbilityRuntime.AUTHORITY_GRASP_DURATION_TICKS / 20;
+        int durationMinutes = AbilityRuntime.SPIRIT_WORM_DURATION_TICKS / (20 * 60);
         return List.of(
-                Component.translatable("tooltip.corpse_campus.authority_grasp_duration", durationSeconds / 60),
-                Component.translatable("tooltip.corpse_campus.authority_grasp_drain"),
-                Component.translatable("tooltip.corpse_campus.authority_grasp_touch",
-                        (int) (AbilityRuntime.AUTHORITY_GRASP_PROXIMITY_RANGE * 10) / 10.0D),
-                Component.translatable("tooltip.corpse_campus.authority_grasp_hurt_summon",
-                        AbilityRuntime.AUTHORITY_GRASP_MAX_SUMMONS),
-                Component.translatable("tooltip.corpse_campus.authority_grasp_cost_all_mana"),
-                Component.translatable("tooltip.corpse_campus.authority_grasp_cooldown",
-                        AbilityRuntime.AUTHORITY_GRASP_COOLDOWN_SECONDS / 60));
+                Component.translatable("tooltip.corpse_campus.mystic_attendant_summon",
+                        (int) AbilityRuntime.SPIRIT_WORM_SEARCH_RADIUS, durationMinutes),
+                Component.translatable("tooltip.corpse_campus.mystic_attendant_copy"),
+                Component.translatable("tooltip.corpse_campus.mystic_attendant_devour"),
+                Component.translatable("tooltip.corpse_campus.mystic_attendant_cost",
+                        AbilityRuntime.MYSTIC_ATTENDANT_MANA_COST),
+                Component.translatable("tooltip.corpse_campus.mystic_attendant_no_cooldown"));
     }
 
     @Override
@@ -76,51 +77,22 @@ public class AuthorityGraspSpell extends AbstractSpell {
 
     @Override
     public Optional<SoundEvent> getCastStartSound() {
-        return Optional.of(SoundEvents.WARDEN_EMERGE);
+        return Optional.of(SoundEvents.SOUL_ESCAPE);
     }
 
     @Override
     public Optional<SoundEvent> getCastFinishSound() {
-        return Optional.of(SoundEvents.WARDEN_SONIC_BOOM);
-    }
-
-    @Override
-    public void onClientCast(Level level, int spellLevel, LivingEntity entity,
-            io.redspace.ironsspellbooks.api.spells.ICastData castData) {
-        com.mifan.screeneffect.client.ScreenEffectClientHook.triggerIfLocalPlayer(entity, spellId);
-        super.onClientCast(level, spellLevel, entity, castData);
+        return Optional.of(SoundEvents.ENDERMAN_AMBIENT);
     }
 
     @Override
     public void onCast(Level level, int spellLevel, LivingEntity entity, CastSource castSource,
             MagicData playerMagicData) {
-        if (!level.isClientSide) {
-            long gameTime = level.getGameTime();
-            long expireTick = gameTime + AbilityRuntime.AUTHORITY_GRASP_DURATION_TICKS;
-
-            entity.addEffect(new MobEffectInstance(
-                    ModMobEffects.AUTHORITY_GRASP_CASTER.get(),
-                    AbilityRuntime.AUTHORITY_GRASP_DURATION_TICKS,
-                    0,
-                    false,
-                    false,
-                    true));
-
-            CompoundTag data = entity.getPersistentData();
-            data.putLong(AbilityRuntime.TAG_AUTHORITY_GRASP_EXPIRE_TICK, expireTick);
-            data.putInt(AbilityRuntime.TAG_AUTHORITY_GRASP_SUMMON_COUNT, 0);
-
-            if (playerMagicData != null) {
-                playerMagicData.setMana(0.0F);
-            }
-
-            level.playSound(null, entity.blockPosition(), SoundEvents.WARDEN_ROAR, SoundSource.PLAYERS, 1.0F, 0.7F);
-
-            if (entity instanceof Player player) {
-                player.displayClientMessage(
-                        Component.translatable("message.corpse_campus.authority_grasp_on"),
-                        true);
-            }
+        if (level instanceof ServerLevel serverLevel) {
+            SpiritWormEntity worm = new SpiritWormEntity(serverLevel, entity);
+            serverLevel.addFreshEntity(worm);
+            serverLevel.playSound(null, entity.blockPosition(), SoundEvents.SOUL_ESCAPE,
+                    SoundSource.PLAYERS, 1.0F, 0.9F);
         }
         super.onCast(level, spellLevel, entity, castSource, playerMagicData);
     }

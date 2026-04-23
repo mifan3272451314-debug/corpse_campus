@@ -2,6 +2,7 @@ package com.mifan.registry;
 
 import com.mifan.corpsecampus;
 import com.mifan.entity.GoldenCrowSunEntity;
+import com.mifan.entity.SpiritWormEntity;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
@@ -22,6 +23,15 @@ public final class ModEntities {
                     .updateInterval(1)
                     .fireImmune()
                     .build(ResourceLocation.fromNamespaceAndPath(corpsecampus.MODID, "golden_crow_sun").toString()));
+
+    public static final RegistryObject<EntityType<SpiritWormEntity>> SPIRIT_WORM = ENTITIES.register(
+            "spirit_worm",
+            () -> EntityType.Builder.<SpiritWormEntity>of(SpiritWormEntity::new, MobCategory.MISC)
+                    .sized(0.4F, 0.3F)
+                    .clientTrackingRange(10)
+                    .updateInterval(3)
+                    .fireImmune()
+                    .build(ResourceLocation.fromNamespaceAndPath(corpsecampus.MODID, "spirit_worm").toString()));
 
     private ModEntities() {
     }

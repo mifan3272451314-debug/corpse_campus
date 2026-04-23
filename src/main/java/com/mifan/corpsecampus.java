@@ -256,6 +256,18 @@ public class corpsecampus {
                 net.minecraftforge.client.event.EntityRenderersEvent.RegisterRenderers event) {
             event.registerEntityRenderer(ModEntities.GOLDEN_CROW_SUN.get(),
                     com.mifan.client.renderer.GoldenCrowSunRenderer::new);
+            event.registerEntityRenderer(ModEntities.SPIRIT_WORM.get(),
+                    com.mifan.client.renderer.SpiritWormRenderer::new);
+        }
+    }
+
+    @Mod.EventBusSubscriber(modid = MODID, bus = Mod.EventBusSubscriber.Bus.MOD)
+    public static class CommonModEvents {
+        @SubscribeEvent
+        public static void onEntityAttributeCreation(
+                net.minecraftforge.event.entity.EntityAttributeCreationEvent event) {
+            event.put(ModEntities.SPIRIT_WORM.get(),
+                    com.mifan.entity.SpiritWormEntity.createAttributes().build());
         }
     }
 }

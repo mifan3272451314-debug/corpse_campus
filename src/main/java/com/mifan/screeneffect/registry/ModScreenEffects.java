@@ -1,7 +1,6 @@
 package com.mifan.screeneffect.registry;
 
 import com.mifan.screeneffect.api.SpellScreenEffect;
-import com.mifan.screeneffect.effects.AuthorityGraspEffect;
 import com.mifan.screeneffect.effects.EndlessLifeEffect;
 import com.mifan.screeneffect.effects.GoldenCrowSunEffect;
 import com.mifan.screeneffect.effects.GreatNecromancerEffect;
@@ -18,7 +17,6 @@ public final class ModScreenEffects {
     public static final EndlessLifeEffect ENDLESS_LIFE = register(new EndlessLifeEffect());
     public static final GoldenCrowSunEffect GOLDEN_CROW_SUN = register(new GoldenCrowSunEffect());
     public static final GreatNecromancerEffect GREAT_NECROMANCER = register(new GreatNecromancerEffect());
-    public static final AuthorityGraspEffect AUTHORITY_GRASP = register(new AuthorityGraspEffect());
     public static final RewindWormEffect REWIND_WORM = register(new RewindWormEffect());
 
     private ModScreenEffects() {

@@ -1633,7 +1633,7 @@ public final class AnomalyBookService {
         register(map, "magnetic_cling", "磁吸", AnomalySpellRank.B, ModSchools.YUZHE_RESOURCE);
         register(map, "life_thief", "盗命客", AnomalySpellRank.A, ModSchools.YUZHE_RESOURCE);
         register(map, "mimic", "模仿者", AnomalySpellRank.A, ModSchools.YUZHE_RESOURCE);
-        register(map, "authority_grasp", "万权一手", AnomalySpellRank.S, ModSchools.YUZHE_RESOURCE);
+        register(map, "authority_grasp", "诡秘侍者", AnomalySpellRank.S, ModSchools.YUZHE_RESOURCE);
 
         register(map, "huihun", "回魂", AnomalySpellRank.B, ModSchools.SHENGQI_RESOURCE);
         register(map, "healing", "愈合", AnomalySpellRank.B, ModSchools.SHENGQI_RESOURCE);

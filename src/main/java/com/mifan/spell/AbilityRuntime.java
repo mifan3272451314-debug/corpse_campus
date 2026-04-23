@@ -175,14 +175,11 @@ public final class AbilityRuntime {
     public static final float NECROMANCER_TYPE_DEFENSE_KB_RES = 0.6F;
     public static final float NECROMANCER_TYPE_HEALTH_MULT = 2.5F;
 
-    public static final String TAG_AUTHORITY_GRASP_EXPIRE_TICK = "corpse_campus_authority_grasp_expire";
-    public static final String TAG_AUTHORITY_GRASP_SUMMON_COUNT = "corpse_campus_authority_grasp_summon_count";
-    public static final String TAG_AUTHORITY_GRASP_DRAINED_EXPIRE = "corpse_campus_authority_grasp_drained_expire";
-    public static final int AUTHORITY_GRASP_DURATION_TICKS = 20 * 60 * 5;
-    public static final int AUTHORITY_GRASP_COOLDOWN_SECONDS = 60 * 60;
-    public static final int AUTHORITY_GRASP_MAX_SUMMONS = 5;
-    public static final double AUTHORITY_GRASP_PROXIMITY_RANGE = 1.5D;
-    public static final int AUTHORITY_GRASP_SLOW_AMPLIFIER = 1;
+    // 诡秘侍者（法术注册 ID 仍为 authority_grasp，保持兼容）
+    public static final int SPIRIT_WORM_DURATION_TICKS = 20 * 60 * 10;
+    public static final double SPIRIT_WORM_SEARCH_RADIUS = 30.0D;
+    public static final double SPIRIT_WORM_SPEED = 0.25D;
+    public static final int MYSTIC_ATTENDANT_MANA_COST = 50;
 
     public static final String TAG_FERRYMAN_TARGET = "corpse_campus_ferryman_target";
     public static final String TAG_FERRYMAN_LEVEL = "corpse_campus_ferryman_level";

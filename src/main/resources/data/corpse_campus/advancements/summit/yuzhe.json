@@ -3,7 +3,7 @@
   "display": {
     "icon": { "item": "corpse_campus:trait_yuzhe_s" },
     "title": { "text": "愚者·登顶" },
-    "description": { "text": "异常法术书 AnomalyHighestRank 字段达到 S（愚者·万权一手）。" },
+    "description": { "text": "异常法术书 AnomalyHighestRank 字段达到 S（愚者·诡秘侍者）。" },
     "frame": "goal",
     "show_toast": true,
     "announce_to_chat": false,
