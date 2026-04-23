@@ -203,6 +203,21 @@ public final class MidasBombRuntime {
         return true;
     }
 
+    public static void clearBombsOwnedBy(UUID owner) {
+        if (owner == null) {
+            return;
+        }
+        Iterator<Map.Entry<Level, Map<BlockPos, ArmedBlockBomb>>> levelIt = BLOCK_BOMBS.entrySet().iterator();
+        while (levelIt.hasNext()) {
+            Map.Entry<Level, Map<BlockPos, ArmedBlockBomb>> levelEntry = levelIt.next();
+            Map<BlockPos, ArmedBlockBomb> levelBombs = levelEntry.getValue();
+            levelBombs.values().removeIf(bomb -> owner.equals(bomb.owner));
+            if (levelBombs.isEmpty()) {
+                levelIt.remove();
+            }
+        }
+    }
+
     private static void armItemStack(ItemStack stack, UUID owner, int spellLevel, int seconds, int powerLevel,
             long endGameTime) {
         CompoundTag tag = stack.getOrCreateTag();

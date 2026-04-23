@@ -39,6 +39,7 @@ import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.RenderGuiOverlayEvent;
 import net.minecraftforge.client.event.RenderLevelStageEvent;
 import net.minecraftforge.client.event.ViewportEvent;
+import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
 import net.minecraftforge.event.PlayLevelSoundEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -405,6 +406,11 @@ public final class AbilityClientHandler {
         com.mifan.screeneffect.manager.CombatStateTracker.tick(player, gameTime);
         com.mifan.screeneffect.manager.ScreenEffectManager.tick(player, gameTime);
         cleanupExpired(gameTime);
+    }
+
+    @SubscribeEvent
+    public static void onClientLoggingOut(ClientPlayerNetworkEvent.LoggingOut event) {
+        clearClientMarks();
     }
 
     @SubscribeEvent

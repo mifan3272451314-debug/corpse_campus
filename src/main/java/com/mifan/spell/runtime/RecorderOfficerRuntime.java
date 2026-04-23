@@ -135,4 +135,28 @@ public final class RecorderOfficerRuntime {
                 AbilityRuntime.TAG_RECORDER_OFFICER_DIMENSION,
                 AbilityRuntime.TAG_RECORDER_OFFICER_CASTER);
     }
+
+    public static void clearArmedByCaster(ServerPlayer caster) {
+        if (caster == null || caster.getServer() == null) {
+            return;
+        }
+        java.util.UUID casterId = caster.getUUID();
+        for (ServerLevel level : caster.getServer().getAllLevels()) {
+            for (net.minecraft.world.entity.Entity entity : level.getAllEntities()) {
+                if (!(entity instanceof LivingEntity living)) {
+                    continue;
+                }
+                CompoundTag data = living.getPersistentData();
+                if (!data.getBoolean(AbilityRuntime.TAG_RECORDER_OFFICER_ARMED)) {
+                    continue;
+                }
+                if (!data.hasUUID(AbilityRuntime.TAG_RECORDER_OFFICER_CASTER)) {
+                    continue;
+                }
+                if (casterId.equals(data.getUUID(AbilityRuntime.TAG_RECORDER_OFFICER_CASTER))) {
+                    clear(data);
+                }
+            }
+        }
+    }
 }

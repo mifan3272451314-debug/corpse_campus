@@ -38,13 +38,13 @@ public final class ModMobEffects {
             () -> new AbilityMarkerEffect(0x7CA76E));
 
     public static final RegistryObject<MobEffect> MANIA = MOB_EFFECTS.register("mania",
-            () -> new AbilityMarkerEffect(0xB13B3B));
+            () -> new AbilityMarkerEffect(MobEffectCategory.NEUTRAL, 0xB13B3B));
 
     public static final RegistryObject<MobEffect> NECROTIC_REBIRTH_ARMED = MOB_EFFECTS.register("necrotic_rebirth_armed",
             () -> new AbilityMarkerEffect(0x4F5B44));
 
     public static final RegistryObject<MobEffect> NECROTIC_UNDEAD = MOB_EFFECTS.register("necrotic_undead",
-            () -> new AbilityMarkerEffect(0x6B8A5A));
+            () -> new AbilityMarkerEffect(MobEffectCategory.NEUTRAL, 0x6B8A5A));
 
     public static final RegistryObject<MobEffect> LIFE_THIEF = MOB_EFFECTS.register("life_thief",
             () -> new AbilityMarkerEffect(0x6C2A8A));
@@ -56,7 +56,7 @@ public final class ModMobEffects {
             () -> new AbilityMarkerEffect(0x3D7A5A));
 
     public static final RegistryObject<MobEffect> IMPERMANENCE_MONK_INFECTED = MOB_EFFECTS.register("impermanence_monk_infected",
-            () -> new AbilityMarkerEffect(0x2E5E3A));
+            () -> new AbilityMarkerEffect(MobEffectCategory.HARMFUL, 0x2E5E3A));
 
     public static final RegistryObject<MobEffect> NINGHE = MOB_EFFECTS.register("ninghe",
             () -> new AbilityMarkerEffect(0xDFC36A));
@@ -83,6 +83,10 @@ public final class ModMobEffects {
     private static final class AbilityMarkerEffect extends MobEffect {
         private AbilityMarkerEffect(int color) {
             super(MobEffectCategory.BENEFICIAL, color);
+        }
+
+        private AbilityMarkerEffect(MobEffectCategory category, int color) {
+            super(category, color);
         }
 
         @Override

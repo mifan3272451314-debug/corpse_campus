@@ -319,6 +319,8 @@ public final class AbilityEventHandler {
             cleanupElementalDomain(player);
             AbilityRuntime.releaseDominance(player);
             com.mifan.spell.runtime.NecromancerRuntime.discardSession(player);
+            com.mifan.spell.MidasBombRuntime.clearBombsOwnedBy(player.getUUID());
+            com.mifan.spell.runtime.RecorderOfficerRuntime.clearArmedByCaster(player);
         }
     }
 
