@@ -1,6 +1,5 @@
 package com.mifan.spell.runtime;
 
-import com.mifan.spell.AbilityRuntime;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
@@ -9,6 +8,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.ClipContext;
@@ -17,94 +17,100 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 
+import java.util.Comparator;
+
 public final class WanxiangRuntime {
-    private static final double[] POSITION_OFFSETS = { 0.0D, 0.25D, -0.25D, 0.5D, -0.5D, 0.8D, -0.8D, 1.1D, -1.1D };
-    private static final int BLINK_VERTICAL_SEARCH = 6;
-    private static final int SWAP_VERTICAL_SEARCH = 4;
-    private static final double BLINK_BACKSTEP = 0.35D;
-    private static final double MIN_BLINK_DISTANCE = 1.5D;
+    private static final int BLINK_VERTICAL_SEARCH = 24;
+    private static final int BLINK_HORIZONTAL_SEARCH = 6;
+    private static final double BOX_DEFLATE_EPSILON = 0.02D;
 
     private WanxiangRuntime() {
     }
 
     public static int getBlinkRange(int spellLevel) {
-        return 6 + spellLevel;
+        return 32 + spellLevel * 6;
     }
 
     public static int getSwapRange(int spellLevel) {
-        return 8 + spellLevel * 2;
+        return 64 + spellLevel * 12;
     }
 
-    public static void cast(ServerLevel level, LivingEntity caster, int spellLevel) {
-        if (caster.isCrouching()) {
-            swapWithTarget(level, caster, spellLevel);
-        } else {
-            blinkForward(level, caster, spellLevel);
+    public static boolean cast(ServerLevel level, LivingEntity caster, int spellLevel) {
+        if (!caster.isAlive()) {
+            return false;
         }
+        if (caster.isCrouching()) {
+            return swapWithTarget(level, caster, spellLevel);
+        }
+        return blinkForward(level, caster, spellLevel);
     }
 
-    private static void blinkForward(ServerLevel level, LivingEntity caster, int spellLevel) {
-        Vec3 direction = getHorizontalLook(caster);
+    private static boolean blinkForward(ServerLevel level, LivingEntity caster, int spellLevel) {
         Vec3 eyePosition = caster.getEyePosition();
+        Vec3 lookDirection = caster.getLookAngle();
+        if (lookDirection.lengthSqr() < 1.0E-6D) {
+            lookDirection = new Vec3(0.0D, 0.0D, 1.0D);
+        } else {
+            lookDirection = lookDirection.normalize();
+        }
         double maxRange = getBlinkRange(spellLevel);
 
         BlockHitResult hitResult = level.clip(new ClipContext(
                 eyePosition,
-                eyePosition.add(direction.scale(maxRange)),
+                eyePosition.add(lookDirection.scale(maxRange)),
                 ClipContext.Block.COLLIDER,
                 ClipContext.Fluid.NONE,
                 caster));
 
-        double travelDistance = hitResult.getType() == HitResult.Type.BLOCK
-                ? Math.max(MIN_BLINK_DISTANCE, eyePosition.distanceTo(hitResult.getLocation()) - 0.75D)
-                : maxRange;
-
-        Vec3 start = caster.position();
-        Vec3 safeDestination = findBlinkDestination(level, caster, start, direction, travelDistance);
-
-        if (safeDestination == null) {
-            showActionBar(caster, "message.corpse_campus.wanxiang_no_space");
-            playFailSound(level, caster, 0.7F);
-            return;
+        Vec3 rayEnd;
+        if (hitResult.getType() == HitResult.Type.BLOCK) {
+            Vec3 hitLoc = hitResult.getLocation();
+            double distToHit = Math.max(0.5D, eyePosition.distanceTo(hitLoc) - 0.55D);
+            rayEnd = eyePosition.add(lookDirection.scale(distToHit));
+        } else {
+            rayEnd = eyePosition.add(lookDirection.scale(maxRange));
         }
 
-        teleportEntity(caster, level, safeDestination, caster.getYRot(), caster.getXRot());
-        spawnTeleportParticles(level, start, safeDestination);
+        Vec3 start = caster.position();
+        double eyeOffsetY = eyePosition.y - start.y;
+        Vec3 desiredFeet = new Vec3(rayEnd.x, clampY(level, rayEnd.y - eyeOffsetY), rayEnd.z);
+
+        Vec3 destination = findAnySafePosition(level, caster, desiredFeet);
+        if (destination == null) {
+            destination = new Vec3(desiredFeet.x, clampY(level, desiredFeet.y), desiredFeet.z);
+        }
+
+        teleportAnyEntity(caster, level, destination, caster.getYRot(), caster.getXRot());
+        spawnTeleportParticles(level, start, destination);
         level.playSound(null, BlockPos.containing(start), SoundEvents.ENDERMAN_TELEPORT, SoundSource.PLAYERS,
                 0.45F, 1.15F);
         level.playSound(null, caster.blockPosition(), SoundEvents.CHORUS_FRUIT_TELEPORT, SoundSource.PLAYERS,
                 0.45F, 1.05F);
+        return true;
     }
 
-    private static void swapWithTarget(ServerLevel level, LivingEntity caster, int spellLevel) {
-        LivingEntity target = AbilityRuntime.findTargetInSight(caster, getSwapRange(spellLevel), 0.84D);
+    private static boolean swapWithTarget(ServerLevel level, LivingEntity caster, int spellLevel) {
+        double range = getSwapRange(spellLevel);
+        Entity target = findAnyEntityInSight(caster, range);
         if (target == null) {
             showActionBar(caster, "message.corpse_campus.wanxiang_no_target");
             playFailSound(level, caster, 0.8F);
-            return;
+            return false;
         }
 
         Vec3 casterOrigin = caster.position();
         Vec3 targetOrigin = target.position();
-        Vec3 casterDestination = findSafePosition(level, caster, targetOrigin, SWAP_VERTICAL_SEARCH);
-        Vec3 targetDestination = findSafePosition(level, target, casterOrigin, SWAP_VERTICAL_SEARCH);
-
-        if (casterDestination == null || targetDestination == null) {
-            showActionBar(caster, "message.corpse_campus.wanxiang_swap_blocked");
-            playFailSound(level, caster, 0.65F);
-            return;
-        }
 
         float casterYRot = caster.getYRot();
         float casterXRot = caster.getXRot();
         float targetYRot = target.getYRot();
         float targetXRot = target.getXRot();
 
-        teleportEntity(target, level, targetDestination, targetYRot, targetXRot);
-        teleportEntity(caster, level, casterDestination, casterYRot, casterXRot);
+        teleportAnyEntity(target, level, casterOrigin, targetYRot, targetXRot);
+        teleportAnyEntity(caster, level, targetOrigin, casterYRot, casterXRot);
 
-        spawnTeleportParticles(level, casterOrigin, casterDestination);
-        spawnTeleportParticles(level, targetOrigin, targetDestination);
+        spawnTeleportParticles(level, casterOrigin, targetOrigin);
+        spawnTeleportParticles(level, targetOrigin, casterOrigin);
 
         level.playSound(null, BlockPos.containing(casterOrigin), SoundEvents.ENDERMAN_TELEPORT, SoundSource.PLAYERS,
                 0.45F, 0.95F);
@@ -116,75 +122,83 @@ public final class WanxiangRuntime {
                     Component.translatable("message.corpse_campus.wanxiang_swapped", target.getDisplayName()),
                     true);
         }
+        return true;
     }
 
-    private static Vec3 findBlinkDestination(ServerLevel level, LivingEntity caster, Vec3 start, Vec3 direction,
-            double desiredDistance) {
-        double distance = desiredDistance;
-        while (distance >= MIN_BLINK_DISTANCE) {
-            Vec3 desired = start.add(direction.scale(distance));
-            Vec3 safePosition = findSafePosition(level, caster, desired, BLINK_VERTICAL_SEARCH);
-            if (safePosition != null) {
-                return safePosition;
-            }
-            distance -= BLINK_BACKSTEP;
+    private static Entity findAnyEntityInSight(LivingEntity caster, double range) {
+        Vec3 eyePosition = caster.getEyePosition();
+        Vec3 look = caster.getLookAngle();
+        if (look.lengthSqr() < 1.0E-6D) {
+            look = new Vec3(0.0D, 0.0D, 1.0D);
+        } else {
+            look = look.normalize();
         }
+        final Vec3 lookDir = look;
+        final double rangeSqr = range * range;
 
-        return findSafePosition(level, caster, start.add(direction.scale(MIN_BLINK_DISTANCE)), BLINK_VERTICAL_SEARCH);
+        AABB searchBox = caster.getBoundingBox().inflate(range);
+        return caster.level()
+                .getEntitiesOfClass(Entity.class, searchBox, entity -> entity != caster && entity.isAlive())
+                .stream()
+                .filter(entity -> eyePosition.distanceToSqr(entity.position()) <= rangeSqr)
+                .min(Comparator.comparingDouble(entity -> {
+                    Vec3 center = entity.position().add(0.0D, entity.getBbHeight() * 0.5D, 0.0D);
+                    Vec3 toEntity = center.subtract(eyePosition);
+                    double len = toEntity.length();
+                    if (len < 1.0E-4D) {
+                        return -1000.0D;
+                    }
+                    double cosAngle = toEntity.scale(1.0D / len).dot(lookDir);
+                    return -cosAngle * 64.0D + len;
+                }))
+                .orElse(null);
     }
 
-    private static Vec3 findSafePosition(ServerLevel level, LivingEntity entity, Vec3 preferred, int verticalSearch) {
-        for (int dy = 0; dy <= verticalSearch; dy++) {
-            if (dy == 0) {
-                Vec3 match = tryOffsets(level, entity, preferred);
-                if (match != null) {
-                    return match;
+    private static Vec3 findAnySafePosition(ServerLevel level, LivingEntity entity, Vec3 preferred) {
+        if (canOccupy(level, entity, preferred)) {
+            return preferred;
+        }
+        for (int dy = 1; dy <= BLINK_VERTICAL_SEARCH; dy++) {
+            for (int sign = 0; sign < 2; sign++) {
+                double yOff = sign == 0 ? dy : -dy;
+                Vec3 cand = new Vec3(preferred.x, clampY(level, preferred.y + yOff), preferred.z);
+                if (canOccupy(level, entity, cand)) {
+                    return cand;
                 }
-                continue;
             }
-
-            Vec3 upward = tryOffsets(level, entity, preferred.add(0.0D, dy, 0.0D));
-            if (upward != null) {
-                return upward;
-            }
-
-            Vec3 downward = tryOffsets(level, entity, preferred.add(0.0D, -dy, 0.0D));
-            if (downward != null) {
-                return downward;
+        }
+        for (int r = 1; r <= BLINK_HORIZONTAL_SEARCH; r++) {
+            for (int dy = 0; dy <= BLINK_VERTICAL_SEARCH; dy++) {
+                for (int sign = 0; sign < (dy == 0 ? 1 : 2); sign++) {
+                    double yOff = dy == 0 ? 0 : (sign == 0 ? dy : -dy);
+                    for (int xi = -r; xi <= r; xi++) {
+                        for (int zi = -r; zi <= r; zi++) {
+                            if (Math.max(Math.abs(xi), Math.abs(zi)) != r) {
+                                continue;
+                            }
+                            Vec3 cand = new Vec3(
+                                    preferred.x + xi * 0.9D,
+                                    clampY(level, preferred.y + yOff),
+                                    preferred.z + zi * 0.9D);
+                            if (canOccupy(level, entity, cand)) {
+                                return cand;
+                            }
+                        }
+                    }
+                }
             }
         }
         return null;
     }
 
-    private static Vec3 tryOffsets(ServerLevel level, LivingEntity entity, Vec3 base) {
-        for (double xOffset : POSITION_OFFSETS) {
-            for (double zOffset : POSITION_OFFSETS) {
-                Vec3 candidate = new Vec3(base.x + xOffset, clampY(level, base.y), base.z + zOffset);
-                if (canStandAt(level, entity, candidate)) {
-                    return candidate;
-                }
-            }
-        }
-        return null;
+    private static boolean canOccupy(ServerLevel level, LivingEntity entity, Vec3 position) {
+        AABB boundingBox = entity.getDimensions(entity.getPose())
+                .makeBoundingBox(position.x, position.y, position.z)
+                .deflate(BOX_DEFLATE_EPSILON);
+        return level.noCollision(entity, boundingBox);
     }
 
-    private static boolean canStandAt(ServerLevel level, LivingEntity entity, Vec3 position) {
-        AABB boundingBox = entity.getDimensions(entity.getPose()).makeBoundingBox(position.x, position.y, position.z);
-        if (!level.noCollision(entity, boundingBox)) {
-            return false;
-        }
-
-        BlockPos feetPos = BlockPos.containing(position.x, position.y, position.z);
-        if (!level.getFluidState(feetPos).isEmpty()) {
-            return false;
-        }
-
-        BlockPos supportPos = BlockPos.containing(position.x, position.y - 0.2D, position.z);
-        return !level.getBlockState(supportPos).isAir();
-    }
-
-    private static void teleportEntity(LivingEntity entity, ServerLevel level, Vec3 destination, float yRot,
-            float xRot) {
+    private static void teleportAnyEntity(Entity entity, ServerLevel level, Vec3 destination, float yRot, float xRot) {
         if (entity instanceof ServerPlayer serverPlayer) {
             serverPlayer.teleportTo(level, destination.x, destination.y, destination.z, yRot, xRot);
         } else {
@@ -212,16 +226,7 @@ public final class WanxiangRuntime {
                 0.3F, pitch);
     }
 
-    private static Vec3 getHorizontalLook(LivingEntity caster) {
-        Vec3 look = caster.getLookAngle();
-        Vec3 horizontal = new Vec3(look.x, 0.0D, look.z);
-        if (horizontal.lengthSqr() < 1.0E-4D) {
-            return new Vec3(0.0D, 0.0D, 1.0D);
-        }
-        return horizontal.normalize();
-    }
-
     private static double clampY(ServerLevel level, double y) {
-        return Mth.clamp(y, level.getMinBuildHeight(), level.getMaxBuildHeight() - 2);
+        return Mth.clamp(y, level.getMinBuildHeight() + 1, level.getMaxBuildHeight() - 2);
     }
 }

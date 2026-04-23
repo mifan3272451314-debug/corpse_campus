@@ -14,6 +14,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.entity.LivingEntity;
@@ -79,10 +80,28 @@ public class WanxiangSpell extends AbstractSpell {
     @Override
     public void onCast(Level level, int spellLevel, LivingEntity entity, CastSource castSource,
             MagicData playerMagicData) {
+        boolean success = true;
         if (level instanceof ServerLevel serverLevel) {
-            AbilityRuntime.castWanxiang(serverLevel, entity, spellLevel);
+            success = AbilityRuntime.castWanxiang(serverLevel, entity, spellLevel);
         }
-        super.onCast(level, spellLevel, entity, castSource, playerMagicData);
+        if (success) {
+            super.onCast(level, spellLevel, entity, castSource, playerMagicData);
+        } else {
+            refundCast(entity, playerMagicData, spellLevel);
+        }
+    }
+
+    private void refundCast(LivingEntity entity, MagicData playerMagicData, int spellLevel) {
+        if (playerMagicData == null) {
+            return;
+        }
+        float refund = getManaCost(spellLevel);
+        playerMagicData.setMana(playerMagicData.getMana() + refund);
+        if (playerMagicData.getPlayerCooldowns().removeCooldown(getSpellId())) {
+            if (entity instanceof ServerPlayer serverPlayer) {
+                playerMagicData.getPlayerCooldowns().syncToPlayer(serverPlayer);
+            }
+        }
     }
 
     @Override

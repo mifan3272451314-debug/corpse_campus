@@ -729,8 +729,8 @@ public final class AbilityRuntime {
         return WanxiangRuntime.getSwapRange(spellLevel);
     }
 
-    public static void castWanxiang(ServerLevel level, LivingEntity caster, int spellLevel) {
-        WanxiangRuntime.cast(level, caster, spellLevel);
+    public static boolean castWanxiang(ServerLevel level, LivingEntity caster, int spellLevel) {
+        return WanxiangRuntime.cast(level, caster, spellLevel);
     }
 
 }
