@@ -85,11 +85,15 @@ public class AuthorityGraspSpell extends AbstractSpell {
     }
 
     @Override
+    public void onClientCast(Level level, int spellLevel, LivingEntity entity,
+            io.redspace.ironsspellbooks.api.spells.ICastData castData) {
+        com.mifan.screeneffect.client.ScreenEffectClientHook.triggerIfLocalPlayer(entity, spellId);
+        super.onClientCast(level, spellLevel, entity, castData);
+    }
+
+    @Override
     public void onCast(Level level, int spellLevel, LivingEntity entity, CastSource castSource,
             MagicData playerMagicData) {
-        if (level.isClientSide) {
-            com.mifan.screeneffect.client.ScreenEffectClientHook.triggerIfLocalPlayer(entity, spellId);
-        }
         if (!level.isClientSide) {
             long gameTime = level.getGameTime();
             long expireTick = gameTime + AbilityRuntime.AUTHORITY_GRASP_DURATION_TICKS;

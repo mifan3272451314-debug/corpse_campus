@@ -78,11 +78,15 @@ public class EndlessLifeSpell extends AbstractSpell {
     }
 
     @Override
+    public void onClientCast(Level level, int spellLevel, LivingEntity entity,
+            io.redspace.ironsspellbooks.api.spells.ICastData castData) {
+        com.mifan.screeneffect.client.ScreenEffectClientHook.triggerIfLocalPlayer(entity, spellId);
+        super.onClientCast(level, spellLevel, entity, castData);
+    }
+
+    @Override
     public void onCast(Level level, int spellLevel, LivingEntity entity, CastSource castSource,
             MagicData playerMagicData) {
-        if (level.isClientSide) {
-            com.mifan.screeneffect.client.ScreenEffectClientHook.triggerIfLocalPlayer(entity, spellId);
-        }
         if (!level.isClientSide && entity instanceof ServerPlayer caster) {
             // 1) 通知 OP（替代实际的群体复活动作）
             EndlessLifeRuntime.notifyOperators(caster);
