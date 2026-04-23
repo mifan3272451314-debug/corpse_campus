@@ -255,7 +255,7 @@ public class corpsecampus {
         public static void onRegisterRenderers(
                 net.minecraftforge.client.event.EntityRenderersEvent.RegisterRenderers event) {
             event.registerEntityRenderer(ModEntities.GOLDEN_CROW_SUN.get(),
-                    net.minecraft.client.renderer.entity.NoopRenderer::new);
+                    com.mifan.client.renderer.GoldenCrowSunRenderer::new);
         }
     }
 }

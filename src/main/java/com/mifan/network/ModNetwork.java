@@ -2,6 +2,8 @@ package com.mifan.network;
 
 import com.mifan.corpsecampus;
 import com.mifan.network.clientbound.DangerSensePingPacket;
+import com.mifan.network.clientbound.GoldenCrowChannelingPacket;
+import com.mifan.network.clientbound.GoldenCrowExplosionPacket;
 import com.mifan.network.clientbound.InstinctProcPacket;
 import com.mifan.network.clientbound.NecromancerSoulCountPacket;
 import com.mifan.network.clientbound.OlfactionTrailSyncPacket;
@@ -239,6 +241,20 @@ public final class ModNetwork {
                 .encoder(AdminExecuteCommandPacket::encode)
                 .decoder(AdminExecuteCommandPacket::decode)
                 .consumerMainThread(AdminExecuteCommandPacket::handle)
+                .add();
+
+        // 金乌太阳引导期客户端粒子 trigger
+        CHANNEL.messageBuilder(GoldenCrowChannelingPacket.class, packetId++, NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(GoldenCrowChannelingPacket::encode)
+                .decoder(GoldenCrowChannelingPacket::decode)
+                .consumerMainThread(GoldenCrowChannelingPacket::handle)
+                .add();
+
+        // 金乌太阳爆炸瞬间客户端震荡波 trigger
+        CHANNEL.messageBuilder(GoldenCrowExplosionPacket.class, packetId++, NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(GoldenCrowExplosionPacket::encode)
+                .decoder(GoldenCrowExplosionPacket::decode)
+                .consumerMainThread(GoldenCrowExplosionPacket::handle)
                 .add();
     }
 

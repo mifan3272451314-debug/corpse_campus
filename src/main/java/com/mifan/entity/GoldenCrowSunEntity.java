@@ -158,81 +158,27 @@ public class GoldenCrowSunEntity extends Projectile {
         double z = this.getZ();
 
         float mana = getManaSpent();
-        double orb = AbilityRuntime.goldenCrowOrbRadius(mana);                  // 3~30 格
-        double outer = Math.max(orb * 1.35D, orb + 3.0D);                       // 外壳
-        float pScale = AbilityRuntime.goldenCrowParticleScale(mana);            // 0.3~3.0
+        double orb = AbilityRuntime.goldenCrowOrbRadius(mana);
+        float pScale = AbilityRuntime.goldenCrowParticleScale(mana);
 
-        // A) 核心：实心球内填充 FLAME，数量随法力缩放
-        int coreFlame = Math.max(20, (int) (400 * pScale));
-        int coreSmall = Math.max(15, (int) (260 * pScale));
-        int coreLava = Math.max(2, (int) (20 * pScale));
-        server.sendParticles(ParticleTypes.FLAME, x, y, z, coreFlame,
-                orb, orb, orb, 0.05D);
-        server.sendParticles(ParticleTypes.SMALL_FLAME, x, y, z, coreSmall,
-                orb * 1.1D, orb * 1.1D, orb * 1.1D, 0.03D);
-        server.sendParticles(ParticleTypes.LAVA, x, y, z, coreLava,
-                orb * 0.8D, orb * 0.8D, orb * 0.8D, 0.0D);
-
-        // B) 外壳：扩散到 outer 半径
-        int shellSmall = Math.max(10, (int) (180 * pScale));
-        int shellEndRod = Math.max(6, (int) (90 * pScale));
-        server.sendParticles(ParticleTypes.SMALL_FLAME, x, y, z, shellSmall,
-                outer, outer * 0.6D, outer, 0.02D);
-        server.sendParticles(ParticleTypes.END_ROD, x, y, z, shellEndRod,
-                outer * 0.9D, outer * 0.9D, outer * 0.9D, 0.03D);
-
-        // C) 每 2 tick 日冕环，半径在 orb~outer 间脉动；每圈粒子数按法力放大
-        if (this.tickCount % 2 == 0) {
-            double pulse = 0.5D + 0.5D * Math.sin(this.tickCount * 0.08D);
-            double ring = orb + pulse * (outer - orb);
-            emitCoronaRing(server, x, y, z, ring, Math.max(16, (int) (128 * pScale)));
+        // 本体视觉（球、光晕、日轮、地面日轮）由 GoldenCrowSunRenderer 完全接管。
+        // 这里只保留极少量"存在感烟雾"——心跳 FLASH，每 6 tick 一次。
+        if (this.tickCount % 6 == 0) {
+            server.sendParticles(ParticleTypes.FLASH, x, y, z, Math.max(1, (int) (2 * pScale)),
+                    orb * 0.3D, orb * 0.3D, orb * 0.3D, 0.0D);
         }
 
-        // D) 每 4 tick 心跳脉冲
-        if (this.tickCount % 4 == 0) {
-            server.sendParticles(ParticleTypes.FLASH, x, y, z, Math.max(1, (int) (4 * pScale)),
-                    orb, orb, orb, 0.0D);
-            server.sendParticles(ParticleTypes.END_ROD, x, y, z, Math.max(20, (int) (260 * pScale)),
-                    orb, orb, orb, 0.15D);
-        }
-
-        // E) 每 8 tick 三圈日冕
-        if (this.tickCount % 8 == 0) {
-            emitCoronaRing(server, x, y, z, orb * 0.6D, Math.max(12, (int) (96 * pScale)));
-            emitCoronaRing(server, x, y, z, orb, Math.max(16, (int) (120 * pScale)));
-            emitCoronaRing(server, x, y, z, outer, Math.max(20, (int) (160 * pScale)));
-        }
-
-        // 投掷阶段：额外拖尾
+        // 投掷阶段：强化拖尾，强调"砸向地面"的动能感。
         if (this.isThrown()) {
-            server.sendParticles(ParticleTypes.LARGE_SMOKE, x, y, z, Math.max(4, (int) (40 * pScale)),
-                    orb * 0.4D, orb * 0.4D, orb * 0.4D, 0.05D);
-            server.sendParticles(ParticleTypes.LAVA, x, y, z, Math.max(6, (int) (60 * pScale)),
-                    orb * 0.5D, orb * 0.5D, orb * 0.5D, 0.2D);
+            server.sendParticles(ParticleTypes.LARGE_SMOKE, x, y, z, Math.max(4, (int) (30 * pScale)),
+                    orb * 0.4D, orb * 0.4D, orb * 0.4D, 0.08D);
+            server.sendParticles(ParticleTypes.LAVA, x, y, z, Math.max(6, (int) (50 * pScale)),
+                    orb * 0.5D, orb * 0.5D, orb * 0.5D, 0.25D);
+            server.sendParticles(ParticleTypes.FLAME, x, y, z, Math.max(12, (int) (80 * pScale)),
+                    orb * 0.6D, orb * 0.6D, orb * 0.6D, 0.3D);
             if (this.tickCount % 2 == 0) {
                 server.sendParticles(ParticleTypes.FLASH, x, y, z, 2, 0.0D, 0.0D, 0.0D, 0.0D);
             }
-        }
-    }
-
-    private static void emitCoronaRing(ServerLevel server, double cx, double cy, double cz,
-            double radius, int count) {
-        for (int i = 0; i < count; i++) {
-            double theta = (Math.PI * 2.0D * i) / count;
-            double dx = Math.cos(theta) * radius;
-            double dz = Math.sin(theta) * radius;
-            server.sendParticles(ParticleTypes.FLAME, cx + dx, cy, cz + dz, 1, 0.0D, 0.05D, 0.0D, 0.0D);
-        }
-    }
-
-    private static void emitShockwaveRing(ServerLevel server, Vec3 center, double radius, int count,
-            net.minecraft.core.particles.SimpleParticleType particle) {
-        for (int i = 0; i < count; i++) {
-            double theta = (Math.PI * 2.0D * i) / count;
-            double dx = Math.cos(theta) * radius;
-            double dz = Math.sin(theta) * radius;
-            server.sendParticles(particle, center.x + dx, center.y + 0.2D, center.z + dz,
-                    1, 0.0D, 0.0D, 0.0D, 0.0D);
         }
     }
 
@@ -299,12 +245,10 @@ public class GoldenCrowSunEntity extends Projectile {
         }
 
         server.sendParticles(ParticleTypes.EXPLOSION_EMITTER, pos.x, pos.y, pos.z, 1, 0.0D, 0.0D, 0.0D, 0.0D);
-        server.sendParticles(ParticleTypes.FLASH, pos.x, pos.y, pos.z, Math.max(2, (int) (8 * pScale)),
-                2.0D, 2.0D, 2.0D, 0.0D);
         server.playSound(null, BlockPos.containing(pos.x, pos.y, pos.z), SoundEvents.GENERIC_EXPLODE,
                 SoundSource.PLAYERS, 4.0F, 0.6F);
 
-        // 多重爆炸发射器：数量随法力缩放，位置撒在爆炸球面内
+        // 多重爆炸发射器：数量随法力缩放，位置撒在爆炸球面内（vanilla 爆炸粒子必须服务端发）
         int emitterCount = Math.max(4, (int) (24 * pScale));
         for (int i = 0; i < emitterCount; i++) {
             double ox = (server.random.nextDouble() - 0.5D) * explosionRadius * 1.6D;
@@ -313,23 +257,19 @@ public class GoldenCrowSunEntity extends Projectile {
             server.sendParticles(ParticleTypes.EXPLOSION_EMITTER,
                     pos.x + ox, pos.y + oy, pos.z + oz, 1, 0.0D, 0.0D, 0.0D, 0.0D);
         }
-        // 7 圈震荡波，按实际 explosionRadius / stunRadius 布置；粒子密度随 pScale
-        emitShockwaveRing(server, pos, explosionRadius * 0.16D, Math.max(12, (int) (80 * pScale)), ParticleTypes.FLAME);
-        emitShockwaveRing(server, pos, explosionRadius * 0.32D, Math.max(16, (int) (128 * pScale)), ParticleTypes.FLAME);
-        emitShockwaveRing(server, pos, explosionRadius * 0.50D, Math.max(24, (int) (200 * pScale)), ParticleTypes.END_ROD);
-        emitShockwaveRing(server, pos, explosionRadius * 0.68D, Math.max(32, (int) (256 * pScale)), ParticleTypes.FLAME);
-        emitShockwaveRing(server, pos, explosionRadius * 0.84D, Math.max(40, (int) (320 * pScale)), ParticleTypes.SMALL_FLAME);
-        emitShockwaveRing(server, pos, explosionRadius, Math.max(48, (int) (400 * pScale)), ParticleTypes.END_ROD);
-        emitShockwaveRing(server, pos, stunRadius, Math.max(64, (int) (480 * pScale)), ParticleTypes.FLASH);
-        // 超大飞溅：数量 × pScale（最高 × 3）
-        server.sendParticles(ParticleTypes.LAVA, pos.x, pos.y, pos.z, Math.max(30, (int) (600 * pScale)),
-                explosionRadius * 0.6D, explosionRadius * 0.3D, explosionRadius * 0.6D, 1.2D);
-        server.sendParticles(ParticleTypes.FLAME, pos.x, pos.y, pos.z, Math.max(80, (int) (1800 * pScale)),
-                explosionRadius * 0.8D, explosionRadius * 0.4D, explosionRadius * 0.8D, 1.6D);
-        server.sendParticles(ParticleTypes.SMALL_FLAME, pos.x, pos.y, pos.z, Math.max(60, (int) (1200 * pScale)),
-                explosionRadius * 0.9D, explosionRadius * 0.5D, explosionRadius * 0.9D, 1.0D);
-        server.sendParticles(ParticleTypes.FLASH, pos.x, pos.y, pos.z, Math.max(3, (int) (12 * pScale)),
-                explosionRadius * 0.4D, explosionRadius * 0.4D, explosionRadius * 0.4D, 0.0D);
+
+        // 7 圈震荡波 + 冲天火柱 + 巨型光环 + 地面烟尘 + 中心白光 —— 客户端本地生成
+        // 原 ~1900 个 sendParticles(count=1) 压缩为 1 个 packet。
+        com.mifan.network.clientbound.GoldenCrowExplosionPacket explosionPacket =
+                new com.mifan.network.clientbound.GoldenCrowExplosionPacket(
+                        pos.x, pos.y, pos.z, explosionRadius, stunRadius, pScale);
+        com.mifan.network.ModNetwork.CHANNEL.send(
+                net.minecraftforge.network.PacketDistributor.NEAR.with(
+                        () -> new net.minecraftforge.network.PacketDistributor.TargetPoint(
+                                pos.x, pos.y, pos.z, Math.max(stunRadius * 2.0D, 128.0D),
+                                server.dimension())),
+                explosionPacket);
+
         // 音效：音量随法力越强越响
         float vol = 2.0F + pScale * 4.0F;
         server.playSound(null, BlockPos.containing(pos.x, pos.y, pos.z), SoundEvents.LIGHTNING_BOLT_THUNDER,

@@ -12,6 +12,8 @@ import com.mifan.client.screen.NecromancerScreen;
 import com.mifan.client.screen.PlayerStatusScreen;
 import com.mifan.client.screen.RecorderOfficerTimerScreen;
 import com.mifan.network.clientbound.DangerSensePingPacket;
+import com.mifan.network.clientbound.GoldenCrowChannelingPacket;
+import com.mifan.network.clientbound.GoldenCrowExplosionPacket;
 import com.mifan.network.clientbound.InstinctProcPacket;
 import com.mifan.network.clientbound.OlfactionTrailSyncPacket;
 import com.mifan.network.clientbound.OpenAdminPanelPacket;
@@ -221,6 +223,161 @@ public final class AbilityClientHandler {
 
     public static void handleOlfactionTrailSync(OlfactionTrailSyncPacket packet) {
         OlfactionClientHandler.handleTrailSync(packet);
+    }
+
+    public static void handleGoldenCrowChanneling(GoldenCrowChannelingPacket packet) {
+        Minecraft minecraft = Minecraft.getInstance();
+        ClientLevel level = minecraft.level;
+        if (level == null) {
+            return;
+        }
+
+        double cx = packet.getCenterX();
+        double cy = packet.getCenterY();
+        double cz = packet.getCenterZ();
+        double groundY = packet.getGroundY();
+        float progress = packet.getProgress();
+        double targetOrb = packet.getTargetOrb();
+        float pScale = packet.getParticleScale();
+        int elapsed = packet.getElapsed();
+
+        double radius = Math.max(0.6D, progress * targetOrb);
+        double shellThickness = 0.8D + progress * Math.max(1.2D, targetOrb * 0.15D);
+
+        // 1) 向心引力漩涡：多层圆环的粒子被吸向中心（本地生成，0 网络成本）
+        int ringCount = 4 + (int) (progress * 10 * pScale);
+        int perRing = 20 + (int) (progress * 80 * pScale);
+        for (int r = 0; r < ringCount; r++) {
+            double ringRadius = radius + (r / (double) ringCount) * Math.max(4.0D, targetOrb * 0.5D);
+            double phase = elapsed * 0.18D + r * 0.6D;
+            for (int i = 0; i < perRing; i++) {
+                double theta = (Math.PI * 2.0D * i) / perRing + phase;
+                double dx = Math.cos(theta) * ringRadius;
+                double dz = Math.sin(theta) * ringRadius;
+                double dy = Math.sin(theta * 2.0D + phase) * shellThickness;
+                Vec3 toward = new Vec3(-dx, -dy, -dz).normalize().scale(0.3D);
+                level.addParticle(ParticleTypes.FLAME,
+                        cx + dx, cy + dy, cz + dz,
+                        toward.x, toward.y, toward.z);
+            }
+        }
+
+        // 2) 地面日轮：密集外圈，真·完整圆环
+        int groundCount = Math.max(48, (int) (120 * pScale));
+        double groundRadius = 2.0D + progress * Math.max(4.0D, targetOrb * 0.3D);
+        double groundPhase = elapsed * 0.22D;
+        for (int i = 0; i < groundCount; i++) {
+            double theta = (Math.PI * 2.0D * i) / groundCount + groundPhase;
+            double dx = Math.cos(theta) * groundRadius;
+            double dz = Math.sin(theta) * groundRadius;
+            level.addParticle(ParticleTypes.FLAME,
+                    cx + dx, groundY, cz + dz, 0.0D, 0.02D, 0.0D);
+        }
+        // 内圈再加一圈更小更密的辅助，让"圆环"更饱满
+        int innerCount = Math.max(36, (int) (80 * pScale));
+        double innerRadius = groundRadius * 0.72D;
+        double innerPhase = -elapsed * 0.18D;
+        for (int i = 0; i < innerCount; i++) {
+            double theta = (Math.PI * 2.0D * i) / innerCount + innerPhase;
+            double dx = Math.cos(theta) * innerRadius;
+            double dz = Math.sin(theta) * innerRadius;
+            level.addParticle(ParticleTypes.SMALL_FLAME,
+                    cx + dx, groundY, cz + dz, 0.0D, 0.015D, 0.0D);
+        }
+    }
+
+    public static void handleGoldenCrowExplosion(GoldenCrowExplosionPacket packet) {
+        Minecraft minecraft = Minecraft.getInstance();
+        ClientLevel level = minecraft.level;
+        if (level == null) {
+            return;
+        }
+
+        double px = packet.getX();
+        double py = packet.getY();
+        double pz = packet.getZ();
+        double explosionRadius = packet.getExplosionRadius();
+        double stunRadius = packet.getStunRadius();
+        float pScale = packet.getParticleScale();
+
+        // 1) 七圈同心震荡波——本地生成，从内到外半径递增、颜色金→红→白
+        spawnRing(level, px, py + 0.2D, pz, explosionRadius * 0.16D,
+                Math.max(24, (int) (80 * pScale)), ParticleTypes.FLAME);
+        spawnRing(level, px, py + 0.2D, pz, explosionRadius * 0.32D,
+                Math.max(32, (int) (128 * pScale)), ParticleTypes.FLAME);
+        spawnRing(level, px, py + 0.2D, pz, explosionRadius * 0.50D,
+                Math.max(48, (int) (200 * pScale)), ParticleTypes.END_ROD);
+        spawnRing(level, px, py + 0.2D, pz, explosionRadius * 0.68D,
+                Math.max(64, (int) (256 * pScale)), ParticleTypes.FLAME);
+        spawnRing(level, px, py + 0.2D, pz, explosionRadius * 0.84D,
+                Math.max(80, (int) (320 * pScale)), ParticleTypes.SMALL_FLAME);
+        spawnRing(level, px, py + 0.2D, pz, explosionRadius,
+                Math.max(96, (int) (400 * pScale)), ParticleTypes.END_ROD);
+        spawnRing(level, px, py + 0.2D, pz, stunRadius,
+                Math.max(128, (int) (480 * pScale)), ParticleTypes.FLASH);
+
+        // 2) 冲天火柱——本地生成，垂直向上喷射，强调"砸落"的反冲
+        int pillarCount = Math.max(60, (int) (200 * pScale));
+        double pillarHeight = explosionRadius * 0.8D;
+        for (int i = 0; i < pillarCount; i++) {
+            double rnd = level.random.nextDouble();
+            double dx = (level.random.nextDouble() - 0.5D) * explosionRadius * 0.5D;
+            double dz = (level.random.nextDouble() - 0.5D) * explosionRadius * 0.5D;
+            double dy = rnd * pillarHeight;
+            double vy = 0.4D + rnd * 0.8D;
+            level.addParticle(ParticleTypes.FLAME,
+                    px + dx, py + dy, pz + dz, 0.0D, vy, 0.0D);
+            if (i % 2 == 0) {
+                level.addParticle(ParticleTypes.LAVA,
+                        px + dx, py + dy, pz + dz, 0.0D, vy * 0.5D, 0.0D);
+            }
+        }
+
+        // 3) 巨型扩散光环——三层，大半径、极密集
+        int haloCount = Math.max(180, (int) (600 * pScale));
+        for (int i = 0; i < haloCount; i++) {
+            double theta = (Math.PI * 2.0D * i) / haloCount;
+            double rr = explosionRadius * (1.05D + level.random.nextDouble() * 0.15D);
+            double dx = Math.cos(theta) * rr;
+            double dz = Math.sin(theta) * rr;
+            double vx = Math.cos(theta) * 0.3D;
+            double vz = Math.sin(theta) * 0.3D;
+            level.addParticle(ParticleTypes.END_ROD,
+                    px + dx, py + 0.3D, pz + dz, vx, 0.1D, vz);
+        }
+
+        // 4) 地面冲击烟尘——水平向外扩散
+        int dustCount = Math.max(120, (int) (400 * pScale));
+        for (int i = 0; i < dustCount; i++) {
+            double theta = level.random.nextDouble() * Math.PI * 2.0D;
+            double rr = level.random.nextDouble() * explosionRadius * 0.9D;
+            double dx = Math.cos(theta) * rr;
+            double dz = Math.sin(theta) * rr;
+            double vx = Math.cos(theta) * (0.4D + level.random.nextDouble() * 0.6D);
+            double vz = Math.sin(theta) * (0.4D + level.random.nextDouble() * 0.6D);
+            level.addParticle(ParticleTypes.LARGE_SMOKE,
+                    px + dx, py + 0.1D, pz + dz, vx, 0.05D, vz);
+        }
+
+        // 5) 中心白光闪——只对本地玩家播一次短促亮闪
+        for (int i = 0; i < Math.max(6, (int) (16 * pScale)); i++) {
+            double dx = (level.random.nextDouble() - 0.5D) * explosionRadius * 0.6D;
+            double dy = (level.random.nextDouble() - 0.5D) * explosionRadius * 0.3D;
+            double dz = (level.random.nextDouble() - 0.5D) * explosionRadius * 0.6D;
+            level.addParticle(ParticleTypes.FLASH, px + dx, py + dy, pz + dz, 0.0D, 0.0D, 0.0D);
+        }
+    }
+
+    private static void spawnRing(ClientLevel level, double cx, double cy, double cz,
+            double radius, int count, net.minecraft.core.particles.SimpleParticleType particle) {
+        for (int i = 0; i < count; i++) {
+            double theta = (Math.PI * 2.0D * i) / count;
+            double dx = Math.cos(theta) * radius;
+            double dz = Math.sin(theta) * radius;
+            double vx = Math.cos(theta) * 0.12D;
+            double vz = Math.sin(theta) * 0.12D;
+            level.addParticle(particle, cx + dx, cy, cz + dz, vx, 0.05D, vz);
+        }
     }
 
     private static boolean hasInstinct(Player player) {
