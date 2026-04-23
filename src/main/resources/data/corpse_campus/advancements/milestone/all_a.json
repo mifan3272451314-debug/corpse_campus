@@ -1,0 +1,26 @@
+{
+  "parent": "corpse_campus:milestone/all_b",
+  "display": {
+    "icon": {
+      "item": "corpse_campus:trait_xujing_a"
+    },
+    "title": {
+      "text": "A 级全集"
+    },
+    "description": {
+      "text": "五条流派的 A 级异常特性全部持有过。"
+    },
+    "frame": "goal",
+    "show_toast": true,
+    "announce_to_chat": false,
+    "hidden": true
+  },
+  "criteria": {
+    "xujing": {"trigger": "minecraft:inventory_changed", "conditions": {"items": [{"items": ["corpse_campus:trait_xujing_a"]}]}},
+    "rizhao": {"trigger": "minecraft:inventory_changed", "conditions": {"items": [{"items": ["corpse_campus:trait_rizhao_a"]}]}},
+    "dongyue": {"trigger": "minecraft:inventory_changed", "conditions": {"items": [{"items": ["corpse_campus:trait_dongyue_a"]}]}},
+    "yuzhe": {"trigger": "minecraft:inventory_changed", "conditions": {"items": [{"items": ["corpse_campus:trait_yuzhe_a"]}]}},
+    "shengqi": {"trigger": "minecraft:inventory_changed", "conditions": {"items": [{"items": ["corpse_campus:trait_shengqi_a"]}]}}
+  },
+  "requirements": [["xujing"], ["rizhao"], ["dongyue"], ["yuzhe"], ["shengqi"]]
+}

@@ -1,0 +1,24 @@
+{
+  "parent": "corpse_campus:ability/grafter",
+  "display": {
+    "icon": {
+      "item": "minecraft:oak_sapling"
+    },
+    "title": {
+      "text": "嫁接师·跨四流派"
+    },
+    "description": {
+      "text": "通过嫁接师从另外 4 条流派共吸收 4 条能力进入自身法术书（由嫁接事件触发）。"
+    },
+    "frame": "challenge",
+    "show_toast": true,
+    "announce_to_chat": false,
+    "hidden": true
+  },
+  "criteria": {
+    "cross4": {
+      "trigger": "minecraft:impossible"
+    }
+  },
+  "requirements": [["cross4"]]
+}

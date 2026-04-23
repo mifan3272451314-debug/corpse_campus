@@ -1,0 +1,36 @@
+{
+  "parent": "corpse_campus:milestone/all_s",
+  "display": {
+    "icon": {
+      "item": "corpse_campus:anomaly_trait_spellbook"
+    },
+    "title": {
+      "text": "吞噬核心·全集 15"
+    },
+    "description": {
+      "text": "集齐全部 15 种异常特性吞噬物。"
+    },
+    "frame": "challenge",
+    "show_toast": true,
+    "announce_to_chat": false,
+    "hidden": true
+  },
+  "criteria": {
+    "xj_b": {"trigger": "minecraft:inventory_changed", "conditions": {"items": [{"items": ["corpse_campus:trait_xujing_b"]}]}},
+    "xj_a": {"trigger": "minecraft:inventory_changed", "conditions": {"items": [{"items": ["corpse_campus:trait_xujing_a"]}]}},
+    "xj_s": {"trigger": "minecraft:inventory_changed", "conditions": {"items": [{"items": ["corpse_campus:trait_xujing_s"]}]}},
+    "rz_b": {"trigger": "minecraft:inventory_changed", "conditions": {"items": [{"items": ["corpse_campus:trait_rizhao_b"]}]}},
+    "rz_a": {"trigger": "minecraft:inventory_changed", "conditions": {"items": [{"items": ["corpse_campus:trait_rizhao_a"]}]}},
+    "rz_s": {"trigger": "minecraft:inventory_changed", "conditions": {"items": [{"items": ["corpse_campus:trait_rizhao_s"]}]}},
+    "dy_b": {"trigger": "minecraft:inventory_changed", "conditions": {"items": [{"items": ["corpse_campus:trait_dongyue_b"]}]}},
+    "dy_a": {"trigger": "minecraft:inventory_changed", "conditions": {"items": [{"items": ["corpse_campus:trait_dongyue_a"]}]}},
+    "dy_s": {"trigger": "minecraft:inventory_changed", "conditions": {"items": [{"items": ["corpse_campus:trait_dongyue_s"]}]}},
+    "yz_b": {"trigger": "minecraft:inventory_changed", "conditions": {"items": [{"items": ["corpse_campus:trait_yuzhe_b"]}]}},
+    "yz_a": {"trigger": "minecraft:inventory_changed", "conditions": {"items": [{"items": ["corpse_campus:trait_yuzhe_a"]}]}},
+    "yz_s": {"trigger": "minecraft:inventory_changed", "conditions": {"items": [{"items": ["corpse_campus:trait_yuzhe_s"]}]}},
+    "sq_b": {"trigger": "minecraft:inventory_changed", "conditions": {"items": [{"items": ["corpse_campus:trait_shengqi_b"]}]}},
+    "sq_a": {"trigger": "minecraft:inventory_changed", "conditions": {"items": [{"items": ["corpse_campus:trait_shengqi_a"]}]}},
+    "sq_s": {"trigger": "minecraft:inventory_changed", "conditions": {"items": [{"items": ["corpse_campus:trait_shengqi_s"]}]}}
+  },
+  "requirements": [["xj_b"],["xj_a"],["xj_s"],["rz_b"],["rz_a"],["rz_s"],["dy_b"],["dy_a"],["dy_s"],["yz_b"],["yz_a"],["yz_s"],["sq_b"],["sq_a"],["sq_s"]]
+}

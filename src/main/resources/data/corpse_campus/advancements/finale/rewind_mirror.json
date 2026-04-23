@@ -1,0 +1,24 @@
+{
+  "parent": "corpse_campus:ability/rewind_worm",
+  "display": {
+    "icon": {
+      "item": "minecraft:clock"
+    },
+    "title": {
+      "text": "进入·镜像备份维度"
+    },
+    "description": {
+      "text": "使用回溯之虫，穿越到镜像备份维度（由镜像服务触发）。"
+    },
+    "frame": "challenge",
+    "show_toast": true,
+    "announce_to_chat": false,
+    "hidden": true
+  },
+  "criteria": {
+    "enter": {
+      "trigger": "minecraft:impossible"
+    }
+  },
+  "requirements": [["enter"]]
+}

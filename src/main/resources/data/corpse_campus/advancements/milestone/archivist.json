@@ -1,0 +1,29 @@
+{
+  "parent": "corpse_campus:milestone/observer",
+  "display": {
+    "icon": {
+      "item": "corpse_campus:rank_core_s"
+    },
+    "title": {
+      "text": "异常档案员"
+    },
+    "description": {
+      "text": "持有全部 8 种管理员调试核心物品。"
+    },
+    "frame": "challenge",
+    "show_toast": true,
+    "announce_to_chat": false,
+    "hidden": true
+  },
+  "criteria": {
+    "rank_b": {"trigger": "minecraft:inventory_changed", "conditions": {"items": [{"items": ["corpse_campus:rank_core_b"]}]}},
+    "rank_a": {"trigger": "minecraft:inventory_changed", "conditions": {"items": [{"items": ["corpse_campus:rank_core_a"]}]}},
+    "rank_s": {"trigger": "minecraft:inventory_changed", "conditions": {"items": [{"items": ["corpse_campus:rank_core_s"]}]}},
+    "clear": {"trigger": "minecraft:inventory_changed", "conditions": {"items": [{"items": ["corpse_campus:ability_clear_core"]}]}},
+    "designated": {"trigger": "minecraft:inventory_changed", "conditions": {"items": [{"items": ["corpse_campus:designated_ability"]}]}},
+    "scroll": {"trigger": "minecraft:inventory_changed", "conditions": {"items": [{"items": ["corpse_campus:spell_scroll"]}]}},
+    "embryo": {"trigger": "minecraft:inventory_changed", "conditions": {"items": [{"items": ["corpse_campus:spell_embryo"]}]}},
+    "loot_refresh": {"trigger": "minecraft:inventory_changed", "conditions": {"items": [{"items": ["corpse_campus:loot_refresh_core"]}]}}
+  },
+  "requirements": [["rank_b"],["rank_a"],["rank_s"],["clear"],["designated"],["scroll"],["embryo"],["loot_refresh"]]
+}

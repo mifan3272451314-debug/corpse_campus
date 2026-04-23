@@ -1,0 +1,23 @@
+{
+  "parent": "corpse_campus:root/root",
+  "display": {
+    "icon": {
+      "item": "corpse_campus:anomaly_detector"
+    },
+    "title": {
+      "text": "异常观测者"
+    },
+    "description": {
+      "text": "同时持有异常特性法术书和异常监测器。"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": false,
+    "hidden": true
+  },
+  "criteria": {
+    "book": {"trigger": "minecraft:inventory_changed", "conditions": {"items": [{"items": ["corpse_campus:anomaly_trait_spellbook"]}]}},
+    "detector": {"trigger": "minecraft:inventory_changed", "conditions": {"items": [{"items": ["corpse_campus:anomaly_detector"]}]}}
+  },
+  "requirements": [["book"], ["detector"]]
+}
