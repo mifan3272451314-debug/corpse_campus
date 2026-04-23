@@ -428,6 +428,7 @@
   "message.corpse_campus.grafter_grafted_to": "你将【%s】嫁接给了 %s",
   "message.corpse_campus.grafter_grafted_received": "%s 把【%s】嫁接到了你身上",
   "message.corpse_campus.grafter_graft_failed": "嫁接失败：目标的异常特性已满或无法写入",
+  "message.corpse_campus.grafter_blocked_by_s_tier": "目标 %s 持有 S 级异能【%s】，无法吸收或嫁接",
 
   "spell.corpse_campus.ferryman": "摆渡人",
   "tooltip.corpse_campus.ferryman_select": "正常施法：打开玩家列表，选定一个摆渡目标",

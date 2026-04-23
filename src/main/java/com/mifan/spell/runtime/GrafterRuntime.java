@@ -5,6 +5,7 @@ import com.mifan.item.AnomalyTraitItem;
 import com.mojang.logging.LogUtils;
 import io.redspace.ironsspellbooks.api.registry.SpellRegistry;
 import io.redspace.ironsspellbooks.api.spells.AbstractSpell;
+import io.redspace.ironsspellbooks.api.spells.SpellRarity;
 import io.redspace.ironsspellbooks.api.spells.SpellSlot;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
@@ -110,6 +111,33 @@ public final class GrafterRuntime {
     public static boolean isGraftTargetEligible(ServerPlayer target) {
         // 非异能者：未搭载任何异常法术
         return !AnomalyBookService.hasLoadedSpells(target);
+    }
+
+    /**
+     * 目标是否持有任意 S 级（LEGENDARY，对应项目内四字异能）法术。
+     * 以该 slot 的当前等级下的实际 rarity 为准。
+     */
+    public static boolean hasSTierSpell(ServerPlayer target) {
+        return getFirstSTierSpell(target) != null;
+    }
+
+    /**
+     * 返回目标身上第一条 S 级法术，供失败提示回显名称；没有则返回 null。
+     * 与 {@link #collectTransferableSpells} 的 slot 来源保持一致，
+     * 不忽略 {@link #isForbidden} 的条目——嫁接师自身/生生不息若存在也算 S 级的一部分。
+     */
+    @Nullable
+    public static EligibleSpell getFirstSTierSpell(ServerPlayer target) {
+        for (SpellSlot slot : AnomalyBookService.getPlayerLoadedSpellSlots(target)) {
+            AbstractSpell spell = slot.getSpell();
+            if (spell == null) {
+                continue;
+            }
+            if (spell.getRarity(slot.getLevel()) == SpellRarity.LEGENDARY) {
+                return new EligibleSpell(spell.getSpellResource(), slot.getLevel());
+            }
+        }
+        return null;
     }
 
     public static ItemEntity findNearbyDroppedTraitItem(ServerPlayer caster, double range) {

@@ -128,6 +128,10 @@ public class GrafterSpell extends AbstractSpell {
     }
 
     private void doAbsorb(ServerPlayer caster, ServerPlayer target) {
+        if (rejectIfTargetHoldsSTier(caster, target)) {
+            return;
+        }
+
         List<GrafterRuntime.EligibleSpell> eligible = GrafterRuntime.collectTransferableSpells(target);
         if (eligible.isEmpty()) {
             caster.displayClientMessage(
@@ -153,6 +157,10 @@ public class GrafterSpell extends AbstractSpell {
     }
 
     private void doGraft(ServerPlayer caster, ServerPlayer target) {
+        if (rejectIfTargetHoldsSTier(caster, target)) {
+            return;
+        }
+
         if (!GrafterRuntime.isGraftTargetEligible(target)) {
             caster.displayClientMessage(Component.translatable(
                     "message.corpse_campus.grafter_target_has_abilities",
@@ -188,6 +196,22 @@ public class GrafterSpell extends AbstractSpell {
             return Component.literal(id.getPath());
         }
         return Component.translatable(spell.getComponentId());
+    }
+
+    /**
+     * 拦住目标持 S 级（LEGENDARY / 四字异能）的情况：给施法者反馈并播拒绝音效，返回 true 表示已拒绝、调用方应当直接 return。
+     */
+    private boolean rejectIfTargetHoldsSTier(ServerPlayer caster, ServerPlayer target) {
+        GrafterRuntime.EligibleSpell sTier = GrafterRuntime.getFirstSTierSpell(target);
+        if (sTier == null) {
+            return false;
+        }
+        caster.displayClientMessage(Component.translatable(
+                "message.corpse_campus.grafter_blocked_by_s_tier",
+                target.getDisplayName(), spellNameOf(sTier.id())), true);
+        caster.level().playSound(null, caster.blockPosition(), SoundEvents.VILLAGER_NO,
+                SoundSource.PLAYERS, 0.6F, 1.0F);
+        return true;
     }
 
     private ServerPlayer findNearbyPlayer(Level level, Player caster) {

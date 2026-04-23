@@ -387,6 +387,7 @@
   "message.corpse_campus.grafter_grafted_to": "Grafted [%s] onto %s",
   "message.corpse_campus.grafter_grafted_received": "%s grafted [%s] onto you",
   "message.corpse_campus.grafter_graft_failed": "Graft failed: target's anomaly book is full or cannot be written",
+  "message.corpse_campus.grafter_blocked_by_s_tier": "%s holds S-tier ability [%s] and cannot be absorbed or grafted",
 
   "spell.corpse_campus.ferryman": "Ferryman",
   "tooltip.corpse_campus.ferryman_select": "Cast: open the player list and mark one player as your ferryman target",
