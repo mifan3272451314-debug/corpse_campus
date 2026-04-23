@@ -1,0 +1,19 @@
+{
+  "parent": "corpse_campus:finale/first_death",
+  "display": {
+    "icon": { "item": "minecraft:totem_of_undying" },
+    "title": { "text": "图腾救命" },
+    "description": { "text": "使用不死图腾从致命伤害中幸存。" },
+    "frame": "goal",
+    "show_toast": true,
+    "announce_to_chat": false,
+    "hidden": true
+  },
+  "criteria": {
+    "totem": {
+      "trigger": "minecraft:used_totem",
+      "conditions": { "item": { "items": ["minecraft:totem_of_undying"] } }
+    }
+  },
+  "requirements": [["totem"]]
+}

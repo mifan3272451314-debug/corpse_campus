@@ -1,0 +1,21 @@
+{
+  "parent": "corpse_campus:root/root",
+  "display": {
+    "icon": { "item": "minecraft:sand" },
+    "title": { "text": "沙漠·足迹" },
+    "description": { "text": "进入沙漠生物群系。" },
+    "frame": "task",
+    "show_toast": true, "announce_to_chat": false, "hidden": true
+  },
+  "criteria": {
+    "in_biome": {
+      "trigger": "minecraft:location",
+      "conditions": {
+        "player": [
+          { "condition": "minecraft:location_check", "predicate": { "biomes": ["minecraft:desert"] } }
+        ]
+      }
+    }
+  },
+  "requirements": [["in_biome"]]
+}

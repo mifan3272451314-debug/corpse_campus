@@ -1,0 +1,21 @@
+{
+  "parent": "corpse_campus:root/root",
+  "display": {
+    "icon": { "item": "minecraft:prismarine_shard" },
+    "title": { "text": "远古守卫者" },
+    "description": { "text": "首次击杀远古守卫者。" },
+    "frame": "challenge",
+    "show_toast": true, "announce_to_chat": false, "hidden": true
+  },
+  "criteria": {
+    "kill": {
+      "trigger": "minecraft:player_killed_entity",
+      "conditions": {
+        "entity": [
+          { "condition": "minecraft:entity_properties", "entity": "this", "predicate": { "type": "minecraft:elder_guardian" } }
+        ]
+      }
+    }
+  },
+  "requirements": [["kill"]]
+}

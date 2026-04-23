@@ -1,0 +1,17 @@
+{
+  "parent": "corpse_campus:exploration/nether",
+  "display": {
+    "icon": { "item": "minecraft:end_stone" },
+    "title": { "text": "末地·首次踏足" },
+    "description": { "text": "穿越到末地。" },
+    "frame": "challenge",
+    "show_toast": true, "announce_to_chat": false, "hidden": true
+  },
+  "criteria": {
+    "entered": {
+      "trigger": "minecraft:changed_dimension",
+      "conditions": { "to": "minecraft:the_end" }
+    }
+  },
+  "requirements": [["entered"]]
+}

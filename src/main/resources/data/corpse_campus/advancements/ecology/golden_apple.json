@@ -1,0 +1,23 @@
+{
+  "parent": "corpse_campus:root/root",
+  "display": {
+    "icon": { "item": "minecraft:golden_apple" },
+    "title": { "text": "金苹果·一口" },
+    "description": { "text": "首次食用金苹果或附魔金苹果。" },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": false,
+    "hidden": true
+  },
+  "criteria": {
+    "regular": {
+      "trigger": "minecraft:consume_item",
+      "conditions": { "item": { "items": ["minecraft:golden_apple"] } }
+    },
+    "enchanted": {
+      "trigger": "minecraft:consume_item",
+      "conditions": { "item": { "items": ["minecraft:enchanted_golden_apple"] } }
+    }
+  },
+  "requirements": [["regular","enchanted"]]
+}

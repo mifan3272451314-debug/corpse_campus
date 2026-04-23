@@ -1,0 +1,16 @@
+{
+  "parent": "corpse_campus:ecology/rank_cores_all",
+  "display": {
+    "icon": { "item": "minecraft:beacon" },
+    "title": { "text": "信标启用" },
+    "description": { "text": "搭建并启动一个信标。" },
+    "frame": "goal",
+    "show_toast": true,
+    "announce_to_chat": false,
+    "hidden": true
+  },
+  "criteria": {
+    "beacon": { "trigger": "minecraft:construct_beacon" }
+  },
+  "requirements": [["beacon"]]
+}

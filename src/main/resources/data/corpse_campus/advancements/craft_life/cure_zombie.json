@@ -1,0 +1,16 @@
+{
+  "parent": "corpse_campus:craft_life/trade",
+  "display": {
+    "icon": { "item": "minecraft:golden_apple" },
+    "title": { "text": "治愈僵尸村民" },
+    "description": { "text": "成功治愈一名僵尸村民。" },
+    "frame": "goal",
+    "show_toast": true,
+    "announce_to_chat": false,
+    "hidden": true
+  },
+  "criteria": {
+    "cure": { "trigger": "minecraft:cured_zombie_villager" }
+  },
+  "requirements": [["cure"]]
+}

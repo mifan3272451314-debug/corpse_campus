@@ -1,0 +1,17 @@
+{
+  "parent": "corpse_campus:root/root",
+  "display": {
+    "icon": { "item": "minecraft:netherrack" },
+    "title": { "text": "下界·首次踏足" },
+    "description": { "text": "从主世界穿越到下界。" },
+    "frame": "task",
+    "show_toast": true, "announce_to_chat": false, "hidden": true
+  },
+  "criteria": {
+    "entered": {
+      "trigger": "minecraft:changed_dimension",
+      "conditions": { "from": "minecraft:overworld", "to": "minecraft:the_nether" }
+    }
+  },
+  "requirements": [["entered"]]
+}

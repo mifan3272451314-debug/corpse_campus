@@ -1,0 +1,21 @@
+{
+  "parent": "corpse_campus:root/root",
+  "display": {
+    "icon": { "item": "minecraft:jungle_log" },
+    "title": { "text": "丛林·足迹" },
+    "description": { "text": "进入丛林生物群系。" },
+    "frame": "task",
+    "show_toast": true, "announce_to_chat": false, "hidden": true
+  },
+  "criteria": {
+    "in_biome": {
+      "trigger": "minecraft:location",
+      "conditions": {
+        "player": [
+          { "condition": "minecraft:location_check", "predicate": { "biomes": ["minecraft:jungle"] } }
+        ]
+      }
+    }
+  },
+  "requirements": [["in_biome"]]
+}

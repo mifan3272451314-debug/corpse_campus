@@ -1,0 +1,21 @@
+{
+  "parent": "corpse_campus:root/root",
+  "display": {
+    "icon": { "item": "minecraft:red_mushroom_block" },
+    "title": { "text": "蘑菇岛·足迹" },
+    "description": { "text": "进入蘑菇岛生物群系。" },
+    "frame": "task",
+    "show_toast": true, "announce_to_chat": false, "hidden": true
+  },
+  "criteria": {
+    "in_biome": {
+      "trigger": "minecraft:location",
+      "conditions": {
+        "player": [
+          { "condition": "minecraft:location_check", "predicate": { "biomes": ["minecraft:mushroom_fields"] } }
+        ]
+      }
+    }
+  },
+  "requirements": [["in_biome"]]
+}

@@ -1,0 +1,21 @@
+{
+  "parent": "corpse_campus:finale/first_death",
+  "display": {
+    "icon": { "item": "minecraft:gunpowder" },
+    "title": { "text": "被苦力怕炸飞" },
+    "description": { "text": "首次被苦力怕杀死。" },
+    "frame": "task",
+    "show_toast": true, "announce_to_chat": false, "hidden": true
+  },
+  "criteria": {
+    "died": {
+      "trigger": "minecraft:entity_killed_player",
+      "conditions": {
+        "entity": [
+          { "condition": "minecraft:entity_properties", "entity": "this", "predicate": { "type": "minecraft:creeper" } }
+        ]
+      }
+    }
+  },
+  "requirements": [["died"]]
+}

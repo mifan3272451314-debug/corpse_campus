@@ -1,0 +1,21 @@
+{
+  "parent": "corpse_campus:root/root",
+  "display": {
+    "icon": { "item": "minecraft:iron_sword" },
+    "title": { "text": "首次 PVP" },
+    "description": { "text": "首次击杀其他玩家。" },
+    "frame": "task",
+    "show_toast": true, "announce_to_chat": false, "hidden": true
+  },
+  "criteria": {
+    "kill": {
+      "trigger": "minecraft:player_killed_entity",
+      "conditions": {
+        "entity": [
+          { "condition": "minecraft:entity_properties", "entity": "this", "predicate": { "type": "minecraft:player" } }
+        ]
+      }
+    }
+  },
+  "requirements": [["kill"]]
+}

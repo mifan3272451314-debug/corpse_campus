@@ -1,0 +1,24 @@
+{
+  "parent": "corpse_campus:root/root",
+  "display": {
+    "icon": { "item": "corpse_campus:spell_embryo" },
+    "title": { "text": "胚胎·回魂" },
+    "description": { "text": "获得一颗封印着回魂的法术胚胎。" },
+    "frame": "task",
+    "show_toast": true, "announce_to_chat": false, "hidden": true
+  },
+  "criteria": {
+    "got": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": ["corpse_campus:spell_embryo"],
+            "nbt": "{EmbryoSpellId:\"corpse_campus:huihun\"}"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [["got"]]
+}

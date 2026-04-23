@@ -1,0 +1,20 @@
+{
+  "parent": "corpse_campus:embryo/sonic_sense",
+  "display": {
+    "icon": { "item": "corpse_campus:spell_embryo" },
+    "title": { "text": "胚胎·五流派收藏" },
+    "description": { "text": "集齐五条流派代表法术胚胎（音波/日光/岱岳/万象/回魂）。" },
+    "frame": "challenge",
+    "show_toast": true,
+    "announce_to_chat": false,
+    "hidden": true
+  },
+  "criteria": {
+    "xj": {"trigger": "minecraft:inventory_changed", "conditions": {"items": [{"items":["corpse_campus:spell_embryo"],"nbt":"{EmbryoSpellId:\"corpse_campus:sonic_sense\"}"}]}},
+    "rz": {"trigger": "minecraft:inventory_changed", "conditions": {"items": [{"items":["corpse_campus:spell_embryo"],"nbt":"{EmbryoSpellId:\"corpse_campus:sunlight\"}"}]}},
+    "dy": {"trigger": "minecraft:inventory_changed", "conditions": {"items": [{"items":["corpse_campus:spell_embryo"],"nbt":"{EmbryoSpellId:\"corpse_campus:daiyue\"}"}]}},
+    "yz": {"trigger": "minecraft:inventory_changed", "conditions": {"items": [{"items":["corpse_campus:spell_embryo"],"nbt":"{EmbryoSpellId:\"corpse_campus:wanxiang\"}"}]}},
+    "sq": {"trigger": "minecraft:inventory_changed", "conditions": {"items": [{"items":["corpse_campus:spell_embryo"],"nbt":"{EmbryoSpellId:\"corpse_campus:huihun\"}"}]}}
+  },
+  "requirements": [["xj"],["rz"],["dy"],["yz"],["sq"]]
+}

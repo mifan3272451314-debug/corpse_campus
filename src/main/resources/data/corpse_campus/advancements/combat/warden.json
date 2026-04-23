@@ -1,0 +1,21 @@
+{
+  "parent": "corpse_campus:root/root",
+  "display": {
+    "icon": { "item": "minecraft:sculk_shrieker" },
+    "title": { "text": "守望者" },
+    "description": { "text": "首次击杀监守者。" },
+    "frame": "challenge",
+    "show_toast": true, "announce_to_chat": false, "hidden": true
+  },
+  "criteria": {
+    "kill": {
+      "trigger": "minecraft:player_killed_entity",
+      "conditions": {
+        "entity": [
+          { "condition": "minecraft:entity_properties", "entity": "this", "predicate": { "type": "minecraft:warden" } }
+        ]
+      }
+    }
+  },
+  "requirements": [["kill"]]
+}
