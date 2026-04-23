@@ -1,5 +1,12 @@
 # Iron's Spells 'n Spellbooks 魔法、流派与魔法书创建指南
 
+> **同步基线（2026-04-24）**：本指南主体是"怎么从 0 做一个新法术/流派"，代码演进对它影响不大。以下快照用于帮助新开发者把章节示例映射到当前 `corpse_campus` 真实状态：
+>
+> - 流派已注册 5 个：`xujing / rizhao / dongyue / yuzhe / shengqi`（[`ModSchools`](src/main/java/com/mifan/registry/ModSchools.java)）
+> - 法术已注册 **33 个**（缺 `impermanence_monk` 的一行注册，见 [代码修复清单.md](./代码修复清单.md) P0）
+> - 异常法术书类 `AnomalySpellBookItem`（继承 ISS `SpellBook`）已实装于 [`anomaly/AnomalySpellBookItem.java`](src/main/java/com/mifan/anomaly/AnomalySpellBookItem.java)，通过 Curios `spellbook` 槽佩戴
+> - 新增法术时必须**一并更新** [`AnomalyBookService.SPELL_SPECS`](src/main/java/com/mifan/anomaly/AnomalyBookService.java) 的 `(id, 中文名, rank, schoolId)` 登记，否则法力加成 / 流派强化 / 命令 lookup 都会漏这条
+
 本指南用于 `corpse_campus` 模组开发，参考了以下项目的实际结构与实现方式：
 
 - `irons-spells-n-spellbooks-1.20.1`
