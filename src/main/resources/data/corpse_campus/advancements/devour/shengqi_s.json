@@ -1,0 +1,25 @@
+{
+  "parent": "corpse_campus:root/root",
+  "display": {
+    "icon": {
+      "item": "corpse_campus:trait_shengqi_s"
+    },
+    "title": {
+      "text": "吞噬核心·圣祈·S"
+    },
+    "description": {
+      "text": "持有一块圣祈·S级异常特性。"
+    },
+    "frame": "goal",
+    "show_toast": true,
+    "announce_to_chat": false,
+    "hidden": true
+  },
+  "criteria": {
+    "got": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {"items": [{"items": ["corpse_campus:trait_shengqi_s"]}]}
+    }
+  },
+  "requirements": [["got"]]
+}

@@ -1,0 +1,25 @@
+{
+  "parent": "corpse_campus:root/root",
+  "display": {
+    "icon": {
+      "item": "corpse_campus:trait_dongyue_b"
+    },
+    "title": {
+      "text": "吞噬核心·东岳·B"
+    },
+    "description": {
+      "text": "持有一块东岳·B级异常特性。"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": false,
+    "hidden": true
+  },
+  "criteria": {
+    "got": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {"items": [{"items": ["corpse_campus:trait_dongyue_b"]}]}
+    }
+  },
+  "requirements": [["got"]]
+}
