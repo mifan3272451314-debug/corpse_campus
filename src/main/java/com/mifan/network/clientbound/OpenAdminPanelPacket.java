@@ -2,9 +2,10 @@ package com.mifan.network.clientbound;
 
 import com.mifan.admin.CommandDescriptor;
 import com.mifan.admin.ConfigFieldDescriptor;
-import com.mifan.client.screen.AdminPanelScreen;
-import net.minecraft.client.Minecraft;
+import com.mifan.spell.AbilityClientHandler;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.fml.DistExecutor;
 import net.minecraftforge.network.NetworkEvent;
 
 import java.util.ArrayList;
@@ -13,7 +14,7 @@ import java.util.function.Supplier;
 
 /**
  * 服务端在 {@link com.mifan.network.serverbound.RequestAdminPanelPacket} 校验权限通过后下发。
- * 携带 config 字段快照和 command 描述符列表,客户端直接用于构建 {@link AdminPanelScreen}。
+ * 携带 config 字段快照和 command 描述符列表,客户端直接用于构建 {@link com.mifan.client.screen.AdminPanelScreen}。
  */
 public class OpenAdminPanelPacket {
 
@@ -113,8 +114,8 @@ public class OpenAdminPanelPacket {
 
     public static void handle(OpenAdminPanelPacket packet, Supplier<NetworkEvent.Context> ctxSupplier) {
         NetworkEvent.Context ctx = ctxSupplier.get();
-        ctx.enqueueWork(() -> Minecraft.getInstance().setScreen(
-                new AdminPanelScreen(packet.fields, packet.commands)));
+        ctx.enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
+                () -> () -> AbilityClientHandler.openAdminPanelScreen(packet)));
         ctx.setPacketHandled(true);
     }
 }
