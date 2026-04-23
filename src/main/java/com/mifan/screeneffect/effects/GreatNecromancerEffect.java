@@ -4,12 +4,16 @@ import com.mifan.screeneffect.api.EffectContext;
 import com.mifan.screeneffect.api.EffectIntensity;
 import com.mifan.screeneffect.api.SpellScreenEffect;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
 
-/** 大冥鬼师：四角黑雾侵蚀 + 紫符箓边框 + 心跳红闪 + 菱形骷髅剪影 + 鬼火粒子。7s。 */
+/** 大冥鬼师：四角黑雾侵蚀 + 紫符箓边框 + 心跳红闪 + 菱形骷髅剪影 + 鬼火粒子。7s。
+ *  注：INSTANT 类频繁施放，屏幕特效仅每次登录世界后首次触发。 */
 public class GreatNecromancerEffect extends SpellScreenEffect {
+
+    private static boolean triggeredThisSession = false;
 
     private static final int PURPLE = 0x6B1FAA;
     private static final int DARK = 0x0A0512;
@@ -20,6 +24,20 @@ public class GreatNecromancerEffect extends SpellScreenEffect {
     public GreatNecromancerEffect() {
         super(ResourceLocation.fromNamespaceAndPath("corpse_campus", "great_necromancer"),
                 140, 20, 40);
+    }
+
+    @Override
+    public boolean shouldTrigger(LocalPlayer player) {
+        if (triggeredThisSession) {
+            return false;
+        }
+        triggeredThisSession = true;
+        return true;
+    }
+
+    @Override
+    public void onClearSession() {
+        triggeredThisSession = false;
     }
 
     @Override

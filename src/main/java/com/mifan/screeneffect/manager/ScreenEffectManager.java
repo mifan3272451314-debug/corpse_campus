@@ -36,6 +36,9 @@ public final class ScreenEffectManager {
         if (player == null) {
             return;
         }
+        if (!effect.shouldTrigger(player)) {
+            return;
+        }
         long gameTime = player.level().getGameTime();
         ActiveEffect active = new ActiveEffect(effect, gameTime);
         ACTIVE.add(active);
@@ -74,6 +77,9 @@ public final class ScreenEffectManager {
             }
         }
         ACTIVE.clear();
+        for (SpellScreenEffect e : ModScreenEffects.all().values()) {
+            e.onClearSession();
+        }
     }
 
     public static void tick(Player player, long gameTime) {

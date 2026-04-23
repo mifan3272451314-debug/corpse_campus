@@ -38,6 +38,15 @@ public abstract class SpellScreenEffect {
 
     public abstract void renderOverlay(EffectContext ctx);
 
+    /** 在被 Manager 触发前询问本 Effect 是否要真正执行（默认总是 yes） */
+    public boolean shouldTrigger(LocalPlayer player) {
+        return true;
+    }
+
+    /** 客户端 clearClientMarks（离线/换世界）时回调，用于重置内部 session 状态 */
+    public void onClearSession() {
+    }
+
     // ---- 音效三段：起手 / 爆发 / 余韵 ----
     protected SoundEvent getStartSound() {
         return null;
