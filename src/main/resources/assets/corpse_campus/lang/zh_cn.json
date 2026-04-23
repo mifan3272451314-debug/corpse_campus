@@ -524,5 +524,5 @@
   "message.corpse_campus.designated_ability.not_holding": "请把指定异能物品拿到主手或副手再确定",
   "message.corpse_campus.designated_ability.already_configured": "该物品已配置，请先使用或清除",
   "message.corpse_campus.designated_ability.bad_nbt": "指定异能 NBT 损坏，无法觉醒",
-  "message.corpse_campus.awakening_invuln_save": "§b觉醒守护§r：3 秒无敌窗口救下了你"
+  "message.corpse_campus.awakening_invuln_save": "§b觉醒守护§r：异能救下了你"
 }
