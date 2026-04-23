@@ -19,7 +19,7 @@ import org.joml.Matrix4f;
 public class GoldenCrowSunRenderer extends EntityRenderer<GoldenCrowSunEntity> {
 
     private static final ResourceLocation TEXTURE = ResourceLocation.fromNamespaceAndPath(
-            "corpse_campus", "textures/mob_effect/golden_crow_sun.png");
+            "corpse_campus", "textures/gui/spell_icons/golden_crow_sun_a.png");
 
     public GoldenCrowSunRenderer(EntityRendererProvider.Context context) {
         super(context);
