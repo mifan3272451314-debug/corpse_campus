@@ -5,10 +5,10 @@
       "item": "corpse_campus:trait_shengqi_b"
     },
     "title": {
-      "translate": "advancement.corpse_campus.sequence.shengqi.title"
+      "text": "踏入圣祈"
     },
     "description": {
-      "translate": "advancement.corpse_campus.sequence.shengqi.description"
+      "text": "获得第一块圣祈 B 级异常特性。"
     },
     "frame": "task",
     "show_toast": true,

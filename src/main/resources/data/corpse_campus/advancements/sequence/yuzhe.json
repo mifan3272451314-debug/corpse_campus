@@ -5,10 +5,10 @@
       "item": "corpse_campus:trait_yuzhe_b"
     },
     "title": {
-      "translate": "advancement.corpse_campus.sequence.yuzhe.title"
+      "text": "踏入愚者"
     },
     "description": {
-      "translate": "advancement.corpse_campus.sequence.yuzhe.description"
+      "text": "获得第一块愚者 B 级异常特性。"
     },
     "frame": "task",
     "show_toast": true,

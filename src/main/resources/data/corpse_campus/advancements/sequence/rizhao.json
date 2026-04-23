@@ -5,10 +5,10 @@
       "item": "corpse_campus:trait_rizhao_b"
     },
     "title": {
-      "translate": "advancement.corpse_campus.sequence.rizhao.title"
+      "text": "踏入日兆"
     },
     "description": {
-      "translate": "advancement.corpse_campus.sequence.rizhao.description"
+      "text": "获得第一块日兆 B 级异常特性。"
     },
     "frame": "task",
     "show_toast": true,

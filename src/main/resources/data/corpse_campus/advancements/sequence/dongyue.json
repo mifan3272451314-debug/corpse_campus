@@ -5,10 +5,10 @@
       "item": "corpse_campus:trait_dongyue_b"
     },
     "title": {
-      "translate": "advancement.corpse_campus.sequence.dongyue.title"
+      "text": "踏入东岳"
     },
     "description": {
-      "translate": "advancement.corpse_campus.sequence.dongyue.description"
+      "text": "获得第一块东岳 B 级异常特性。"
     },
     "frame": "task",
     "show_toast": true,

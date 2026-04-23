@@ -5,10 +5,10 @@
       "item": "corpse_campus:anomaly_trait_spellbook"
     },
     "title": {
-      "translate": "advancement.corpse_campus.sequence.all_five.title"
+      "text": "五路齐开"
     },
     "description": {
-      "translate": "advancement.corpse_campus.sequence.all_five.description"
+      "text": "在同一段生命里，分别持有过五条序列的 B 级异常特性。"
     },
     "frame": "challenge",
     "show_toast": true,

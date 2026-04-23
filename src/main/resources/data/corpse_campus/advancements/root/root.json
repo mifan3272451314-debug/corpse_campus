@@ -4,10 +4,10 @@
       "item": "corpse_campus:anomaly_trait_spellbook"
     },
     "title": {
-      "translate": "advancement.corpse_campus.root.title"
+      "text": "尸骸校园"
     },
     "description": {
-      "translate": "advancement.corpse_campus.root.description"
+      "text": "获得了一本异常特性法术书。"
     },
     "background": "minecraft:textures/block/soul_sand.png",
     "frame": "task",
