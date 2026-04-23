@@ -267,7 +267,7 @@ public final class AbilityRuntime {
     public static final float GOLDEN_CROW_MANA_SOFT_CAP = 5000.0F;
 
     public static final float GOLDEN_CROW_DAMAGE_PER_MANA = 0.5F;
-    public static final float GOLDEN_CROW_THROW_SPEED = 5.0F;
+    public static final float GOLDEN_CROW_THROW_SPEED = 1.5F;
     public static final double GOLDEN_CROW_HOVER_HEIGHT = 20.0D;
     public static final int GOLDEN_CROW_COOLDOWN_SECONDS = 1200;
     public static final int GOLDEN_CROW_CAST_TIME_TICKS = 80;
