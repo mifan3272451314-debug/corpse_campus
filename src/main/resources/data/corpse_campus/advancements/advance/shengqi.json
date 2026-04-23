@@ -1,0 +1,25 @@
+{
+  "parent": "corpse_campus:sequence/shengqi",
+  "display": {
+    "icon": {
+      "item": "corpse_campus:trait_shengqi_a"
+    },
+    "title": {
+      "text": "圣祈·B→A"
+    },
+    "description": {
+      "text": "获得圣祈 A 级异常特性。"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": false,
+    "hidden": true
+  },
+  "criteria": {
+    "got": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {"items": [{"items": ["corpse_campus:trait_shengqi_a"]}]}
+    }
+  },
+  "requirements": [["got"]]
+}

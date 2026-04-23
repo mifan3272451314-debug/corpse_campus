@@ -1,0 +1,25 @@
+{
+  "parent": "corpse_campus:advance/yuzhe",
+  "display": {
+    "icon": {
+      "item": "corpse_campus:trait_yuzhe_s"
+    },
+    "title": {
+      "text": "愚者·登顶"
+    },
+    "description": {
+      "text": "获得愚者 S 级异常特性（万权一手）。"
+    },
+    "frame": "goal",
+    "show_toast": true,
+    "announce_to_chat": false,
+    "hidden": true
+  },
+  "criteria": {
+    "got": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {"items": [{"items": ["corpse_campus:trait_yuzhe_s"]}]}
+    }
+  },
+  "requirements": [["got"]]
+}
