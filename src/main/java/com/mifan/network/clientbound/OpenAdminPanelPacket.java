@@ -60,6 +60,7 @@ public class OpenAdminPanelPacket {
         for (CommandDescriptor c : packet.commands) {
             buffer.writeUtf(c.fullPath());
             buffer.writeUtf(c.category());
+            buffer.writeUtf(c.description() == null ? "" : c.description());
             buffer.writeVarInt(c.arguments().size());
             for (CommandDescriptor.ArgumentInfo a : c.arguments()) {
                 buffer.writeUtf(a.name());
@@ -96,6 +97,7 @@ public class OpenAdminPanelPacket {
         for (int i = 0; i < cmdCount; i++) {
             String fullPath = buffer.readUtf();
             String category = buffer.readUtf();
+            String description = buffer.readUtf();
             int argCount = buffer.readVarInt();
             List<CommandDescriptor.ArgumentInfo> args = new ArrayList<>(argCount);
             for (int j = 0; j < argCount; j++) {
@@ -103,7 +105,7 @@ public class OpenAdminPanelPacket {
             }
             boolean hasExec = buffer.readBoolean();
             int perm = buffer.readVarInt();
-            commands.add(new CommandDescriptor(fullPath, category, args, hasExec, perm));
+            commands.add(new CommandDescriptor(fullPath, category, description, args, hasExec, perm));
         }
 
         return new OpenAdminPanelPacket(fields, commands);

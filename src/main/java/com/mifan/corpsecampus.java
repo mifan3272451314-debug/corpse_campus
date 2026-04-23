@@ -102,6 +102,11 @@ public class corpsecampus {
                                 : com.mifan.anomaly.AnomalyBookService.getAllSpellSpecs()) {
                             output.accept(com.mifan.item.SpellScrollItem.createFor(spec.spellId()));
                         }
+                        // 异能胚胎：同构,35 张,无任何效果,仅用作判断与视觉
+                        for (com.mifan.anomaly.AnomalyBookService.SpellSpec spec
+                                : com.mifan.anomaly.AnomalyBookService.getAllSpellSpecs()) {
+                            output.accept(com.mifan.item.SpellEmbryoItem.createFor(spec.spellId()));
+                        }
                         // 管理员调试核心物品
                         output.accept(ModItems.DESIGNATED_ABILITY.get());
                         output.accept(ModItems.RANK_CORE_B.get());
@@ -196,6 +201,31 @@ public class corpsecampus {
                         (stack, level, entity, seed) -> {
                             net.minecraft.resources.ResourceLocation spellId =
                                     com.mifan.item.SpellScrollItem.getSpellId(stack);
+                            if (spellId == null) {
+                                return 0.0F;
+                            }
+                            com.mifan.anomaly.AnomalyBookService.SpellSpec spec =
+                                    com.mifan.anomaly.AnomalyBookService.getSpellSpec(spellId);
+                            if (spec == null) {
+                                return 0.0F;
+                            }
+                            return switch (spec.schoolId().getPath()) {
+                                case "xujing" -> 0.0F;
+                                case "rizhao" -> 1.0F;
+                                case "dongyue" -> 2.0F;
+                                case "yuzhe" -> 3.0F;
+                                case "shengqi" -> 4.0F;
+                                default -> 0.0F;
+                            };
+                        });
+
+                // 异能胚胎：同卷轴的 school 索引机制,复用到 spell_embryo.json 的 overrides
+                net.minecraft.client.renderer.item.ItemProperties.register(
+                        ModItems.SPELL_EMBRYO.get(),
+                        net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(MODID, "school"),
+                        (stack, level, entity, seed) -> {
+                            net.minecraft.resources.ResourceLocation spellId =
+                                    com.mifan.item.SpellEmbryoItem.getSpellId(stack);
                             if (spellId == null) {
                                 return 0.0F;
                             }

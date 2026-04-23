@@ -10,6 +10,7 @@ import com.mifan.item.DesignatedAbilityItem;
 import com.mifan.item.LootRefreshItem;
 import com.mifan.item.RankBlessingItem;
 import com.mifan.item.SpellScrollItem;
+import com.mifan.item.SpellEmbryoItem;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraftforge.eventbus.api.IEventBus;
@@ -71,6 +72,8 @@ public final class ModItems {
             DesignatedAbilityItem::new);
     public static final RegistryObject<Item> SPELL_SCROLL = ITEMS.register("spell_scroll",
             SpellScrollItem::new);
+    public static final RegistryObject<Item> SPELL_EMBRYO = ITEMS.register("spell_embryo",
+            SpellEmbryoItem::new);
     public static final RegistryObject<Item> LOOT_REFRESH_CORE = ITEMS.register("loot_refresh_core",
             LootRefreshItem::new);
 

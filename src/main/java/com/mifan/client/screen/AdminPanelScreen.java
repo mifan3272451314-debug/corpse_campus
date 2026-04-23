@@ -33,6 +33,29 @@ public class AdminPanelScreen extends Screen {
     private static final int LIST_W = 240;
     private static final int ROW_H = 16;
 
+    /** 分类 key → 中文标签。未命中则显示 key 本身。 */
+    private static final Map<String, String> CATEGORY_LABEL = Map.ofEntries(
+            Map.entry("book", "书管理"),
+            Map.entry("spell", "法术管理"),
+            Map.entry("awaken", "觉醒状态"),
+            Map.entry("state", "状态与重算"),
+            Map.entry("mana", "法力/属性"),
+            Map.entry("trait", "异常特性"),
+            Map.entry("limit", "上限系统"),
+            Map.entry("seal", "封印"),
+            Map.entry("rewind", "回溯之虫"),
+            Map.entry("refresh", "刷新"),
+            Map.entry("list", "查询"),
+            Map.entry("rules", "规则"),
+            Map.entry("help", "帮助"),
+            Map.entry("other", "其它"),
+            Map.entry("limit_group", "上限配置"),
+            Map.entry("rules_group", "核心规则"));
+
+    private static String labelFor(String cat) {
+        return CATEGORY_LABEL.getOrDefault(cat, cat);
+    }
+
     private final List<ConfigFieldDescriptor> configFields;
     private final List<CommandDescriptor> commands;
 
@@ -230,7 +253,10 @@ public class AdminPanelScreen extends Screen {
         for (int i = 0; i < visibleRows && (i + scrollOffset) < total; i++) {
             int idx = i + scrollOffset;
             int rowY = listTop + i * ROW_H;
-            if (idx == selectedRow) {
+            // selectedRow 存真实 descriptor 索引,渲染时把当前 visible 行也 map 到 real 再比较
+            int realOfThisRow = mapVisibleToReal(idx);
+            boolean isSelected = realOfThisRow >= 0 && realOfThisRow == selectedRow;
+            if (isSelected) {
                 g.fill(pl + 8, rowY, pl + 8 + LIST_W, rowY + ROW_H, 0xFF4060A0);
             } else if (mouseX >= pl + 8 && mouseX < pl + 8 + LIST_W
                     && mouseY >= rowY && mouseY < rowY + ROW_H) {
@@ -258,7 +284,7 @@ public class AdminPanelScreen extends Screen {
             String lastGroup = null;
             for (ConfigFieldDescriptor d : configFields) {
                 if (!d.group().equals(lastGroup)) {
-                    out.add("§b§l[" + d.group() + "]");
+                    out.add("§b§l[" + labelFor(d.group()) + "]");
                     lastGroup = d.group();
                 }
                 String cur = pendingChanges.getOrDefault(d.path(), String.valueOf(d.currentValue()));
@@ -269,7 +295,7 @@ public class AdminPanelScreen extends Screen {
             String lastCat = null;
             for (CommandDescriptor c : commands) {
                 if (!c.category().equals(lastCat)) {
-                    out.add("§b§l[" + c.category() + "]");
+                    out.add("§b§l[" + labelFor(c.category()) + "]");
                     lastCat = c.category();
                 }
                 // 无参指令:行尾加 "▶" 提示单击即执行
@@ -309,8 +335,21 @@ public class AdminPanelScreen extends Screen {
             if (selectedRow >= commands.size()) return;
             CommandDescriptor c = commands.get(selectedRow);
             g.drawString(this.font, "§f/" + c.fullPath(), x, y, 0xFFFFD700, false);
-            g.drawString(this.font, "§7模板: §e" + c.usageTemplate(), x, y + 12, 0xFFCCCCCC, false);
-            g.drawString(this.font, "§7参数:", x, y + 24, 0xFFCCCCCC, false);
+            // 功能说明(来自 CommandMetadata)——一句话描述
+            String desc = c.description() == null ? "" : c.description();
+            int descY = y + 14;
+            if (!desc.isEmpty()) {
+                for (String line : wrapText(desc, 240)) {
+                    g.drawString(this.font, "§7" + line, x, descY, 0xFFCCCCCC, false);
+                    descY += 10;
+                }
+                descY += 4;
+            }
+            g.drawString(this.font, "§8模板: §e" + c.usageTemplate(), x, descY, 0xFFCCCCCC, false);
+            descY += 12;
+            g.drawString(this.font, c.arguments().isEmpty()
+                    ? "§a无参数 — 单击列表行即可直接执行"
+                    : "§7参数:", x, descY, 0xFFCCCCCC, false);
         }
     }
 

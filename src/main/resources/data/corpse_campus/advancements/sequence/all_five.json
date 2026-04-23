@@ -1,0 +1,51 @@
+{
+  "parent": "corpse_campus:root/root",
+  "display": {
+    "icon": {
+      "item": "corpse_campus:anomaly_trait_spellbook"
+    },
+    "title": {
+      "translate": "advancement.corpse_campus.sequence.all_five.title"
+    },
+    "description": {
+      "translate": "advancement.corpse_campus.sequence.all_five.description"
+    },
+    "frame": "challenge",
+    "show_toast": true,
+    "announce_to_chat": false,
+    "hidden": true
+  },
+  "criteria": {
+    "xujing": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [{"items": ["corpse_campus:trait_xujing_b"]}]
+      }
+    },
+    "rizhao": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [{"items": ["corpse_campus:trait_rizhao_b"]}]
+      }
+    },
+    "dongyue": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [{"items": ["corpse_campus:trait_dongyue_b"]}]
+      }
+    },
+    "yuzhe": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [{"items": ["corpse_campus:trait_yuzhe_b"]}]
+      }
+    },
+    "shengqi": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [{"items": ["corpse_campus:trait_shengqi_b"]}]
+      }
+    }
+  },
+  "requirements": [["xujing"], ["rizhao"], ["dongyue"], ["yuzhe"], ["shengqi"]]
+}

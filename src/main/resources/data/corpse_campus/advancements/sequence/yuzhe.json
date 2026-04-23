@@ -1,0 +1,31 @@
+{
+  "parent": "corpse_campus:root/root",
+  "display": {
+    "icon": {
+      "item": "corpse_campus:trait_yuzhe_b"
+    },
+    "title": {
+      "translate": "advancement.corpse_campus.sequence.yuzhe.title"
+    },
+    "description": {
+      "translate": "advancement.corpse_campus.sequence.yuzhe.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": false,
+    "hidden": true
+  },
+  "criteria": {
+    "touch_trait": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": ["corpse_campus:trait_yuzhe_b"]
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [["touch_trait"]]
+}

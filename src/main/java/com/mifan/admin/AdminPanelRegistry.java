@@ -194,6 +194,11 @@ public final class AdminPanelRegistry {
 
     // ────────────────────────── 指令扫描 ──────────────────────────
 
+    /** 按手册分组顺序排序,同组内按 fullPath 字典序。 */
+    private static final List<String> CATEGORY_ORDER = List.of(
+            "book", "spell", "awaken", "state", "mana", "trait",
+            "limit", "seal", "rewind", "refresh", "list", "rules", "help", "other");
+
     public static List<CommandDescriptor> scanCommandTree(CommandDispatcher<CommandSourceStack> dispatcher,
             String rootLiteral) {
         CommandNode<CommandSourceStack> root = dispatcher.getRoot().getChild(rootLiteral);
@@ -202,6 +207,14 @@ public final class AdminPanelRegistry {
         }
         List<CommandDescriptor> out = new ArrayList<>();
         walkCommand(root, rootLiteral, new ArrayList<>(), out);
+        out.sort((a, b) -> {
+            int oa = CATEGORY_ORDER.indexOf(a.category());
+            int ob = CATEGORY_ORDER.indexOf(b.category());
+            if (oa < 0) oa = CATEGORY_ORDER.size();
+            if (ob < 0) ob = CATEGORY_ORDER.size();
+            if (oa != ob) return Integer.compare(oa, ob);
+            return a.fullPath().compareTo(b.fullPath());
+        });
         return out;
     }
 
@@ -209,8 +222,10 @@ public final class AdminPanelRegistry {
             List<CommandDescriptor.ArgumentInfo> accumulatedArgs, List<CommandDescriptor> out) {
         boolean isExecutable = node.getCommand() != null;
         if (isExecutable) {
-            String category = deriveCategory(fullPath);
-            out.add(new CommandDescriptor(fullPath, category, List.copyOf(accumulatedArgs), true, 2));
+            CommandMetadata.Meta meta = CommandMetadata.lookup(fullPath);
+            String category = meta.category().equals("other") ? deriveCategory(fullPath) : meta.category();
+            out.add(new CommandDescriptor(fullPath, category, meta.description(),
+                    List.copyOf(accumulatedArgs), true, 2));
         }
 
         Collection<CommandNode<CommandSourceStack>> children = node.getChildren();
@@ -227,10 +242,14 @@ public final class AdminPanelRegistry {
         }
     }
 
-    /** 分类键:取 fullPath 第二段(如 "magic rules set" → "rules");只有一段的归到 "general"。 */
+    /**
+     * fallback 分类:元数据表未命中时使用。
+     * 只有一段(magic X)→ "other";否则取 fullPath 第二段。
+     */
     private static String deriveCategory(String fullPath) {
         String[] parts = fullPath.split(" ");
-        return parts.length >= 2 ? parts[1] : "general";
+        if (parts.length < 3) return "other";
+        return parts[1];
     }
 
     /** 把指令列表按 category 分组。 */
