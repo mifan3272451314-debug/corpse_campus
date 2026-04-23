@@ -271,6 +271,22 @@ public final class MagicCommand {
                                 .executes(context -> dumpBook(
                                         context.getSource(),
                                         EntityArgument.getPlayer(context, "player")))))
+                .then(Commands.literal("rules")
+                        .then(Commands.literal("get")
+                                .executes(context -> rulesGetAll(context.getSource()))
+                                .then(Commands.argument("key", StringArgumentType.string())
+                                        .executes(context -> rulesGet(
+                                                context.getSource(),
+                                                StringArgumentType.getString(context, "key")))))
+                        .then(Commands.literal("set")
+                                .then(Commands.argument("key", StringArgumentType.string())
+                                        .then(Commands.argument("value", StringArgumentType.string())
+                                                .executes(context -> rulesSet(
+                                                        context.getSource(),
+                                                        StringArgumentType.getString(context, "key"),
+                                                        StringArgumentType.getString(context, "value"))))))
+                        .then(Commands.literal("reset")
+                                .executes(context -> rulesReset(context.getSource()))))
                 .then(Commands.literal("help")
                         .executes(context -> showHelp(context.getSource()))));
     }
@@ -1146,5 +1162,58 @@ public final class MagicCommand {
             source.sendSuccess(() -> Component.literal(line), false);
         }
         return 1;
+    }
+
+    // ────────────────────────── /magic rules ──────────────────────────
+
+    private static int rulesGetAll(CommandSourceStack source) {
+        var descriptors = com.mifan.admin.AdminPanelRegistry.scanConfigSpec(AnomalyConfig.SPEC);
+        source.sendSuccess(() -> Component.literal("§b当前 " + descriptors.size() + " 条配置项:"), false);
+        for (var d : descriptors) {
+            source.sendSuccess(() -> Component.literal(
+                    "§7- §e" + d.path() + " §7= §f" + d.currentValue()
+                            + " §8(" + d.type().name().toLowerCase() + ", default=" + d.defaultValue() + ")"),
+                    false);
+        }
+        return descriptors.size();
+    }
+
+    private static int rulesGet(CommandSourceStack source, String key) {
+        var d = com.mifan.admin.AdminPanelRegistry.findField(AnomalyConfig.SPEC, key);
+        if (d == null) {
+            source.sendFailure(Component.literal("§c未找到配置项: " + key));
+            return 0;
+        }
+        source.sendSuccess(() -> Component.literal(
+                "§e" + d.path() + " §7= §f" + d.currentValue()
+                        + " §8(default=" + d.defaultValue() + ", " + d.comment() + ")"),
+                false);
+        return 1;
+    }
+
+    private static int rulesSet(CommandSourceStack source, String key, String value) {
+        boolean ok = com.mifan.admin.AdminPanelRegistry.writeField(AnomalyConfig.SPEC, key, value);
+        if (!ok) {
+            source.sendFailure(Component.literal("§c写入失败: " + key + " = " + value
+                    + " (字段不存在或类型不匹配)"));
+            return 0;
+        }
+        source.sendSuccess(() -> Component.literal("§a已更新: §e" + key + " §7→ §f" + value
+                + " §8(已落盘,重载运行时副本中...)"), true);
+        return 1;
+    }
+
+    private static int rulesReset(CommandSourceStack source) {
+        var descriptors = com.mifan.admin.AdminPanelRegistry.scanConfigSpec(AnomalyConfig.SPEC);
+        int n = 0;
+        for (var d : descriptors) {
+            if (com.mifan.admin.AdminPanelRegistry.writeField(AnomalyConfig.SPEC, d.path(),
+                    String.valueOf(d.defaultValue()))) {
+                n++;
+            }
+        }
+        int count = n;
+        source.sendSuccess(() -> Component.literal("§a已重置 §e" + count + " §a条配置项到默认值"), true);
+        return n;
     }
 }

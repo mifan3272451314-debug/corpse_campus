@@ -2,6 +2,7 @@ package com.mifan.item;
 
 import com.mifan.anomaly.AnomalyBookService;
 import com.mifan.anomaly.AnomalySpellRank;
+import com.mifan.anomaly.RuleChecker;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
@@ -44,6 +45,12 @@ public class RankBlessingItem extends Item {
         }
         if (!(player instanceof ServerPlayer sp)) {
             return InteractionResultHolder.pass(stack);
+        }
+
+        var ruleBlock = AnomalyBookService.checkRule(sp, rank, RuleChecker.Channel.RANK_BLESSING);
+        if (ruleBlock.isPresent()) {
+            sp.displayClientMessage(ruleBlock.get().copy().withStyle(ChatFormatting.RED), true);
+            return InteractionResultHolder.fail(stack);
         }
 
         boolean ok = AnomalyBookService.setHighestRank(sp, rank);

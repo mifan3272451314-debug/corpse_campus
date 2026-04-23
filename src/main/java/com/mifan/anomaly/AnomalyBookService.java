@@ -283,6 +283,11 @@ public final class AnomalyBookService {
             return AbsorbResult.failure("message.corpse_campus.absorb_spell_missing", spec.zhName());
         }
 
+        var ruleBlock = RuleChecker.check(player, book, spec.rank(), RuleChecker.Channel.DESIGNATED);
+        if (ruleBlock.isPresent()) {
+            return new AbsorbResult(false, ruleBlock.get());
+        }
+
         int spellLevel = Mth.clamp(requestedSpellLevel, 1, spell.getMaxLevel());
         boolean added = addSpell(player, book, spell, spellLevel, 1);
         if (!added) {
@@ -417,6 +422,11 @@ public final class AnomalyBookService {
         AbstractSpell spell = getRegisteredSpell(spellId);
         if (spell == null) {
             return AbsorbResult.failure("message.corpse_campus.absorb_spell_missing", spec.zhName());
+        }
+
+        var ruleBlock = RuleChecker.check(player, book, spec.rank(), RuleChecker.Channel.SCROLL);
+        if (ruleBlock.isPresent()) {
+            return new AbsorbResult(false, ruleBlock.get());
         }
 
         if (!isAwakened(book)) {
@@ -607,6 +617,19 @@ public final class AnomalyBookService {
         updateBookSnapshot(player, book);
         refreshCurioState(player);
         return true;
+    }
+
+    /**
+     * 便于外部调用方（如 RankBlessingItem）复用规则检查：自动定位玩家异常书并转发到 RuleChecker。
+     * 无书时返回 empty（放行交由下游失败）。
+     */
+    public static java.util.Optional<net.minecraft.network.chat.Component> checkRule(
+            ServerPlayer player, AnomalySpellRank coreRank, RuleChecker.Channel channel) {
+        ItemStack book = findExistingBook(player);
+        if (book.isEmpty()) {
+            return java.util.Optional.empty();
+        }
+        return RuleChecker.check(player, book, coreRank, channel);
     }
 
     /**

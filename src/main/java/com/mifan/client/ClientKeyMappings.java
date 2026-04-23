@@ -2,6 +2,8 @@ package com.mifan.client;
 
 import com.mifan.corpsecampus;
 import com.mifan.client.screen.PlayerStatusScreen;
+import com.mifan.network.ModNetwork;
+import com.mifan.network.serverbound.RequestAdminPanelPacket;
 import com.mifan.registry.ModItems;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
@@ -19,6 +21,10 @@ public final class ClientKeyMappings {
             "key.corpse_campus.open_player_status",
             GLFW.GLFW_KEY_V,
             CATEGORY);
+    public static final KeyMapping OPEN_ADMIN_PANEL = new KeyMapping(
+            "key.corpse_campus.open_admin_panel",
+            GLFW.GLFW_KEY_K,
+            CATEGORY);
 
     private ClientKeyMappings() {
     }
@@ -31,6 +37,7 @@ public final class ClientKeyMappings {
         @SubscribeEvent
         public static void onRegisterKeyMappings(RegisterKeyMappingsEvent event) {
             event.register(OPEN_PLAYER_STATUS);
+            event.register(OPEN_ADMIN_PANEL);
         }
     }
 
@@ -53,6 +60,13 @@ public final class ClientKeyMappings {
             while (OPEN_PLAYER_STATUS.consumeClick()) {
                 if (minecraft.screen == null && hasDetector(minecraft)) {
                     minecraft.setScreen(new PlayerStatusScreen());
+                }
+            }
+
+            while (OPEN_ADMIN_PANEL.consumeClick()) {
+                if (minecraft.screen == null) {
+                    // 服务端会 check op2 后回 OpenAdminPanelPacket 开屏;非 op 收到拒绝消息
+                    ModNetwork.CHANNEL.sendToServer(new RequestAdminPanelPacket());
                 }
             }
         }

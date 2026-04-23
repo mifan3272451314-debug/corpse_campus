@@ -5,6 +5,7 @@ import com.mifan.network.clientbound.DangerSensePingPacket;
 import com.mifan.network.clientbound.InstinctProcPacket;
 import com.mifan.network.clientbound.NecromancerSoulCountPacket;
 import com.mifan.network.clientbound.OlfactionTrailSyncPacket;
+import com.mifan.network.clientbound.OpenAdminPanelPacket;
 import com.mifan.network.clientbound.OpenDesignatedAbilityScreenPacket;
 import com.mifan.network.clientbound.OpenDominanceScreenPacket;
 import com.mifan.network.clientbound.OpenFerrymanScreenPacket;
@@ -15,11 +16,14 @@ import com.mifan.network.clientbound.OpenNecromancerScreenPacket;
 import com.mifan.network.clientbound.OpenPlayerStatusScreenPacket;
 import com.mifan.network.clientbound.OpenRecorderOfficerScreenPacket;
 import com.mifan.network.clientbound.UpdateNecromancerScreenPacket;
+import com.mifan.network.serverbound.AdminExecuteCommandPacket;
 import com.mifan.network.serverbound.AssignNecromancerTargetPacket;
 import com.mifan.network.serverbound.CloseNecromancerScreenPacket;
 import com.mifan.network.serverbound.ConfigureDesignatedAbilityPacket;
 import com.mifan.network.serverbound.MimicAbsorbPacket;
 import com.mifan.network.serverbound.MimicReleasePacket;
+import com.mifan.network.serverbound.RequestAdminPanelPacket;
+import com.mifan.network.serverbound.SaveAdminConfigPacket;
 import com.mifan.network.serverbound.SetDominanceTargetPacket;
 import com.mifan.network.serverbound.SetFerrymanTargetPacket;
 import com.mifan.network.serverbound.SetMidasTouchTimerPacket;
@@ -210,6 +214,31 @@ public final class ModNetwork {
                 .encoder(ConfigureDesignatedAbilityPacket::encode)
                 .decoder(ConfigureDesignatedAbilityPacket::decode)
                 .consumerMainThread(ConfigureDesignatedAbilityPacket::handle)
+                .add();
+
+        // 管理员面板（自动扫描 config + command）
+        CHANNEL.messageBuilder(RequestAdminPanelPacket.class, packetId++, NetworkDirection.PLAY_TO_SERVER)
+                .encoder(RequestAdminPanelPacket::encode)
+                .decoder(RequestAdminPanelPacket::decode)
+                .consumerMainThread(RequestAdminPanelPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(OpenAdminPanelPacket.class, packetId++, NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(OpenAdminPanelPacket::encode)
+                .decoder(OpenAdminPanelPacket::decode)
+                .consumerMainThread(OpenAdminPanelPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(SaveAdminConfigPacket.class, packetId++, NetworkDirection.PLAY_TO_SERVER)
+                .encoder(SaveAdminConfigPacket::encode)
+                .decoder(SaveAdminConfigPacket::decode)
+                .consumerMainThread(SaveAdminConfigPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(AdminExecuteCommandPacket.class, packetId++, NetworkDirection.PLAY_TO_SERVER)
+                .encoder(AdminExecuteCommandPacket::encode)
+                .decoder(AdminExecuteCommandPacket::decode)
+                .consumerMainThread(AdminExecuteCommandPacket::handle)
                 .add();
     }
 

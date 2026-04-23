@@ -7,6 +7,7 @@ import com.mifan.item.AbilityClearItem;
 import com.mifan.item.AnomalyDetectorItem;
 import com.mifan.item.AnomalyTraitItem;
 import com.mifan.item.DesignatedAbilityItem;
+import com.mifan.item.LootRefreshItem;
 import com.mifan.item.RankBlessingItem;
 import com.mifan.item.SpellScrollItem;
 import net.minecraft.resources.ResourceLocation;
@@ -70,6 +71,8 @@ public final class ModItems {
             DesignatedAbilityItem::new);
     public static final RegistryObject<Item> SPELL_SCROLL = ITEMS.register("spell_scroll",
             SpellScrollItem::new);
+    public static final RegistryObject<Item> LOOT_REFRESH_CORE = ITEMS.register("loot_refresh_core",
+            LootRefreshItem::new);
 
     private ModItems() {
     }
