@@ -1,6 +1,7 @@
 package com.mifan.spell;
 
 import com.mifan.corpsecampus;
+import com.mifan.client.screen.AdminPanelScreen;
 import com.mifan.client.screen.DesignatedAbilityScreen;
 import com.mifan.client.screen.DominanceTargetScreen;
 import com.mifan.client.screen.FerrymanTargetScreen;
@@ -13,6 +14,7 @@ import com.mifan.client.screen.RecorderOfficerTimerScreen;
 import com.mifan.network.clientbound.DangerSensePingPacket;
 import com.mifan.network.clientbound.InstinctProcPacket;
 import com.mifan.network.clientbound.OlfactionTrailSyncPacket;
+import com.mifan.network.clientbound.OpenAdminPanelPacket;
 import com.mifan.network.clientbound.OpenFerrymanScreenPacket;
 import com.mifan.network.clientbound.OpenMidasTouchScreenPacket;
 import com.mifan.network.clientbound.OpenMimicAbsorbScreenPacket;
@@ -105,6 +107,14 @@ public final class AbilityClientHandler {
             return;
         }
         minecraft.setScreen(new DesignatedAbilityScreen());
+    }
+
+    public static void openAdminPanelScreen(OpenAdminPanelPacket packet) {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.player == null || minecraft.level == null) {
+            return;
+        }
+        minecraft.setScreen(new AdminPanelScreen(packet.fields(), packet.commands()));
     }
 
     public static void openMidasTouchTimerScreen(OpenMidasTouchScreenPacket packet) {
@@ -235,6 +245,8 @@ public final class AbilityClientHandler {
         SonicSenseClientHandler.tick(player, gameTime);
         OlfactionClientHandler.tick(player, level, gameTime);
         ElementalDomainClientHandler.tick(player);
+        com.mifan.screeneffect.manager.CombatStateTracker.tick(player, gameTime);
+        com.mifan.screeneffect.manager.ScreenEffectManager.tick(player, gameTime);
         cleanupExpired(gameTime);
     }
 
@@ -318,6 +330,9 @@ public final class AbilityClientHandler {
         if (necromancerSoulCount > 0) {
             drawNecromancerSoulCount(event.getGuiGraphics(), width, height);
         }
+
+        com.mifan.screeneffect.manager.ScreenEffectManager.renderOverlay(
+                event.getGuiGraphics(), player, width, height, gameTime, event.getPartialTick());
     }
 
     private static void drawNecromancerSoulCount(GuiGraphics guiGraphics, int width, int height) {
@@ -451,6 +466,8 @@ public final class AbilityClientHandler {
         SonicSenseClientHandler.clear();
         OlfactionClientHandler.clear();
         ElementalDomainClientHandler.clear();
+        com.mifan.screeneffect.manager.CombatStateTracker.clear();
+        com.mifan.screeneffect.manager.ScreenEffectManager.clear();
     }
 
     private static Player localPlayer() {

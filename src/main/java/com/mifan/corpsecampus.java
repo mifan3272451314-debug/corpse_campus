@@ -153,6 +153,11 @@ public class corpsecampus {
         // Anomaly system config (corpse_campus-anomaly.toml)
         ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, com.mifan.anomaly.AnomalyConfig.SPEC,
                 "corpse_campus-anomaly.toml");
+        // Spell screen-effect client config (corpse_campus-screen_effect.toml)
+        ModLoadingContext.get().registerConfig(ModConfig.Type.CLIENT,
+                com.mifan.screeneffect.config.ScreenEffectConfig.SPEC,
+                "corpse_campus-screen_effect.toml");
+        com.mifan.screeneffect.registry.ModScreenEffects.bootstrap();
     }
 
     private void commonSetup(final FMLCommonSetupEvent event) {
