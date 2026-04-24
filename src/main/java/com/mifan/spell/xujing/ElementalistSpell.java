@@ -93,7 +93,7 @@ public class ElementalistSpell extends AbstractSpell {
                         false,
                         false));
                 if (level instanceof net.minecraft.server.level.ServerLevel serverLevel && entity instanceof Player player) {
-                    AbilityRuntime.beginElementalDomain(serverLevel, player, entity.isCrouching());
+                    AbilityRuntime.beginElementalDomain(serverLevel, player, entity.isCrouching(), spellLevel);
                 }
             } else {
                 entity.removeEffect(ModMobEffects.ELEMENTAL_DOMAIN.get());

@@ -310,6 +310,7 @@ public final class AbilityRuntime {
     private static final int ELEMENTAL_DOMAIN_RADIUS = 30;
     private static final int ELEMENTAL_DOMAIN_CLOSED_RADIUS = 15;
     private static final int ELEMENTAL_DOMAIN_INTERVAL = 20;
+    private static final int ELEMENTAL_DOMAIN_COOLDOWN_TICKS = 80 * 20;
 
     private AbilityRuntime() {
     }
@@ -555,12 +556,28 @@ public final class AbilityRuntime {
         ElementalDomainRuntime.clear(data);
     }
 
-    public static void beginElementalDomain(ServerLevel level, Player caster, boolean closedDomain) {
-        ElementalDomainRuntime.begin(level, caster, closedDomain);
+    public static boolean beginElementalDomain(ServerLevel level, Player caster, boolean closedDomain, int spellLevel) {
+        return ElementalDomainRuntime.begin(level, caster, closedDomain, spellLevel);
     }
 
     public static void endElementalDomain(ServerLevel level, Player caster) {
         ElementalDomainRuntime.end(level, caster);
+    }
+
+    public static boolean isInElementalistBattle(Player player) {
+        return ElementalDomainRuntime.isInBattle(player);
+    }
+
+    public static float getElementalistBattleManaMultiplier() {
+        return ElementalDomainRuntime.BATTLE_MANA_MULTIPLIER;
+    }
+
+    public static int getElementalistCooldownTicks() {
+        return ELEMENTAL_DOMAIN_COOLDOWN_TICKS;
+    }
+
+    public static float getElementalistEffectivenessFactor(Player player) {
+        return ElementalDomainRuntime.getEffectivenessFactor(player);
     }
 
     public static Vec3 getElementalistCenter(Player caster) {

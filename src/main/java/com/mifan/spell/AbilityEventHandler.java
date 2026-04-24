@@ -868,7 +868,14 @@ public final class AbilityEventHandler {
         }
 
         data.putLong(AbilityRuntime.TAG_ELEMENTAL_DOMAIN_LAST_TICK, gameTime);
-        double radius = AbilityRuntime.getElementalistRadius();
+        float factor = AbilityRuntime.getElementalistEffectivenessFactor(player);
+        if (factor <= 0.0F) {
+            return;
+        }
+        double radius = AbilityRuntime.getElementalistRadius() * factor;
+        if (radius < 0.5D) {
+            return;
+        }
         AABB area = player.getBoundingBox().inflate(radius, 8.0D, radius);
         for (LivingEntity target : serverLevel.getEntitiesOfClass(LivingEntity.class, area,
                 entity -> AbilityRuntime.isElementalistValidTarget(player, entity)
