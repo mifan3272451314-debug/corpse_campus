@@ -1,6 +1,7 @@
 package com.mifan.spell;
 
 import com.mifan.anomaly.AnomalyBookService;
+import com.mifan.compat.customnpcs.CustomNpcsCompat;
 import com.mifan.corpsecampus;
 import com.mifan.network.ModNetwork;
 import com.mifan.network.clientbound.DangerSensePingPacket;
@@ -54,6 +55,7 @@ import net.minecraftforge.event.entity.living.LivingHealEvent;
 import net.minecraftforge.event.entity.living.LivingHurtEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
+import io.redspace.ironsspellbooks.api.events.ChangeManaEvent;
 import org.joml.Vector3f;
 
 import java.util.ArrayList;
@@ -281,7 +283,16 @@ public final class AbilityEventHandler {
 
         Entity killerEntity = event.getSource().getEntity();
         if (killerEntity instanceof Player killerPlayer && !(entity instanceof Player)) {
-            NecromancerRuntime.onMonsterKilled(killerPlayer, entity);
+            if (CustomNpcsCompat.isCustomNpc(entity)
+                    && killerPlayer instanceof ServerPlayer serverKiller
+                    && NecromancerRuntime.playerOwnsNecromancer(serverKiller)) {
+                int xp = Math.max(0, Math.round(entity.getMaxHealth() * 0.1F));
+                if (xp > 0) {
+                    serverKiller.giveExperiencePoints(xp);
+                }
+            } else {
+                NecromancerRuntime.onMonsterKilled(killerPlayer, entity);
+            }
         }
     }
 
@@ -322,6 +333,21 @@ public final class AbilityEventHandler {
             com.mifan.spell.MidasBombRuntime.clearBombsOwnedBy(player.getUUID());
             com.mifan.spell.runtime.RecorderOfficerRuntime.clearArmedByCaster(player);
         }
+    }
+
+    @SubscribeEvent
+    public static void onElementalistBattleManaDiscount(ChangeManaEvent event) {
+        if (!AbilityRuntime.isInElementalistBattle(event.getEntity())) {
+            return;
+        }
+        float oldMana = event.getOldMana();
+        float newMana = event.getNewMana();
+        if (newMana >= oldMana) {
+            return;
+        }
+        float cost = oldMana - newMana;
+        float discounted = cost * AbilityRuntime.getElementalistBattleManaMultiplier();
+        event.setNewMana(oldMana - discounted);
     }
 
     /**
