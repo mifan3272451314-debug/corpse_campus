@@ -10,6 +10,7 @@ import com.mifan.item.DesignatedAbilityItem;
 import com.mifan.item.EvolutionCoreItem;
 import com.mifan.item.LootRefreshItem;
 import com.mifan.item.RankBlessingItem;
+import com.mifan.item.SlateItem;
 import com.mifan.item.SpellScrollItem;
 import com.mifan.item.SpellEmbryoItem;
 import net.minecraft.resources.ResourceLocation;
@@ -79,6 +80,8 @@ public final class ModItems {
             EvolutionCoreItem::new);
     public static final RegistryObject<Item> LOOT_REFRESH_CORE = ITEMS.register("loot_refresh_core",
             LootRefreshItem::new);
+    public static final RegistryObject<Item> SLATE = ITEMS.register("slate",
+            SlateItem::new);
 
     private ModItems() {
     }

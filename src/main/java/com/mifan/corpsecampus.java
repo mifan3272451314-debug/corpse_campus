@@ -94,6 +94,7 @@ public class corpsecampus {
                         output.accept(ModItems.RANK_CORE_S.get());
                         output.accept(ModItems.ABILITY_CLEAR_CORE.get());
                         output.accept(ModItems.LOOT_REFRESH_CORE.get());
+                        output.accept(ModItems.SLATE.get());
                     }).build());
 
     public corpsecampus() {

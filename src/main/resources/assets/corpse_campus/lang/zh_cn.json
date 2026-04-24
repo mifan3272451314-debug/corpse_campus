@@ -584,5 +584,12 @@
   "tooltip.corpse_campus.loot_refresh_hint": "右键刷新当前维度已加载区块内所有战利品箱",
   "tooltip.corpse_campus.loot_refresh_shift": "§7潜行 + 右键：刷新所有维度已加载区块",
   "tooltip.corpse_campus.loot_refresh_warning": "§c会清空箱内残留物品；仅对 mod 启用后记录过的战利品箱生效",
-  "message.corpse_campus.loot_refreshed": "已刷新 §e%1$s§r 个战利品箱（§7%2$s§r 个未加载已跳过 / %3$s 个维度）"
+  "message.corpse_campus.loot_refreshed": "已刷新 §e%1$s§r 个战利品箱（§7%2$s§r 个未加载已跳过 / %3$s 个维度）",
+
+  "item.corpse_campus.slate": "石板",
+  "item.corpse_campus.slate.empty": "空白石板",
+  "tooltip.corpse_campus.slate.empty": "使用 /magic Slate <流派注册ID> 绑定流派",
+  "message.corpse_campus.slate.bound": "已将主手中的石板绑定为 §b%s§r 流派",
+  "message.corpse_campus.slate.not_holding": "目标主手没有持有石板",
+  "message.corpse_campus.slate.unknown_school": "未知的流派注册ID：§c%s§r（可用：xujing / rizhao / dongyue / yuzhe / shengqi）"
 }

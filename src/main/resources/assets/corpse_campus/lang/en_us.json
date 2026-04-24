@@ -543,5 +543,12 @@
   "tooltip.corpse_campus.loot_refresh_hint": "Right-click to refresh every loot chest in loaded chunks of the current dimension.",
   "tooltip.corpse_campus.loot_refresh_shift": "§7Shift + right-click: refresh loaded chunks across ALL dimensions.",
   "tooltip.corpse_campus.loot_refresh_warning": "§cClears any remaining items inside; only chests recorded after this mod was installed are recoverable.",
-  "message.corpse_campus.loot_refreshed": "Refreshed §e%1$s§r chests (§7%2$s§r skipped in unloaded chunks / %3$s dimension(s))."
+  "message.corpse_campus.loot_refreshed": "Refreshed §e%1$s§r chests (§7%2$s§r skipped in unloaded chunks / %3$s dimension(s)).",
+
+  "item.corpse_campus.slate": "Slate",
+  "item.corpse_campus.slate.empty": "Blank Slate",
+  "tooltip.corpse_campus.slate.empty": "Use /magic Slate <schoolId> to bind a school",
+  "message.corpse_campus.slate.bound": "Slate in main hand bound to §b%s§r school",
+  "message.corpse_campus.slate.not_holding": "Target is not holding a slate in main hand",
+  "message.corpse_campus.slate.unknown_school": "Unknown school id: §c%s§r (valid: xujing / rizhao / dongyue / yuzhe / shengqi)"
 }
