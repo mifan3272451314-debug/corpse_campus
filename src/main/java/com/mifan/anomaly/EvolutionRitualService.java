@@ -3,7 +3,6 @@ package com.mifan.anomaly;
 import com.mifan.corpsecampus;
 import com.mifan.item.AnomalyTraitItem;
 import com.mifan.item.SpellEmbryoItem;
-import com.mifan.registry.ModSchools;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -16,7 +15,6 @@ import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 
 import java.util.ArrayList;
@@ -212,8 +210,8 @@ public final class EvolutionRitualService {
             return false;
         }
 
-        // 消耗材料：item + corpse + B 特性
-        picked.consume(itemEntities, corpseEntities, altar.schoolId());
+        // 消耗材料：item + corpse（带物品落地）+ B 特性
+        picked.consume(level, itemEntities, corpseEntities, altar.schoolId());
 
         // 生成胚胎丢在 center 上方
         ItemStack embryo = SpellEmbryoItem.createFor(picked.outputSpellId());
@@ -301,16 +299,20 @@ public final class EvolutionRitualService {
             return true;
         }
 
-        void consume(List<ItemEntity> itemEntities, List<Entity> corpses, ResourceLocation schoolId) {
+        void consume(ServerLevel level, List<ItemEntity> itemEntities, List<Entity> corpses, ResourceLocation schoolId) {
             // 消耗 B 特性 1 枚
             consumeOneTraitB(itemEntities, schoolId);
             // 消耗常规物品
             for (var entry : itemInputs.entrySet()) {
                 consumeItem(itemEntities, entry.getKey(), entry.getValue());
             }
-            // 消耗尸体
-            for (int i = 0; i < requiredCorpses && i < corpses.size(); i++) {
-                corpses.get(i).discard();
+            // 消耗尸体：调反射桥落下玩家物品再 discard，避免静默销毁死者装备
+            int consumed = 0;
+            for (Entity corpse : corpses) {
+                if (consumed >= requiredCorpses) break;
+                if (EvolutionCorpseBridge.dropContentsAndDiscard(level, corpse)) {
+                    consumed++;
+                }
             }
             // 额外需求消耗
             for (ExtraRequirement extra : extras) {
