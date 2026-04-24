@@ -41,9 +41,9 @@ public final class ElementalDomainRuntime {
     private static final int BATTLE_CHECK_INTERVAL = 20;
     private static final int FLICKER_INTERVAL = 5;
     private static final int COAL_TICK_INTERVAL = 10;
-    private static final float COAL_SPEED_BASE = 0.005F;
-    private static final float COAL_SPEED_PER_DIFF = 0.015F;
-    private static final float COAL_SPEED_MAX = 0.08F;
+    private static final float COAL_SPEED_BASE = 0.02F;
+    private static final float COAL_SPEED_PER_DIFF = 0.02F;
+    private static final float COAL_SPEED_MAX = 0.10F;
     private static final float FLICKER_FRACTION = 0.04F;
     private static final BlockState[] INNER_BLOCKS = {
             Blocks.PRISMARINE.defaultBlockState(),
