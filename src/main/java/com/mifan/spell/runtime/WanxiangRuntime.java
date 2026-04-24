@@ -28,11 +28,11 @@ public final class WanxiangRuntime {
     }
 
     public static int getBlinkRange(int spellLevel) {
-        return 32 + spellLevel * 6;
+        return 3 + spellLevel * 7;
     }
 
     public static int getSwapRange(int spellLevel) {
-        return 64 + spellLevel * 12;
+        return 3 + spellLevel * 7;
     }
 
     public static boolean cast(ServerLevel level, LivingEntity caster, int spellLevel) {
