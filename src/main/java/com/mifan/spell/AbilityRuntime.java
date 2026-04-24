@@ -233,7 +233,7 @@ public final class AbilityRuntime {
     public static final long LIGHT_PRAYER_KNOCKBACK_INTERVAL_TICKS = 10L;
     public static final double LIGHT_PRAYER_KNOCKBACK_STRENGTH = 0.22D;
     public static final double LIGHT_PRAYER_KNOCKBACK_VERTICAL = 0.05D;
-    public static final float LIGHT_PRAYER_MONSTER_BONUS_MULTIPLIER = 2.0F;
+    public static volatile float LIGHT_PRAYER_MONSTER_BONUS_MULTIPLIER = 3.0F;
     public static final int LIGHT_PRAYER_WEAPON_IGNITE_SECONDS = 5;
     public static final int LIGHT_PRAYER_RESISTANCE_AMPLIFIER = 1;
     public static final double LIGHT_PRAYER_SPELL_RESIST_BONUS = 0.25D;
