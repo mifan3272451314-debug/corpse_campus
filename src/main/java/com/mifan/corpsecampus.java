@@ -80,6 +80,13 @@ public class corpsecampus {
                                 : com.mifan.anomaly.AnomalyBookService.getAllSpellSpecs()) {
                             output.accept(com.mifan.item.SpellEmbryoItem.createFor(spec.spellId()));
                         }
+                        // 进化核心：只对 A 级法术有意义（正式玩法通过胚胎转化获取；创造栏仅展示 A 级）
+                        for (com.mifan.anomaly.AnomalyBookService.SpellSpec spec
+                                : com.mifan.anomaly.AnomalyBookService.getAllSpellSpecs()) {
+                            if (spec.rank() == com.mifan.anomaly.AnomalySpellRank.A) {
+                                output.accept(com.mifan.item.EvolutionCoreItem.createFor(spec.spellId()));
+                            }
+                        }
                         // 管理员调试核心物品
                         output.accept(ModItems.DESIGNATED_ABILITY.get());
                         output.accept(ModItems.RANK_CORE_B.get());
@@ -129,6 +136,8 @@ public class corpsecampus {
     }
 
     private void commonSetup(final FMLCommonSetupEvent event) {
+        // 进化觉醒：注册 10 条仪式配方。放在 commonSetup 里，此时所有 Item 已完成 DeferredRegister 注册
+        event.enqueueWork(com.mifan.anomaly.EvolutionRitualService::init);
     }
 
     // You can use EventBusSubscriber to automatically register all static methods
@@ -176,6 +185,31 @@ public class corpsecampus {
                         (stack, level, entity, seed) -> {
                             net.minecraft.resources.ResourceLocation spellId =
                                     com.mifan.item.SpellEmbryoItem.getSpellId(stack);
+                            if (spellId == null) {
+                                return 0.0F;
+                            }
+                            com.mifan.anomaly.AnomalyBookService.SpellSpec spec =
+                                    com.mifan.anomaly.AnomalyBookService.getSpellSpec(spellId);
+                            if (spec == null) {
+                                return 0.0F;
+                            }
+                            return switch (spec.schoolId().getPath()) {
+                                case "xujing" -> 0.0F;
+                                case "rizhao" -> 1.0F;
+                                case "dongyue" -> 2.0F;
+                                case "yuzhe" -> 3.0F;
+                                case "shengqi" -> 4.0F;
+                                default -> 0.0F;
+                            };
+                        });
+
+                // 进化核心：贴图选择与胚胎同构，依赖 evolution_core.json overrides（暂未铺贴图，fallback 到默认）
+                net.minecraft.client.renderer.item.ItemProperties.register(
+                        ModItems.EVOLUTION_CORE.get(),
+                        net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(MODID, "school"),
+                        (stack, level, entity, seed) -> {
+                            net.minecraft.resources.ResourceLocation spellId =
+                                    com.mifan.item.EvolutionCoreItem.getSpellId(stack);
                             if (spellId == null) {
                                 return 0.0F;
                             }

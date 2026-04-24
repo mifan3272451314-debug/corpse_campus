@@ -81,6 +81,8 @@ public final class AnomalyEventHandler {
         }
         // 自然觉醒进度全量清零（§8.2）：死亡重置序列时连带清掉进度，防止重生后一击觉醒。
         NaturalAwakeningService.clearProgress(player);
+        // 进化觉醒进度清零（胚胎/核心物品本身不清，按普通物品掉落规则处理 —— 用户口径 #6）
+        EvolutionAwakeningService.clearProgress(player);
         player.displayClientMessage(
                 net.minecraft.network.chat.Component.translatable("message.corpse_campus.sequence_reset_on_death"),
                 false);

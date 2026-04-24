@@ -7,6 +7,7 @@ import com.mifan.item.AbilityClearItem;
 import com.mifan.item.AnomalyDetectorItem;
 import com.mifan.item.AnomalyTraitItem;
 import com.mifan.item.DesignatedAbilityItem;
+import com.mifan.item.EvolutionCoreItem;
 import com.mifan.item.LootRefreshItem;
 import com.mifan.item.RankBlessingItem;
 import com.mifan.item.SpellScrollItem;
@@ -74,6 +75,8 @@ public final class ModItems {
             SpellScrollItem::new);
     public static final RegistryObject<Item> SPELL_EMBRYO = ITEMS.register("spell_embryo",
             SpellEmbryoItem::new);
+    public static final RegistryObject<Item> EVOLUTION_CORE = ITEMS.register("evolution_core",
+            EvolutionCoreItem::new);
     public static final RegistryObject<Item> LOOT_REFRESH_CORE = ITEMS.register("loot_refresh_core",
             LootRefreshItem::new);
 
