@@ -69,6 +69,8 @@
   "message.corpse_campus.evolution_core_forged": "胚胎完成进化·%s 核心已在掌中",
   "message.corpse_campus.evolution_altar_incomplete": "祭坛结构不完整",
   "message.corpse_campus.evolution_denied.already_a": "你已持有 A 级异能·不可再走进化觉醒",
+  "message.corpse_campus.evolution_denied.already_s": "你已持有 S 级异能·至高之境无可超越",
+  "message.corpse_campus.evolution_denied.not_a_rank": "S 级仪式祭坛只接受 A 级异能者",
   "message.corpse_campus.evolution_denied.not_awakened": "尚未完成 B 级觉醒·不能进行仪式",
   "message.corpse_campus.evolution_denied.wrong_sequence": "主序列不符·祭坛拒绝响应",
   "message.corpse_campus.evolution_recipe_not_matched": "材料不对·祭坛未能唤醒胚胎",

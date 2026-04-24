@@ -50,7 +50,11 @@ public final class EvolutionEventHandler {
         if (altar == null) {
             return;
         }
-        boolean handled = EvolutionRitualService.attemptFusion(serverLevel, event.getPos(), player);
+        // 先尝试 5×5 A→S 通道；若 5×5 结构未通过则 fallback 到 3×3 B→A 通道
+        boolean handled = EvolutionRitualService.attemptFusionS(serverLevel, event.getPos(), player);
+        if (!handled) {
+            handled = EvolutionRitualService.attemptFusion(serverLevel, event.getPos(), player);
+        }
         if (handled) {
             event.setCanceled(true);
             event.setCancellationResult(InteractionResult.SUCCESS);

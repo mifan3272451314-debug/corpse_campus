@@ -53,6 +53,8 @@
   "message.corpse_campus.evolution_core_forged": "Embryo completes evolution — %s core in hand.",
   "message.corpse_campus.evolution_altar_incomplete": "Altar structure is incomplete.",
   "message.corpse_campus.evolution_denied.already_a": "You already hold an A-rank ability; evolution path denied.",
+  "message.corpse_campus.evolution_denied.already_s": "You already hold an S-rank ability — the apex cannot be surpassed.",
+  "message.corpse_campus.evolution_denied.not_a_rank": "The S-rank altar only responds to A-rank anomalies.",
   "message.corpse_campus.evolution_denied.not_awakened": "B-rank awakening required before ritual.",
   "message.corpse_campus.evolution_denied.wrong_sequence": "Main sequence mismatch — altar refuses.",
   "message.corpse_campus.evolution_recipe_not_matched": "Offerings don't match any known evolution.",

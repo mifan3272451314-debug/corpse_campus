@@ -43,13 +43,14 @@ import java.util.Map;
 public final class EvolutionRitualService {
 
     private static final List<EvolutionRecipe> RECIPES = new ArrayList<>();
+    private static final List<EvolutionSRecipe> S_RECIPES = new ArrayList<>();
 
     private EvolutionRitualService() {
     }
 
-    /** mod 加载期一次性注册所有 10 条配方。 */
+    /** mod 加载期一次性注册所有 10 条 B→A 配方 + 5 条 A→S 配方。 */
     public static void init() {
-        if (!RECIPES.isEmpty()) {
+        if (!RECIPES.isEmpty() || !S_RECIPES.isEmpty()) {
             return;
         }
         registerXujing();
@@ -57,11 +58,17 @@ public final class EvolutionRitualService {
         registerDongyue();
         registerYuzhe();
         registerShengqi();
+        registerSRanks();
     }
 
-    /** 获取所有已注册配方（只读）。供调试指令 / 文档使用。 */
+    /** 获取所有已注册 B→A 配方（只读）。供调试指令 / 文档使用。 */
     public static List<EvolutionRecipe> getAllRecipes() {
         return List.copyOf(RECIPES);
+    }
+
+    /** 获取所有已注册 A→S 配方（只读）。 */
+    public static List<EvolutionSRecipe> getAllSRecipes() {
+        return List.copyOf(S_RECIPES);
     }
 
     private static void registerXujing() {
@@ -467,6 +474,183 @@ public final class EvolutionRitualService {
                 s.shrink(take);
                 if (s.isEmpty()) e.discard();
                 remaining -= take;
+            }
+        }
+    }
+
+    // ════════════════════════════════════════════════════════════════════
+    // A → S 级进化通道（5×5 祭坛）
+    //   配方统一格式：流派异常石板（TRAIT_*_S）×1 + 下界之星 ×1 + A 级流派特性（TRAIT_*_A）×1
+    //   产物：对应流派 S 级 spellId 的胚胎
+    //   前置：玩家已 A 级 + 主序列 = 该流派；已 S 级拒绝
+    // ════════════════════════════════════════════════════════════════════
+
+    private static void registerSRanks() {
+        S_RECIPES.add(new EvolutionSRecipe(EvolutionAltarStructure.XUJING,  id("rewind_worm")));
+        S_RECIPES.add(new EvolutionSRecipe(EvolutionAltarStructure.RIZHAO,  id("golden_crow_sun")));
+        S_RECIPES.add(new EvolutionSRecipe(EvolutionAltarStructure.DONGYUE, id("great_necromancer")));
+        S_RECIPES.add(new EvolutionSRecipe(EvolutionAltarStructure.YUZHE,   id("authority_grasp")));
+        S_RECIPES.add(new EvolutionSRecipe(EvolutionAltarStructure.SHENGQI, id("endless_life")));
+    }
+
+    /**
+     * A→S 通道融合入口。EventHandler 在右键中心方块时**先**调用本方法尝试 5×5 仪式；
+     * 若结构不通过（baseRadius=2 校验失败），返回 false，由调用方 fallback 到 {@link #attemptFusion}。
+     *
+     * 与 B→A 通道的关键区别：
+     *   - 5×5 底座（baseRadius=2）
+     *   - 玩家最高位阶必须 == A（已 S 级或未 A 级都拒绝）
+     *   - 配方不要求 B 级特性；强制 1 件 S 级流派特性 + 1 件 nether_star + 1 件 A 级流派特性，且无其他物品
+     *   - 物品扫描 AABB inflate(2.2D, 2.0D, 2.2D)
+     *
+     * @return true = 命中 5×5 + 完成融合或显式拒绝（结构不完整不算）；false = 5×5 不通过，应继续尝试 B→A
+     */
+    public static boolean attemptFusionS(ServerLevel level, BlockPos center, ServerPlayer player) {
+        EvolutionAltarStructure altar = EvolutionAltarStructure.fromCenterBlock(level.getBlockState(center));
+        if (altar == null) {
+            return false;
+        }
+        if (!altar.matches(level, center, 2)) {
+            return false;
+        }
+
+        // 玩家书校验：必须已觉醒 + 最高位阶 == A
+        ItemStack book = AnomalyBookService.getPlayerBook(player);
+        if (book.isEmpty() || !AnomalyBookService.isAwakened(book)) {
+            player.displayClientMessage(Component.translatable("message.corpse_campus.evolution_denied.not_awakened")
+                    .withStyle(net.minecraft.ChatFormatting.RED), true);
+            return true;
+        }
+        AnomalySpellRank highest = AnomalyBookService.getHighestRank(book);
+        if (highest == AnomalySpellRank.S) {
+            player.displayClientMessage(Component.translatable("message.corpse_campus.evolution_denied.already_s")
+                    .withStyle(net.minecraft.ChatFormatting.RED), true);
+            return true;
+        }
+        if (highest != AnomalySpellRank.A) {
+            player.displayClientMessage(Component.translatable("message.corpse_campus.evolution_denied.not_a_rank")
+                    .withStyle(net.minecraft.ChatFormatting.RED), true);
+            return true;
+        }
+
+        // 主序列匹配祭坛流派
+        ResourceLocation mainSeq = AnomalyBookService.getMainSequenceId(book);
+        if (mainSeq == null || !mainSeq.equals(altar.schoolId())) {
+            player.displayClientMessage(Component.translatable("message.corpse_campus.evolution_denied.wrong_sequence")
+                    .withStyle(net.minecraft.ChatFormatting.RED), true);
+            return true;
+        }
+
+        // 5×5 上方 AABB 扫描（半径 2.2 略大于祭坛对角，防止漏掉边缘掉落物）
+        AABB itemBox = new AABB(center).inflate(2.2D, 2.0D, 2.2D);
+        List<ItemEntity> itemEntities = level.getEntitiesOfClass(ItemEntity.class, itemBox, ItemEntity::isAlive);
+
+        // 在 S_RECIPES 里找匹配
+        EvolutionSRecipe picked = null;
+        for (EvolutionSRecipe recipe : S_RECIPES) {
+            if (!recipe.altar().equals(altar)) {
+                continue;
+            }
+            if (recipe.matches(itemEntities, altar.schoolId())) {
+                picked = recipe;
+                break;
+            }
+        }
+        if (picked == null) {
+            player.displayClientMessage(Component.translatable("message.corpse_campus.evolution_recipe_not_matched")
+                    .withStyle(net.minecraft.ChatFormatting.YELLOW), true);
+            return true;
+        }
+
+        // 消耗材料
+        picked.consume(itemEntities, altar.schoolId());
+
+        // 生成 S 胚胎
+        ItemStack embryo = SpellEmbryoItem.createFor(picked.outputSpellId());
+        ItemEntity drop = new ItemEntity(level, center.getX() + 0.5D, center.getY() + 1.4D, center.getZ() + 0.5D, embryo);
+        drop.setDefaultPickUpDelay();
+        level.addFreshEntity(drop);
+
+        // 视听反馈：S 级用更夸张的音效
+        level.playSound(null, center, SoundEvents.BEACON_ACTIVATE, SoundSource.PLAYERS, 1.2F, 0.8F);
+        level.playSound(null, center, SoundEvents.WITHER_SPAWN, SoundSource.PLAYERS, 0.5F, 1.4F);
+        level.sendParticles(net.minecraft.core.particles.ParticleTypes.END_ROD,
+                center.getX() + 0.5D, center.getY() + 1.4D, center.getZ() + 0.5D,
+                80, 1.2D, 1.2D, 1.2D, 0.08D);
+        level.sendParticles(net.minecraft.core.particles.ParticleTypes.SOUL_FIRE_FLAME,
+                center.getX() + 0.5D, center.getY() + 1.4D, center.getZ() + 0.5D,
+                40, 1.0D, 1.0D, 1.0D, 0.05D);
+
+        AnomalyBookService.SpellSpec spec = AnomalyBookService.getSpellSpec(picked.outputSpellId());
+        String zhName = spec != null ? spec.zhName() : picked.outputSpellId().getPath();
+        player.displayClientMessage(Component.translatable("message.corpse_campus.evolution_embryo_born", zhName)
+                .withStyle(net.minecraft.ChatFormatting.GOLD), false);
+        return true;
+    }
+
+    /**
+     * A→S 级配方记录。每条对应一个流派的 S 级法术 spellId。
+     * 材料固定：1 × TRAIT_*_S（异常石板）+ 1 × NETHER_STAR + 1 × TRAIT_*_A
+     */
+    public static final class EvolutionSRecipe {
+        private final EvolutionAltarStructure altar;
+        private final ResourceLocation outputSpellId;
+
+        EvolutionSRecipe(EvolutionAltarStructure altar, ResourceLocation outputSpellId) {
+            this.altar = altar;
+            this.outputSpellId = outputSpellId;
+        }
+
+        public EvolutionAltarStructure altar() { return altar; }
+        public ResourceLocation outputSpellId() { return outputSpellId; }
+
+        /**
+         * 精确匹配：祭坛上方必须**恰好**有：
+         *   1) 1 枚 schoolId 流派的 S 级 AnomalyTraitItem（异常石板）
+         *   2) 1 枚 schoolId 流派的 A 级 AnomalyTraitItem
+         *   3) 1 个原版 NETHER_STAR
+         * 多任何一种或多余物品都不匹配。
+         */
+        boolean matches(List<ItemEntity> items, ResourceLocation schoolId) {
+            int sRankCount = 0;
+            int aRankCount = 0;
+            int netherStarCount = 0;
+            for (ItemEntity e : items) {
+                ItemStack s = e.getItem();
+                if (s.isEmpty()) continue;
+                if (s.getItem() instanceof AnomalyTraitItem trait && trait.getSchoolId().equals(schoolId)) {
+                    if (trait.getRank() == AnomalySpellRank.S) sRankCount += s.getCount();
+                    else if (trait.getRank() == AnomalySpellRank.A) aRankCount += s.getCount();
+                    else return false;          // 同流派 B 特性出现 → 不匹配（避免 B 配方被误触发）
+                } else if (s.getItem() == Items.NETHER_STAR) {
+                    netherStarCount += s.getCount();
+                } else if (s.getItem() instanceof AnomalyTraitItem) {
+                    // 其他流派特性出现 → 不匹配
+                    return false;
+                } else {
+                    // 其他任何物品出现 → 不匹配
+                    return false;
+                }
+            }
+            return sRankCount == 1 && aRankCount == 1 && netherStarCount == 1;
+        }
+
+        void consume(List<ItemEntity> items, ResourceLocation schoolId) {
+            consumeOneTraitOfRank(items, schoolId, AnomalySpellRank.S);
+            consumeOneTraitOfRank(items, schoolId, AnomalySpellRank.A);
+            consumeItem(items, Items.NETHER_STAR, 1);
+        }
+
+        private static void consumeOneTraitOfRank(List<ItemEntity> items, ResourceLocation schoolId, AnomalySpellRank rank) {
+            for (ItemEntity e : items) {
+                ItemStack s = e.getItem();
+                if (s.getItem() instanceof AnomalyTraitItem trait
+                        && trait.getRank() == rank
+                        && trait.getSchoolId().equals(schoolId)) {
+                    s.shrink(1);
+                    if (s.isEmpty()) e.discard();
+                    return;
+                }
             }
         }
     }

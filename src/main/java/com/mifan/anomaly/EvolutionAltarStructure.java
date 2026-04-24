@@ -73,18 +73,26 @@ public enum EvolutionAltarStructure {
     }
 
     /**
-     * 检查给定中心坐标是否满足本流派祭坛结构。
-     * @param level 世界
-     * @param center 被右键的中心方块（必须是 centerBlock）
+     * 检查给定中心坐标是否满足本流派祭坛结构（默认 3×3，B→A 通道）。
      */
     public boolean matches(Level level, BlockPos center) {
+        return matches(level, center, 1);
+    }
+
+    /**
+     * 参数化的祭坛结构校验：底座边长 = 2*baseRadius+1。
+     *   - baseRadius=1 → 3×3 底座（B→A 通道）
+     *   - baseRadius=2 → 5×5 底座（A→S 通道）
+     * 四角装饰位于 center.above() 的 (±baseRadius, ±baseRadius) 四个对角。
+     */
+    public boolean matches(Level level, BlockPos center, int baseRadius) {
         BlockState centerState = level.getBlockState(center);
         if (!centerState.is(centerBlock)) {
             return false;
         }
-        // 3x3 底座：center 同层 8 格全部 floorBlock（中心方块本身不算 floor 严格比对）
-        for (int dx = -1; dx <= 1; dx++) {
-            for (int dz = -1; dz <= 1; dz++) {
+        // 底座：center 同层 (2r+1)×(2r+1) 中除 center 自身外，全部 floorBlock
+        for (int dx = -baseRadius; dx <= baseRadius; dx++) {
+            for (int dz = -baseRadius; dz <= baseRadius; dz++) {
                 if (dx == 0 && dz == 0) {
                     continue;
                 }
@@ -94,9 +102,12 @@ public enum EvolutionAltarStructure {
                 }
             }
         }
-        // 四角装饰：center.above() 的四个对角
+        // 四角装饰：center.above() 的四个对角（±baseRadius, ±baseRadius）
         BlockPos above = center.above();
-        int[][] corners = { {-1, -1}, {-1, 1}, {1, -1}, {1, 1} };
+        int[][] corners = {
+                {-baseRadius, -baseRadius}, {-baseRadius, baseRadius},
+                {baseRadius, -baseRadius}, {baseRadius, baseRadius}
+        };
         for (int[] offset : corners) {
             BlockPos pos = above.offset(offset[0], 0, offset[1]);
             if (!level.getBlockState(pos).is(cornerBlock)) {
