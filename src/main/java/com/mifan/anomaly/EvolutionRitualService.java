@@ -139,7 +139,7 @@ public final class EvolutionRitualService {
         RECIPES.add(new EvolutionRecipe(
                 EvolutionAltarStructure.SHENGQI,
                 id("grafter"),
-                orderedMap(Items.ENCHANTED_GOLDEN_APPLE, 8, Items.ECHO_SHARD, 16),
+                orderedMap(Items.GOLDEN_APPLE, 8, Items.ECHO_SHARD, 16),
                 2));
         // 摆渡人：1 不死图腾 + 2 玩家尸体 + 4 骷髅头颅
         RECIPES.add(new EvolutionRecipe(
