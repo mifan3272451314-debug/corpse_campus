@@ -287,6 +287,23 @@ public final class MagicCommand {
                                                         StringArgumentType.getString(context, "value"))))))
                         .then(Commands.literal("reset")
                                 .executes(context -> rulesReset(context.getSource()))))
+                .then(Commands.literal("Slate")
+                        .then(Commands.argument("schoolId", StringArgumentType.word())
+                                .suggests((context, builder) -> {
+                                    for (String s : new String[]{"xujing", "rizhao", "dongyue", "yuzhe", "shengqi"}) {
+                                        builder.suggest(s);
+                                    }
+                                    return builder.buildFuture();
+                                })
+                                .executes(context -> bindSlate(
+                                        context.getSource(),
+                                        context.getSource().getPlayerOrException(),
+                                        StringArgumentType.getString(context, "schoolId")))
+                                .then(Commands.argument("player", EntityArgument.player())
+                                        .executes(context -> bindSlate(
+                                                context.getSource(),
+                                                EntityArgument.getPlayer(context, "player"),
+                                                StringArgumentType.getString(context, "schoolId"))))))
                 .then(Commands.literal("help")
                         .executes(context -> showHelp(context.getSource()))));
     }
@@ -1215,5 +1232,25 @@ public final class MagicCommand {
         int count = n;
         source.sendSuccess(() -> Component.literal("§a已重置 §e" + count + " §a条配置项到默认值"), true);
         return n;
+    }
+
+    private static int bindSlate(CommandSourceStack source, ServerPlayer target, String schoolId) {
+        String path = schoolId == null ? "" : schoolId.toLowerCase(Locale.ROOT);
+        if (!com.mifan.item.SlateDescriptions.isKnownSchool(path)) {
+            source.sendFailure(Component.translatable("message.corpse_campus.slate.unknown_school", schoolId));
+            return 0;
+        }
+        ItemStack mainHand = target.getMainHandItem();
+        if (mainHand.isEmpty() || mainHand.getItem() != ModItems.SLATE.get()) {
+            source.sendFailure(Component.translatable("message.corpse_campus.slate.not_holding"));
+            return 0;
+        }
+        com.mifan.item.SlateItem.bindSchool(mainHand, path);
+        target.containerMenu.broadcastChanges();
+        String schoolName = com.mifan.item.SlateDescriptions.SCHOOL_DISPLAY_NAME.getOrDefault(path, path);
+        source.sendSuccess(
+                () -> Component.translatable("message.corpse_campus.slate.bound", schoolName),
+                true);
+        return 1;
     }
 }
