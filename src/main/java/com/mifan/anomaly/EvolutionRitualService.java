@@ -283,7 +283,7 @@ public final class EvolutionRitualService {
     public static final class EvolutionRecipe {
         private final EvolutionAltarStructure altar;
         private final ResourceLocation outputSpellId;
-        /** Map<Item, count>：必须精确等量；不接受多余堆量 */
+        /** Map&lt;Item, count&gt;：每种至少 count 个；玩家多扔的留在原地不消耗。 */
         private final LinkedHashMap<Item, Integer> itemInputs;
         private final int requiredCorpses;
         private final List<ExtraRequirement> extras;
@@ -313,11 +313,13 @@ public final class EvolutionRitualService {
             if (countTraitBOfSchool(itemEntities, schoolId) < 1) {
                 return false;
             }
-            // 2) 物品需求：每种 Item 数量精确匹配
+            // 2) 物品需求：每种 Item 数量足够即可（≥ 配方需求；多余的留在祭坛不消耗）
+            //    旧实现使用 `actual != entry.getValue()` 是 Integer 引用比较，对 >127 的数值
+            //    （如刽子手 192）会误判 fail。改成 `<` 自动拆箱按 int 比较，并放宽到 "数量足够即可"。
             Map<Item, Integer> aggregated = aggregateNonTraitItems(itemEntities);
             for (var entry : itemInputs.entrySet()) {
                 Integer actual = aggregated.get(entry.getKey());
-                if (actual == null || actual != entry.getValue()) {
+                if (actual == null || actual < entry.getValue()) {
                     return false;
                 }
             }
