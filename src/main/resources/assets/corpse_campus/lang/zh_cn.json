@@ -602,5 +602,6 @@
   "tooltip.corpse_campus.slate.empty": "使用 /magic Slate <流派注册ID> 绑定流派",
   "message.corpse_campus.slate.bound": "已将主手中的石板绑定为 §b%s§r 流派",
   "message.corpse_campus.slate.not_holding": "目标主手没有持有石板",
-  "message.corpse_campus.slate.unknown_school": "未知的流派注册ID：§c%s§r（可用：xujing / rizhao / dongyue / yuzhe / shengqi）"
+  "message.corpse_campus.slate.unknown_school": "未知的流派注册ID：§c%s§r（可用：xujing / rizhao / dongyue / yuzhe / shengqi）",
+  "screen.corpse_campus.slate.footer": "滚轮上下滚动 / 拖动右侧滑块 · 按 ESC 关闭"
 }

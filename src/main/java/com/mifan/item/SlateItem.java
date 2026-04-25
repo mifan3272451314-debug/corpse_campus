@@ -1,24 +1,29 @@
 package com.mifan.item;
 
-import net.minecraft.ChatFormatting;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
 import net.minecraft.network.chat.TextColor;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResultHolder;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.level.Level;
+import net.minecraft.ChatFormatting;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.fml.DistExecutor;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
 /**
  * 流派石板：通过 /magic Slate <schoolId> [player] 绑定流派后，
- * 物品名渲染为「<流派名>石板」并七彩动画，tooltip 列出该流派的能力描述。
+ * 物品名渲染为「<流派名>石板」并七彩动画；右键打开 SlateScreen 查看流派描述。
  *
- * 未绑定状态显示「空白石板」+ 引导提示。
+ * 未绑定状态名称为「空白石板」（灰斜体），右键不响应。
  */
 public class SlateItem extends Item {
     public static final String TAG_BOUND_SCHOOL = "BoundSchool";
@@ -55,36 +60,33 @@ public class SlateItem extends Item {
                     .withStyle(Style.EMPTY.withColor(ChatFormatting.GRAY).withItalic(true));
         }
         String schoolName = SlateDescriptions.SCHOOL_DISPLAY_NAME.getOrDefault(schoolPath, schoolPath);
-        String fullName = schoolName + "石板";
-        return rainbow(fullName);
+        return rainbow(schoolName + "石板");
     }
 
     @Override
     public void appendHoverText(ItemStack stack, @Nullable Level level, List<Component> tooltip, TooltipFlag flag) {
+        // tooltip 仅展示物品名，详细描述改由 SlateScreen 呈现
+    }
+
+    @Override
+    public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
+        ItemStack stack = player.getItemInHand(hand);
         String schoolPath = getBoundSchoolPath(stack);
         if (schoolPath == null) {
-            tooltip.add(Component.translatable("tooltip.corpse_campus.slate.empty")
-                    .withStyle(ChatFormatting.GRAY));
-            return;
+            return InteractionResultHolder.pass(stack);
         }
-        List<String> lines = SlateDescriptions.LINES.get(schoolPath);
-        if (lines == null) {
-            return;
+        if (level.isClientSide) {
+            DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
+                    () -> () -> com.mifan.client.screen.SlateScreenLauncher.open(schoolPath));
         }
-        for (String line : lines) {
-            if (line.isEmpty()) {
-                tooltip.add(Component.literal(""));
-            } else {
-                tooltip.add(Component.literal(line).withStyle(ChatFormatting.GRAY));
-            }
-        }
+        return InteractionResultHolder.sidedSuccess(stack, level.isClientSide);
     }
 
     /**
      * 逐字符 HSV 动画着色，hue 随 wall-clock 时间与字符索引漂移。
-     * 同栈调用此方法每帧返回不同 RGB，因此鼠标 hover 物品时 GUI 会看到颜色流动。
+     * 公开给客户端 Screen 用作标题渲染。
      */
-    private static MutableComponent rainbow(String text) {
+    public static MutableComponent rainbow(String text) {
         MutableComponent root = Component.empty();
         long t = System.currentTimeMillis();
         for (int i = 0; i < text.length(); i++) {

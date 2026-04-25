@@ -561,5 +561,6 @@
   "tooltip.corpse_campus.slate.empty": "Use /magic Slate <schoolId> to bind a school",
   "message.corpse_campus.slate.bound": "Slate in main hand bound to §b%s§r school",
   "message.corpse_campus.slate.not_holding": "Target is not holding a slate in main hand",
-  "message.corpse_campus.slate.unknown_school": "Unknown school id: §c%s§r (valid: xujing / rizhao / dongyue / yuzhe / shengqi)"
+  "message.corpse_campus.slate.unknown_school": "Unknown school id: §c%s§r (valid: xujing / rizhao / dongyue / yuzhe / shengqi)",
+  "screen.corpse_campus.slate.footer": "Scroll wheel or drag the bar · ESC to close"
 }
