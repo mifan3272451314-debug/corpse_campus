@@ -72,8 +72,30 @@ public class SpellEmbryoItem extends Item {
 
     @Override
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
-        // 框架阶段:右键无任何效果
-        return InteractionResultHolder.pass(player.getItemInHand(hand));
+        ItemStack stack = player.getItemInHand(hand);
+
+        // 日轮金乌胚胎特殊处理：主序列日兆 → 右键变形为日轮弓（持有期间 shift+右键可逆变回）
+        ResourceLocation spellId = getSpellId(stack);
+        if (spellId != null && SunBowItem.GOLDEN_CROW_SUN.equals(spellId)) {
+            ItemStack book = AnomalyBookService.findBookForRead(player);
+            ResourceLocation seq = book.isEmpty() ? null : AnomalyBookService.getMainSequenceId(book);
+            if (seq == null || !seq.equals(com.mifan.registry.ModSchools.RIZHAO_RESOURCE)) {
+                if (!level.isClientSide) {
+                    player.displayClientMessage(Component.translatable(
+                            "message.corpse_campus.evolution_denied.wrong_sequence")
+                            .withStyle(ChatFormatting.RED), true);
+                }
+                return InteractionResultHolder.fail(stack);
+            }
+            if (!level.isClientSide) {
+                ItemStack bow = new ItemStack(com.mifan.registry.ModItems.SUN_BOW.get());
+                player.setItemInHand(hand, bow);
+            }
+            return InteractionResultHolder.success(player.getItemInHand(hand));
+        }
+
+        // 框架阶段:其他胚胎右键无任何效果
+        return InteractionResultHolder.pass(stack);
     }
 
     /** A/S 级胚胎带附魔发光(enchantment glint)。 */

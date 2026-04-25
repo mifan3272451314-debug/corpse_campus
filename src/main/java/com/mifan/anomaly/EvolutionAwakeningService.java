@@ -177,6 +177,35 @@ public final class EvolutionAwakeningService {
         player.containerMenu.broadcastChanges();
     }
 
+    /**
+     * 强制把玩家手中的物品替换为该 spellId 的进化核心 — 不做 isAlreadyARankOrHigher 拦截。
+     *
+     * 用途：A→S 进化通道（日轮金乌的弓→核心觉醒）。该通道的前置就是"已 A 级"，
+     * 所以 {@link #transformEmbryoToCore} 内置的"已 A+ 拒绝"在此处反向不适用。
+     *
+     * 仅做位阶字段修改和物品替换；右键核心走 {@code AnomalyBookService.applyScrollSpell}
+     * 完成 S 法术装入 + 升位。
+     */
+    public static void replaceHandStackWithCoreForcing(ServerPlayer player,
+                                                        net.minecraft.world.InteractionHand hand,
+                                                        ResourceLocation spellId) {
+        ItemStack core = com.mifan.item.EvolutionCoreItem.createFor(spellId);
+        core.setCount(1);
+        player.setItemInHand(hand, core);
+        player.getInventory().setChanged();
+        player.containerMenu.broadcastChanges();
+        clearProgressForSpell(player, spellId);
+        player.level().playSound(null, player.blockPosition(),
+                net.minecraft.sounds.SoundEvents.BEACON_POWER_SELECT,
+                net.minecraft.sounds.SoundSource.PLAYERS, 1.0F, 1.4F);
+        AnomalyBookService.SpellSpec spec = AnomalyBookService.getSpellSpec(spellId);
+        String zhName = spec != null ? spec.zhName() : spellId.getPath();
+        player.displayClientMessage(
+                Component.translatable("message.corpse_campus.evolution_core_forged", zhName)
+                        .withStyle(ChatFormatting.GOLD),
+                false);
+    }
+
     // ────────────────────────────────────────────────────────────────────
     // 进度 NBT 读写：统一入口，避免字段散落
     // ────────────────────────────────────────────────────────────────────

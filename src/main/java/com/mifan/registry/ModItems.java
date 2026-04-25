@@ -13,6 +13,7 @@ import com.mifan.item.RankBlessingItem;
 import com.mifan.item.SlateItem;
 import com.mifan.item.SpellScrollItem;
 import com.mifan.item.SpellEmbryoItem;
+import com.mifan.item.SunBowItem;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraftforge.eventbus.api.IEventBus;
@@ -82,6 +83,8 @@ public final class ModItems {
             LootRefreshItem::new);
     public static final RegistryObject<Item> SLATE = ITEMS.register("slate",
             SlateItem::new);
+    public static final RegistryObject<Item> SUN_BOW = ITEMS.register("ri_lun_jin_wu_bow",
+            SunBowItem::new);
 
     private ModItems() {
     }

@@ -1,0 +1,6 @@
+{
+  "parent": "corpse_campus:item/ri_lun_jin_wu_bow",
+  "textures": {
+    "layer0": "corpse_campus:item/ri_lun_jin_wu_bow"
+  }
+}
