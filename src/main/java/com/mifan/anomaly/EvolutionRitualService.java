@@ -3,7 +3,6 @@ package com.mifan.anomaly;
 import com.mifan.corpsecampus;
 import com.mifan.item.AnomalyTraitItem;
 import com.mifan.item.SpellEmbryoItem;
-import com.mifan.registry.ModSchools;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -281,6 +280,23 @@ public final class EvolutionRitualService {
         return all;
     }
 
+    /**
+     * 统计 5×5 底座（含 center 自身）内有多少格是该流派 floorBlock。
+     * 用于判定玩家"是否在搭 5×5"——避免对搭 3×3 的玩家弹 [5×5 祭坛] 诊断。
+     */
+    private static int countFloorIn5x5(ServerLevel level, BlockPos center, EvolutionAltarStructure altar) {
+        int count = 0;
+        for (int dx = -2; dx <= 2; dx++) {
+            for (int dz = -2; dz <= 2; dz++) {
+                if (dx == 0 && dz == 0) continue;
+                if (level.getBlockState(center.offset(dx, 0, dz)).is(altar.floorBlock())) {
+                    count++;
+                }
+            }
+        }
+        return count;
+    }
+
     // ────────────────────────────────────────────────────────────────────
     // 内部数据结构：EvolutionRecipe + ExtraRequirement 扩展点
     // ────────────────────────────────────────────────────────────────────
@@ -555,22 +571,17 @@ public final class EvolutionRitualService {
             return false;
         }
         if (!altar.matches(level, center, 2)) {
-            // 5×5 结构残缺：仅在玩家位阶 == A 时弹诊断（B 级玩家走 3×3 路径，5×5 fallback 不该 spam）
-            if (!silent) {
-                ItemStack book = AnomalyBookService.getPlayerBook(player);
-                boolean isARank = !book.isEmpty()
-                        && AnomalyBookService.isAwakened(book)
-                        && AnomalyBookService.getHighestRank(book) == AnomalySpellRank.A;
-                if (isARank) {
-                    String reason = altar.describeMismatch(level, center, 2);
-                    player.displayClientMessage(Component.translatable("message.corpse_campus.evolution_altar_incomplete")
-                            .withStyle(net.minecraft.ChatFormatting.RED), false);
-                    if (reason != null) {
-                        player.displayClientMessage(Component.literal("[5×5 祭坛] " + reason)
-                                .withStyle(net.minecraft.ChatFormatting.GRAY), false);
-                    }
-                    return true;     // 阻止 fallback 到 3×3，避免 A 级玩家被同时弹 3×3 诊断
+            // 5×5 结构残缺：判定玩家是否"在搭 5×5"——5×5 底座（24 格）floor 方块 >= 12 算搭着了。
+            // 比"看玩家位阶"更鲁棒：玩家可能位阶 == B/S 但仍在搭 5×5 测试。
+            if (!silent && countFloorIn5x5(level, center, altar) >= 12) {
+                String reason = altar.describeMismatch(level, center, 2);
+                player.displayClientMessage(Component.translatable("message.corpse_campus.evolution_altar_incomplete")
+                        .withStyle(net.minecraft.ChatFormatting.RED), false);
+                if (reason != null) {
+                    player.displayClientMessage(Component.literal("[5×5 祭坛] " + reason)
+                            .withStyle(net.minecraft.ChatFormatting.GRAY), false);
                 }
+                return true;     // 阻止 fallback 到 3×3，避免同时弹两条诊断
             }
             return false;
         }
