@@ -93,7 +93,9 @@ public final class ElementalDomainRuntime {
         Vec3 selfCenter = caster.position();
 
         for (ElementalDomainState other : ACTIVE_DOMAINS.values()) {
-            if (other.dimension != level.dimension() || other.ownerUuid.equals(caster.getUUID())) {
+            if (other.dimension != level.dimension()
+                    || other.ownerUuid.equals(caster.getUUID())
+                    || other.restoring) {
                 continue;
             }
             int otherRadius = other.closedDomain
@@ -326,6 +328,7 @@ public final class ElementalDomainRuntime {
             self.suppressed = false;
             self.coalProgress = 0.0F;
             self.coalSpeed = COAL_SPEED_BASE;
+            self.recoverFromCoal(level);
         }
     }
 
@@ -352,7 +355,8 @@ public final class ElementalDomainRuntime {
         }
         BlockPos soundPos = loser.center;
         loser.beginRestore(level, soundPos);
-        ACTIVE_DOMAINS.remove(loser.ownerUuid);
+        // 不能立即从 ACTIVE_DOMAINS 移除：tickRestoration 必须扫到 loser 才能推进 restore 队列。
+        // 等 tickRestore 跑完会在 removeIf 中自动剔除。
         clearBattleFlagsInvolving(loser.ownerUuid);
 
         level.sendParticles(ParticleTypes.EXPLOSION,
@@ -753,6 +757,19 @@ public final class ElementalDomainRuntime {
                 }
                 level.setBlock(pos, next, 18);
             }
+        }
+
+        private void recoverFromCoal(ServerLevel level) {
+            if (coalPositions.isEmpty()) {
+                return;
+            }
+            for (BlockPos pos : coalPositions) {
+                BlockState current = level.getBlockState(pos);
+                if (current.getBlock() == COAL_BLOCK.getBlock()) {
+                    level.setBlock(pos, pickReplaceBlock(), 18);
+                }
+            }
+            coalPositions.clear();
         }
 
         private boolean tickCoal(ServerLevel level) {
