@@ -86,23 +86,30 @@ public enum EvolutionAltarStructure {
      * 四角装饰位于 center.above() 的 (±baseRadius, ±baseRadius) 四个对角。
      */
     public boolean matches(Level level, BlockPos center, int baseRadius) {
+        return describeMismatch(level, center, baseRadius) == null;
+    }
+
+    /**
+     * 诊断版结构校验：返回第一个不匹配格子的描述（"<位置>期望 <X>，实际 <Y>"）；
+     * 全部匹配时返回 null。供 attemptFusion 在 fail 时输出可读原因。
+     */
+    public String describeMismatch(Level level, BlockPos center, int baseRadius) {
         BlockState centerState = level.getBlockState(center);
         if (!centerState.is(centerBlock)) {
-            return false;
+            return formatMismatch("中心方块", centerBlock, centerState);
         }
-        // 底座：center 同层 (2r+1)×(2r+1) 中除 center 自身外，全部 floorBlock
         for (int dx = -baseRadius; dx <= baseRadius; dx++) {
             for (int dz = -baseRadius; dz <= baseRadius; dz++) {
                 if (dx == 0 && dz == 0) {
                     continue;
                 }
                 BlockPos pos = center.offset(dx, 0, dz);
-                if (!level.getBlockState(pos).is(floorBlock)) {
-                    return false;
+                BlockState actual = level.getBlockState(pos);
+                if (!actual.is(floorBlock)) {
+                    return formatMismatch(String.format("底座(%+d,%+d)", dx, dz), floorBlock, actual);
                 }
             }
         }
-        // 四角装饰：center.above() 的四个对角（±baseRadius, ±baseRadius）
         BlockPos above = center.above();
         int[][] corners = {
                 {-baseRadius, -baseRadius}, {-baseRadius, baseRadius},
@@ -110,11 +117,23 @@ public enum EvolutionAltarStructure {
         };
         for (int[] offset : corners) {
             BlockPos pos = above.offset(offset[0], 0, offset[1]);
-            if (!level.getBlockState(pos).is(cornerBlock)) {
-                return false;
+            BlockState actual = level.getBlockState(pos);
+            if (!actual.is(cornerBlock)) {
+                return formatMismatch(String.format("四角装饰(%+d,%+d)", offset[0], offset[1]), cornerBlock, actual);
             }
         }
-        return true;
+        return null;
+    }
+
+    private static String formatMismatch(String slot, Block expected, BlockState actual) {
+        net.minecraft.resources.ResourceLocation expKey =
+                net.minecraftforge.registries.ForgeRegistries.BLOCKS.getKey(expected);
+        net.minecraft.resources.ResourceLocation actKey =
+                net.minecraftforge.registries.ForgeRegistries.BLOCKS.getKey(actual.getBlock());
+        return String.format("%s 期望 %s，实际 %s",
+                slot,
+                expKey != null ? expKey.toString() : expected.toString(),
+                actKey != null ? actKey.toString() : actual.toString());
     }
 
     /** 从被右键的 BlockState 反查对应的流派祭坛类型；可能返回 null（非任何祭坛中心方块）。 */

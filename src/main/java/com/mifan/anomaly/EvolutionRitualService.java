@@ -185,8 +185,13 @@ public final class EvolutionRitualService {
         }
         if (!altar.matches(level, center)) {
             if (!silent) {
+                String reason = altar.describeMismatch(level, center, 1);
                 player.displayClientMessage(Component.translatable("message.corpse_campus.evolution_altar_incomplete")
                         .withStyle(net.minecraft.ChatFormatting.RED), false);
+                if (reason != null) {
+                    player.displayClientMessage(Component.literal("[祭坛] " + reason)
+                            .withStyle(net.minecraft.ChatFormatting.GRAY), false);
+                }
             }
             return false;
         }
