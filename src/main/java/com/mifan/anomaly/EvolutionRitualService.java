@@ -700,10 +700,10 @@ public final class EvolutionRitualService {
 
         /**
          * 精确匹配：祭坛上方必须**恰好**有：
-         *   1) 1 枚 schoolId 流派的 S 级 AnomalyTraitItem（异常石板）
+         *   1) 1 枚 schoolId 流派的 S 级 AnomalyTraitItem **或** 1 个绑定到该流派的 SlateItem（"愚者石板"等）
          *   2) 1 枚 schoolId 流派的 A 级 AnomalyTraitItem
          *   3) 1 个原版 NETHER_STAR
-         * 多任何一种或多余物品都不匹配。
+         * 多任何一种或多余物品都不匹配。SlateItem 与 TRAIT_*_S 等价（玩家用任一即可）。
          */
         boolean matches(List<ItemEntity> items, ResourceLocation schoolId) {
             int sRankCount = 0;
@@ -718,6 +718,14 @@ public final class EvolutionRitualService {
                     else return false;          // 同流派 B 特性出现 → 不匹配（避免 B 配方被误触发）
                 } else if (s.getItem() == Items.NETHER_STAR) {
                     netherStarCount += s.getCount();
+                } else if (s.getItem() == com.mifan.registry.ModItems.SLATE.get()) {
+                    // 流派石板（NBT 绑定到该流派）等价于 S 级特性
+                    String boundPath = com.mifan.item.SlateItem.getBoundSchoolPath(s);
+                    if (boundPath != null && schoolId.getPath().equals(boundPath)) {
+                        sRankCount += s.getCount();
+                    } else {
+                        return false;     // 绑定到其他流派 / 未绑定 → 不匹配
+                    }
                 } else if (s.getItem() instanceof AnomalyTraitItem) {
                     // 其他流派特性出现 → 不匹配
                     return false;
@@ -730,12 +738,15 @@ public final class EvolutionRitualService {
         }
 
         void consume(List<ItemEntity> items, ResourceLocation schoolId) {
-            consumeOneTraitOfRank(items, schoolId, AnomalySpellRank.S);
+            // S 级先尝试消耗 TRAIT_*_S，没找到则消耗绑定该流派的 SlateItem
+            if (!consumeOneTraitOfRank(items, schoolId, AnomalySpellRank.S)) {
+                consumeOneSlate(items, schoolId);
+            }
             consumeOneTraitOfRank(items, schoolId, AnomalySpellRank.A);
             consumeItem(items, Items.NETHER_STAR, 1);
         }
 
-        private static void consumeOneTraitOfRank(List<ItemEntity> items, ResourceLocation schoolId, AnomalySpellRank rank) {
+        private static boolean consumeOneTraitOfRank(List<ItemEntity> items, ResourceLocation schoolId, AnomalySpellRank rank) {
             for (ItemEntity e : items) {
                 ItemStack s = e.getItem();
                 if (s.getItem() instanceof AnomalyTraitItem trait
@@ -743,7 +754,22 @@ public final class EvolutionRitualService {
                         && trait.getSchoolId().equals(schoolId)) {
                     s.shrink(1);
                     if (s.isEmpty()) e.discard();
-                    return;
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private static void consumeOneSlate(List<ItemEntity> items, ResourceLocation schoolId) {
+            for (ItemEntity e : items) {
+                ItemStack s = e.getItem();
+                if (s.getItem() == com.mifan.registry.ModItems.SLATE.get()) {
+                    String boundPath = com.mifan.item.SlateItem.getBoundSchoolPath(s);
+                    if (boundPath != null && schoolId.getPath().equals(boundPath)) {
+                        s.shrink(1);
+                        if (s.isEmpty()) e.discard();
+                        return;
+                    }
                 }
             }
         }
