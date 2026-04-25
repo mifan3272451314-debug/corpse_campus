@@ -139,6 +139,8 @@ public class corpsecampus {
     private void commonSetup(final FMLCommonSetupEvent event) {
         // 进化觉醒：注册 10 条仪式配方。放在 commonSetup 里，此时所有 Item 已完成 DeferredRegister 注册
         event.enqueueWork(com.mifan.anomaly.EvolutionRitualService::init);
+        // 6 条无祭坛 B 级"扔齐自动合成"配方
+        event.enqueueWork(com.mifan.anomaly.BRecipeFusionService::init);
     }
 
     // You can use EventBusSubscriber to automatically register all static methods

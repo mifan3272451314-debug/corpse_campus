@@ -162,37 +162,59 @@ public final class EvolutionRitualService {
      * 返回值：true = 融合成功（生成胚胎）；false = 任何一项校验失败（原地无事发生）。
      */
     public static boolean attemptFusion(ServerLevel level, BlockPos center, ServerPlayer player) {
+        return attemptFusionInternal(level, center, player, false);
+    }
+
+    /**
+     * 静默自动入口：tick 调度自动触发用。所有校验失败都返回 false 且不弹任何消息（避免 spam）；
+     * 成功时仍给玩家显示"胚胎诞生"提示与音效粒子。
+     */
+    public static boolean attemptFusionAuto(ServerLevel level, BlockPos center, ServerPlayer player) {
+        return attemptFusionInternal(level, center, player, true);
+    }
+
+    private static boolean attemptFusionInternal(ServerLevel level, BlockPos center, ServerPlayer player, boolean silent) {
         EvolutionAltarStructure altar = EvolutionAltarStructure.fromCenterBlock(level.getBlockState(center));
         if (altar == null) {
             return false;
         }
-        org.slf4j.LoggerFactory.getLogger("corpse_campus/evolution").info(
-                "[ritual 3x3] {} shift+right-click {} altar at {}",
-                player.getGameProfile().getName(), altar.schoolId().getPath(), center);
+        if (!silent) {
+            org.slf4j.LoggerFactory.getLogger("corpse_campus/evolution").info(
+                    "[ritual 3x3] {} shift+right-click {} altar at {}",
+                    player.getGameProfile().getName(), altar.schoolId().getPath(), center);
+        }
         if (!altar.matches(level, center)) {
-            player.displayClientMessage(Component.translatable("message.corpse_campus.evolution_altar_incomplete")
-                    .withStyle(net.minecraft.ChatFormatting.RED), false);
+            if (!silent) {
+                player.displayClientMessage(Component.translatable("message.corpse_campus.evolution_altar_incomplete")
+                        .withStyle(net.minecraft.ChatFormatting.RED), false);
+            }
             return false;
         }
 
         // 已 A 级拦截
         if (EvolutionAwakeningService.isAlreadyARankOrHigher(player)) {
-            player.displayClientMessage(Component.translatable("message.corpse_campus.evolution_denied.already_a")
-                    .withStyle(net.minecraft.ChatFormatting.RED), false);
+            if (!silent) {
+                player.displayClientMessage(Component.translatable("message.corpse_campus.evolution_denied.already_a")
+                        .withStyle(net.minecraft.ChatFormatting.RED), false);
+            }
             return false;
         }
 
         // 主序列校验：必须是该流派
         ItemStack book = AnomalyBookService.getPlayerBook(player);
         if (book.isEmpty() || !AnomalyBookService.isAwakened(book)) {
-            player.displayClientMessage(Component.translatable("message.corpse_campus.evolution_denied.not_awakened")
-                    .withStyle(net.minecraft.ChatFormatting.RED), false);
+            if (!silent) {
+                player.displayClientMessage(Component.translatable("message.corpse_campus.evolution_denied.not_awakened")
+                        .withStyle(net.minecraft.ChatFormatting.RED), false);
+            }
             return false;
         }
         ResourceLocation mainSeq = AnomalyBookService.getMainSequenceId(book);
         if (mainSeq == null || !mainSeq.equals(altar.schoolId())) {
-            player.displayClientMessage(Component.translatable("message.corpse_campus.evolution_denied.wrong_sequence")
-                    .withStyle(net.minecraft.ChatFormatting.RED), false);
+            if (!silent) {
+                player.displayClientMessage(Component.translatable("message.corpse_campus.evolution_denied.wrong_sequence")
+                        .withStyle(net.minecraft.ChatFormatting.RED), false);
+            }
             return false;
         }
 
@@ -216,8 +238,10 @@ public final class EvolutionRitualService {
             }
         }
         if (picked == null) {
-            player.displayClientMessage(Component.translatable("message.corpse_campus.evolution_recipe_not_matched")
-                    .withStyle(net.minecraft.ChatFormatting.YELLOW), false);
+            if (!silent) {
+                player.displayClientMessage(Component.translatable("message.corpse_campus.evolution_recipe_not_matched")
+                        .withStyle(net.minecraft.ChatFormatting.YELLOW), false);
+            }
             return false;
         }
 
@@ -510,6 +534,15 @@ public final class EvolutionRitualService {
      * @return true = 命中 5×5 + 完成融合或显式拒绝（结构不完整不算）；false = 5×5 不通过，应继续尝试 B→A
      */
     public static boolean attemptFusionS(ServerLevel level, BlockPos center, ServerPlayer player) {
+        return attemptFusionSInternal(level, center, player, false);
+    }
+
+    /** 静默自动版（tick 调度用）：所有失败静默 return；成功仍弹提示 + 音效粒子。 */
+    public static boolean attemptFusionSAuto(ServerLevel level, BlockPos center, ServerPlayer player) {
+        return attemptFusionSInternal(level, center, player, true);
+    }
+
+    private static boolean attemptFusionSInternal(ServerLevel level, BlockPos center, ServerPlayer player, boolean silent) {
         EvolutionAltarStructure altar = EvolutionAltarStructure.fromCenterBlock(level.getBlockState(center));
         if (altar == null) {
             return false;
@@ -517,38 +550,51 @@ public final class EvolutionRitualService {
         if (!altar.matches(level, center, 2)) {
             return false;
         }
-        org.slf4j.LoggerFactory.getLogger("corpse_campus/evolution").info(
-                "[ritual 5x5] {} interacts with {} S-altar at {}",
-                player.getGameProfile().getName(), altar.schoolId().getPath(), center);
-        org.slf4j.LoggerFactory.getLogger("corpse_campus/evolution").info(
-                "[ritual 5x5] {} shift+right-click {} altar at {} (5x5 structure OK)",
-                player.getGameProfile().getName(), altar.schoolId().getPath(), center);
+        if (!silent) {
+            org.slf4j.LoggerFactory.getLogger("corpse_campus/evolution").info(
+                    "[ritual 5x5] {} interacts with {} S-altar at {}",
+                    player.getGameProfile().getName(), altar.schoolId().getPath(), center);
+            org.slf4j.LoggerFactory.getLogger("corpse_campus/evolution").info(
+                    "[ritual 5x5] {} shift+right-click {} altar at {} (5x5 structure OK)",
+                    player.getGameProfile().getName(), altar.schoolId().getPath(), center);
+        }
 
         // 玩家书校验：必须已觉醒 + 最高位阶 == A
         ItemStack book = AnomalyBookService.getPlayerBook(player);
         if (book.isEmpty() || !AnomalyBookService.isAwakened(book)) {
-            player.displayClientMessage(Component.translatable("message.corpse_campus.evolution_denied.not_awakened")
-                    .withStyle(net.minecraft.ChatFormatting.RED), false);
-            return true;
+            if (!silent) {
+                player.displayClientMessage(Component.translatable("message.corpse_campus.evolution_denied.not_awakened")
+                        .withStyle(net.minecraft.ChatFormatting.RED), false);
+            }
+            return silent ? false : true;
         }
         AnomalySpellRank highest = AnomalyBookService.getHighestRank(book);
         if (highest == AnomalySpellRank.S) {
-            player.displayClientMessage(Component.translatable("message.corpse_campus.evolution_denied.already_s")
-                    .withStyle(net.minecraft.ChatFormatting.RED), false);
-            return true;
+            if (!silent) {
+                player.displayClientMessage(Component.translatable("message.corpse_campus.evolution_denied.already_s")
+                        .withStyle(net.minecraft.ChatFormatting.RED), false);
+                return true;
+            }
+            return false;
         }
         if (highest != AnomalySpellRank.A) {
-            player.displayClientMessage(Component.translatable("message.corpse_campus.evolution_denied.not_a_rank")
-                    .withStyle(net.minecraft.ChatFormatting.RED), false);
-            return true;
+            if (!silent) {
+                player.displayClientMessage(Component.translatable("message.corpse_campus.evolution_denied.not_a_rank")
+                        .withStyle(net.minecraft.ChatFormatting.RED), false);
+                return true;
+            }
+            return false;
         }
 
         // 主序列匹配祭坛流派
         ResourceLocation mainSeq = AnomalyBookService.getMainSequenceId(book);
         if (mainSeq == null || !mainSeq.equals(altar.schoolId())) {
-            player.displayClientMessage(Component.translatable("message.corpse_campus.evolution_denied.wrong_sequence")
-                    .withStyle(net.minecraft.ChatFormatting.RED), false);
-            return true;
+            if (!silent) {
+                player.displayClientMessage(Component.translatable("message.corpse_campus.evolution_denied.wrong_sequence")
+                        .withStyle(net.minecraft.ChatFormatting.RED), false);
+                return true;
+            }
+            return false;
         }
 
         // 5×5 上方 AABB 扫描（半径 2.2 略大于祭坛对角，防止漏掉边缘掉落物）
@@ -567,9 +613,12 @@ public final class EvolutionRitualService {
             }
         }
         if (picked == null) {
-            player.displayClientMessage(Component.translatable("message.corpse_campus.evolution_recipe_not_matched")
-                    .withStyle(net.minecraft.ChatFormatting.YELLOW), false);
-            return true;
+            if (!silent) {
+                player.displayClientMessage(Component.translatable("message.corpse_campus.evolution_recipe_not_matched")
+                        .withStyle(net.minecraft.ChatFormatting.YELLOW), false);
+                return true;
+            }
+            return false;
         }
 
         // 消耗材料
