@@ -5,6 +5,7 @@ import com.mifan.anomaly.EvolutionAwakeningService;
 import com.mifan.corpsecampus;
 import com.mifan.registry.ModItems;
 import com.mifan.registry.ModSchools;
+import com.mifan.spell.rizhao.SunBowSkyShotVfx;
 import io.redspace.ironsspellbooks.api.magic.MagicData;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
@@ -23,6 +24,7 @@ import net.minecraft.world.item.Rarity;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.UseAnim;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
@@ -151,11 +153,20 @@ public class SunBowItem extends BowItem {
 
         int hits = stack.getOrCreateTag().getInt(TAG_SUN_HITS) + 1;
 
-        // 视听反馈：弓声 + 远雷模拟太阳坠落的轰鸣
-        serverLevel.playSound(null, player.blockPosition(),
-                SoundEvents.ARROW_SHOOT, SoundSource.PLAYERS, 1.0F, 0.7F);
-        serverLevel.playSound(null, player.blockPosition(),
-                SoundEvents.LIGHTNING_BOLT_THUNDER, SoundSource.WEATHER, 1.0F, 1.5F);
+        // 视觉：双段式火焰光柱沿视线冲向太阳（弓口蓄力 + 80 格冲天尾迹）
+        Vec3 viewDir = player.getViewVector(1F);
+        Vec3 muzzle = player.getEyePosition(1F).add(viewDir.scale(1.0D));
+        SunBowSkyShotVfx.schedule(serverLevel, muzzle, viewDir);
+
+        // 听觉：全图可听 — 给每个在线玩家在自身位置播音，绕开默认的 16 格客户端衰减
+        for (ServerPlayer listener : serverLevel.players()) {
+            // 灼热弓鸣（射出瞬间）
+            serverLevel.playSound(null, listener.getX(), listener.getY(), listener.getZ(),
+                    SoundEvents.BLAZE_SHOOT, SoundSource.HOSTILE, 1.5F, 0.5F);
+            // 太阳坠落的远雷
+            serverLevel.playSound(null, listener.getX(), listener.getY(), listener.getZ(),
+                    SoundEvents.LIGHTNING_BOLT_THUNDER, SoundSource.WEATHER, 1.2F, 0.7F);
+        }
 
         if (hits >= REQUIRED_HITS) {
             // 觉醒：弓 → 日兆·日轮金乌 S 核心（绕过 isAlreadyARankOrHigher 拦截）
