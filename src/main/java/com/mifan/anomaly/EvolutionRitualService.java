@@ -3,6 +3,7 @@ package com.mifan.anomaly;
 import com.mifan.corpsecampus;
 import com.mifan.item.AnomalyTraitItem;
 import com.mifan.item.SpellEmbryoItem;
+import com.mifan.registry.ModSchools;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -165,16 +166,19 @@ public final class EvolutionRitualService {
         if (altar == null) {
             return false;
         }
+        org.slf4j.LoggerFactory.getLogger("corpse_campus/evolution").info(
+                "[ritual 3x3] {} shift+right-click {} altar at {}",
+                player.getGameProfile().getName(), altar.schoolId().getPath(), center);
         if (!altar.matches(level, center)) {
             player.displayClientMessage(Component.translatable("message.corpse_campus.evolution_altar_incomplete")
-                    .withStyle(net.minecraft.ChatFormatting.RED), true);
+                    .withStyle(net.minecraft.ChatFormatting.RED), false);
             return false;
         }
 
         // 已 A 级拦截
         if (EvolutionAwakeningService.isAlreadyARankOrHigher(player)) {
             player.displayClientMessage(Component.translatable("message.corpse_campus.evolution_denied.already_a")
-                    .withStyle(net.minecraft.ChatFormatting.RED), true);
+                    .withStyle(net.minecraft.ChatFormatting.RED), false);
             return false;
         }
 
@@ -182,13 +186,13 @@ public final class EvolutionRitualService {
         ItemStack book = AnomalyBookService.getPlayerBook(player);
         if (book.isEmpty() || !AnomalyBookService.isAwakened(book)) {
             player.displayClientMessage(Component.translatable("message.corpse_campus.evolution_denied.not_awakened")
-                    .withStyle(net.minecraft.ChatFormatting.RED), true);
+                    .withStyle(net.minecraft.ChatFormatting.RED), false);
             return false;
         }
         ResourceLocation mainSeq = AnomalyBookService.getMainSequenceId(book);
         if (mainSeq == null || !mainSeq.equals(altar.schoolId())) {
             player.displayClientMessage(Component.translatable("message.corpse_campus.evolution_denied.wrong_sequence")
-                    .withStyle(net.minecraft.ChatFormatting.RED), true);
+                    .withStyle(net.minecraft.ChatFormatting.RED), false);
             return false;
         }
 
@@ -213,7 +217,7 @@ public final class EvolutionRitualService {
         }
         if (picked == null) {
             player.displayClientMessage(Component.translatable("message.corpse_campus.evolution_recipe_not_matched")
-                    .withStyle(net.minecraft.ChatFormatting.YELLOW), true);
+                    .withStyle(net.minecraft.ChatFormatting.YELLOW), false);
             return false;
         }
 
@@ -513,23 +517,29 @@ public final class EvolutionRitualService {
         if (!altar.matches(level, center, 2)) {
             return false;
         }
+        org.slf4j.LoggerFactory.getLogger("corpse_campus/evolution").info(
+                "[ritual 5x5] {} interacts with {} S-altar at {}",
+                player.getGameProfile().getName(), altar.schoolId().getPath(), center);
+        org.slf4j.LoggerFactory.getLogger("corpse_campus/evolution").info(
+                "[ritual 5x5] {} shift+right-click {} altar at {} (5x5 structure OK)",
+                player.getGameProfile().getName(), altar.schoolId().getPath(), center);
 
         // 玩家书校验：必须已觉醒 + 最高位阶 == A
         ItemStack book = AnomalyBookService.getPlayerBook(player);
         if (book.isEmpty() || !AnomalyBookService.isAwakened(book)) {
             player.displayClientMessage(Component.translatable("message.corpse_campus.evolution_denied.not_awakened")
-                    .withStyle(net.minecraft.ChatFormatting.RED), true);
+                    .withStyle(net.minecraft.ChatFormatting.RED), false);
             return true;
         }
         AnomalySpellRank highest = AnomalyBookService.getHighestRank(book);
         if (highest == AnomalySpellRank.S) {
             player.displayClientMessage(Component.translatable("message.corpse_campus.evolution_denied.already_s")
-                    .withStyle(net.minecraft.ChatFormatting.RED), true);
+                    .withStyle(net.minecraft.ChatFormatting.RED), false);
             return true;
         }
         if (highest != AnomalySpellRank.A) {
             player.displayClientMessage(Component.translatable("message.corpse_campus.evolution_denied.not_a_rank")
-                    .withStyle(net.minecraft.ChatFormatting.RED), true);
+                    .withStyle(net.minecraft.ChatFormatting.RED), false);
             return true;
         }
 
@@ -537,7 +547,7 @@ public final class EvolutionRitualService {
         ResourceLocation mainSeq = AnomalyBookService.getMainSequenceId(book);
         if (mainSeq == null || !mainSeq.equals(altar.schoolId())) {
             player.displayClientMessage(Component.translatable("message.corpse_campus.evolution_denied.wrong_sequence")
-                    .withStyle(net.minecraft.ChatFormatting.RED), true);
+                    .withStyle(net.minecraft.ChatFormatting.RED), false);
             return true;
         }
 
@@ -558,7 +568,7 @@ public final class EvolutionRitualService {
         }
         if (picked == null) {
             player.displayClientMessage(Component.translatable("message.corpse_campus.evolution_recipe_not_matched")
-                    .withStyle(net.minecraft.ChatFormatting.YELLOW), true);
+                    .withStyle(net.minecraft.ChatFormatting.YELLOW), false);
             return true;
         }
 
