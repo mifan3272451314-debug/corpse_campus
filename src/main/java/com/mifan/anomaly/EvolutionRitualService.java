@@ -555,6 +555,23 @@ public final class EvolutionRitualService {
             return false;
         }
         if (!altar.matches(level, center, 2)) {
+            // 5×5 结构残缺：仅在玩家位阶 == A 时弹诊断（B 级玩家走 3×3 路径，5×5 fallback 不该 spam）
+            if (!silent) {
+                ItemStack book = AnomalyBookService.getPlayerBook(player);
+                boolean isARank = !book.isEmpty()
+                        && AnomalyBookService.isAwakened(book)
+                        && AnomalyBookService.getHighestRank(book) == AnomalySpellRank.A;
+                if (isARank) {
+                    String reason = altar.describeMismatch(level, center, 2);
+                    player.displayClientMessage(Component.translatable("message.corpse_campus.evolution_altar_incomplete")
+                            .withStyle(net.minecraft.ChatFormatting.RED), false);
+                    if (reason != null) {
+                        player.displayClientMessage(Component.literal("[5×5 祭坛] " + reason)
+                                .withStyle(net.minecraft.ChatFormatting.GRAY), false);
+                    }
+                    return true;     // 阻止 fallback 到 3×3，避免 A 级玩家被同时弹 3×3 诊断
+                }
+            }
             return false;
         }
         if (!silent) {
