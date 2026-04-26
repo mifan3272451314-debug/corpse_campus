@@ -87,8 +87,12 @@ public final class AnomalyAdvancements {
     );
 
     /** L2 自然觉醒里两个 impossible 占位（爬行 / 副本）对应的路径。 */
+    private static final ResourceLocation NATURAL_ALL =
+            new ResourceLocation(NS, "natural/all");
     private static final ResourceLocation NATURAL_CRAWL =
             new ResourceLocation(NS, "natural/danger_sense_crawl");
+    private static final ResourceLocation NATURAL_MAGNETIC_CLING =
+            new ResourceLocation(NS, "natural/magnetic_cling");
     private static final ResourceLocation NATURAL_DUNGEON =
             new ResourceLocation(NS, "natural/dungeon");
 
@@ -130,11 +134,19 @@ public final class AnomalyAdvancements {
     /** 玩家连续爬行达到 120 秒阈值。 */
     public static void onNaturalCrawlReached(@Nullable ServerPlayer player) {
         awardAll(player, NATURAL_CRAWL);
+        awardCriterion(player, NATURAL_ALL, "crawl");
+    }
+
+    /** 玩家在前后左右四面均为墙体的状态下连续保持 10 分钟。 */
+    public static void onNaturalMagneticClingReached(@Nullable ServerPlayer player) {
+        awardAll(player, NATURAL_MAGNETIC_CLING);
+        awardCriterion(player, NATURAL_ALL, "magnetic_cling");
     }
 
     /** 副本探索触发（预留给未来副本子系统）。 */
     public static void onDungeonCleared(@Nullable ServerPlayer player) {
         awardAll(player, NATURAL_DUNGEON);
+        awardCriterion(player, NATURAL_ALL, "dungeon");
     }
 
     /** 施放生生不息瞬间（全服封禁动作）。 */
@@ -179,6 +191,16 @@ public final class AnomalyAdvancements {
         for (String key : advancement.getCriteria().keySet()) {
             progress.award(advancement, key);
         }
+    }
+
+    private static void awardCriterion(@Nullable ServerPlayer player, @Nullable ResourceLocation id,
+                                       @Nullable String criterionKey) {
+        if (player == null || id == null || criterionKey == null) return;
+        MinecraftServer server = player.getServer();
+        if (server == null) return;
+        Advancement advancement = resolve(server, id);
+        if (advancement == null || !advancement.getCriteria().containsKey(criterionKey)) return;
+        player.getAdvancements().award(advancement, criterionKey);
     }
 
     private static @Nullable Advancement resolve(MinecraftServer server, ResourceLocation id) {

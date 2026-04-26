@@ -611,7 +611,7 @@ public final class MagicCommand {
             case NaturalAwakeningService.KEY_MONSTER_KILL -> "击杀怪物(冥化)";
             case NaturalAwakeningService.KEY_CROUCH_TICK -> "连续蹲伏tick(危机)";
             case NaturalAwakeningService.KEY_CRAWL_TICK -> "连续爬行tick(危机)";
-            case NaturalAwakeningService.KEY_WALL_TOUCH_TICK -> "累计接触墙tick(磁吸)";
+            case NaturalAwakeningService.KEY_WALL_TOUCH_TICK -> "四面墙连续tick(磁吸)";
             case NaturalAwakeningService.KEY_FALL_BURST_MAX -> "历史最大单次坠落(万象)";
             default -> key;
         };

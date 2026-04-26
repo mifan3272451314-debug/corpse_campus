@@ -168,7 +168,7 @@ public final class NaturalAwakeningEventHandler {
         NaturalAwakeningService.updateMaxAndCheck(player, NaturalAwakeningService.KEY_FALL_BURST_MAX, distance);
     }
 
-    // ─── 每 tick：危机(蹲伏/爬行) + 磁吸(接触墙) ──────────────────
+    // ─── 每 tick：危机(蹲伏/爬行) + 磁吸(四面墙连续) ──────────────────
 
     @SubscribeEvent
     public static void onPlayerTick(TickEvent.PlayerTickEvent event) {
@@ -185,16 +185,16 @@ public final class NaturalAwakeningEventHandler {
         NaturalAwakeningService.tickContinuous(player,
                 NaturalAwakeningService.KEY_CRAWL_TICK, player.isVisuallyCrawling());
 
-        // 磁吸：累计 tick（用户 2026-04-23 口径），中断不清零
-        NaturalAwakeningService.tickAccumulative(player,
-                NaturalAwakeningService.KEY_WALL_TOUCH_TICK, isTouchingWall(player));
+        // 磁吸：前后左右四面均为墙体时连续计时，中断立即清零
+        NaturalAwakeningService.tickContinuous(player,
+                NaturalAwakeningService.KEY_WALL_TOUCH_TICK, isEnclosedByWalls(player));
     }
 
     /**
-     * 碰撞盒水平四个方向各探两个高度（脚/胸），命中非空气且 blocksMotion 的方块即视为"接触墙"。
-     * 不检测顶/底面，避免把地板/天花板误判为墙。
+     * 碰撞盒水平四个方向各探两个高度（脚/胸），四个方向都命中非空气且 blocksMotion 的方块时，
+     * 才视为被墙壁完全包围。只检测水平四面，不检测顶/底面，避免把地板/天花板误判为墙。
      */
-    private static boolean isTouchingWall(Player player) {
+    private static boolean isEnclosedByWalls(Player player) {
         Level level = player.level();
         AABB box = player.getBoundingBox();
         double centerX = (box.minX + box.maxX) * 0.5;
@@ -208,21 +208,19 @@ public final class NaturalAwakeningEventHandler {
                 box.maxY - 0.2
         };
 
+        return sideHasWall(level, centerX + halfX + probe, centerZ, probeYs)
+                && sideHasWall(level, centerX - halfX - probe, centerZ, probeYs)
+                && sideHasWall(level, centerX, centerZ + halfZ + probe, probeYs)
+                && sideHasWall(level, centerX, centerZ - halfZ - probe, probeYs);
+    }
+
+    private static boolean sideHasWall(Level level, double x, double z, double[] probeYs) {
         BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
         for (double y : probeYs) {
-            int yi = (int) Math.floor(y);
-            // +X
-            pos.set((int) Math.floor(centerX + halfX + probe), yi, (int) Math.floor(centerZ));
-            if (solidAt(level, pos)) return true;
-            // -X
-            pos.set((int) Math.floor(centerX - halfX - probe), yi, (int) Math.floor(centerZ));
-            if (solidAt(level, pos)) return true;
-            // +Z
-            pos.set((int) Math.floor(centerX), yi, (int) Math.floor(centerZ + halfZ + probe));
-            if (solidAt(level, pos)) return true;
-            // -Z
-            pos.set((int) Math.floor(centerX), yi, (int) Math.floor(centerZ - halfZ - probe));
-            if (solidAt(level, pos)) return true;
+            pos.set((int) Math.floor(x), (int) Math.floor(y), (int) Math.floor(z));
+            if (solidAt(level, pos)) {
+                return true;
+            }
         }
         return false;
     }

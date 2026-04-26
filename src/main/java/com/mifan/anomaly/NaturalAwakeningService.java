@@ -46,7 +46,7 @@ public final class NaturalAwakeningService {
     public static final String KEY_MONSTER_KILL = "monster_kill_count";        // 冥化
     public static final String KEY_CROUCH_TICK = "continuous_crouch_tick";     // 危机(连续蹲伏)
     public static final String KEY_CRAWL_TICK = "continuous_crawl_tick";       // 危机(连续爬行)
-    public static final String KEY_WALL_TOUCH_TICK = "wall_touch_tick";        // 磁吸(累计接触墙)
+    public static final String KEY_WALL_TOUCH_TICK = "magnetic_enclosed_tick"; // 磁吸(四面墙连续)
     public static final String KEY_FALL_BURST_MAX = "fall_burst_max";          // 万象(一次性坠落最大)
 
     public static final List<String> ALL_KEYS = List.of(
@@ -65,7 +65,7 @@ public final class NaturalAwakeningService {
     public static final int THRESHOLD_MONSTER_KILL = 200;
     public static final int THRESHOLD_CROUCH_TICK = 6000;      // 5 分钟 @ 20 tps
     public static final int THRESHOLD_CRAWL_TICK = 2400;       // 120 秒 @ 20 tps
-    public static final int THRESHOLD_WALL_TOUCH_TICK = 6000;  // 5 分钟 @ 20 tps
+    public static final int THRESHOLD_WALL_TOUCH_TICK = 12000; // 10 分钟 @ 20 tps
     public static final int THRESHOLD_FALL_BURST_MAX = 200;    // 坠落方块数
 
     private NaturalAwakeningService() {
@@ -198,7 +198,7 @@ public final class NaturalAwakeningService {
         checkThresholdCrossed(player, key, oldValue, newValue);
     }
 
-    /** 累计 tick：active=true 时 +1；active=false 时不变（不清零）。用于磁吸。 */
+    /** 累计 tick：active=true 时 +1；active=false 时不变（不清零）。保留给旧累计型条件。 */
     public static void tickAccumulative(ServerPlayer player, String key, boolean active) {
         if (!active || isFrozen(player)) {
             return;
@@ -213,6 +213,11 @@ public final class NaturalAwakeningService {
     private static void checkThresholdCrossed(ServerPlayer player, String key, int oldValue, int newValue) {
         int threshold = getThreshold(key);
         if (newValue >= threshold && oldValue < threshold) {
+            if (KEY_WALL_TOUCH_TICK.equals(key)) {
+                AnomalyAdvancements.onNaturalMagneticClingReached(player);
+            }
+        }
+        if (newValue >= threshold) {
             tryAwaken(player, key);
         }
     }
